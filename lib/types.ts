@@ -32,6 +32,15 @@ export interface ProductWithInventory extends Product {
   current_cost_price: number
 }
 
+// Backward compatible type for API responses
+export interface ProductWithBackwardCompatibility extends Product {
+  price: number
+  cost_price: number
+  stock_quantity: number
+  low_stock_threshold: number
+  inventory?: Inventory[]
+}
+
 export interface Sale {
   id: number
   sale_number: string

@@ -2,19 +2,19 @@
 
 import React, { useEffect, useState } from 'react'
 import { Search, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react'
-import type { Product } from '@/lib/types'
+import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import ProductModal from '@/components/ProductModal'
 
 export default function InventoryPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [categories, setCategories] = useState<string[]>([])
   const [showLowStock, setShowLowStock] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [editingProduct, setEditingProduct] = useState<ProductWithBackwardCompatibility | null>(null)
   const [error, setError] = useState('')
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null)
 
@@ -103,7 +103,7 @@ export default function InventoryPage() {
     }
   }
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = (product: ProductWithBackwardCompatibility) => {
     setEditingProduct(product)
     setIsModalOpen(true)
   }
@@ -121,7 +121,7 @@ export default function InventoryPage() {
     }
   }
 
-  const isLowStock = (product: Product) => {
+  const isLowStock = (product: ProductWithBackwardCompatibility) => {
     return product.stock_quantity <= product.low_stock_threshold
   }
 
