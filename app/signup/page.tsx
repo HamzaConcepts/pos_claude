@@ -101,9 +101,9 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-secondary py-8">
-      <div className="bg-white p-8 rounded border-2 border-black w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-6 text-center">POS System</h1>
-        <h2 className="text-xl font-semibold mb-6">Sign Up</h2>
+      <div className="bg-white p-8 rounded border-2 border-gray w-full max-w-md">
+        <h1 className="text-3xl font-bold mb-3 text-center">POS System</h1>
+        <p className="text-center text-text-secondary">Create a new account</p>
 
         {error && (
           <div className="mb-4 p-3 bg-status-error text-white rounded">
@@ -122,7 +122,7 @@ export default function SignupPage() {
               type="text"
               value={formData.username}
               onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
               required
               disabled={loading}
             />
@@ -138,7 +138,7 @@ export default function SignupPage() {
               type="text"
               value={formData.fullName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
               required
               disabled={loading}
             />
@@ -154,7 +154,7 @@ export default function SignupPage() {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
               required
               disabled={loading}
             />
@@ -169,7 +169,7 @@ export default function SignupPage() {
               name="role"
               value={formData.role}
               onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
               disabled={loading}
             >
               <option value="Cashier">Cashier</option>
@@ -188,7 +188,7 @@ export default function SignupPage() {
               type="password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
               required
               disabled={loading}
             />
@@ -204,7 +204,7 @@ export default function SignupPage() {
               type="password"
               value={formData.confirmPassword}
               onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
               required
               disabled={loading}
             />

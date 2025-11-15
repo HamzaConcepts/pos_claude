@@ -15,17 +15,30 @@ CREATE TABLE IF NOT EXISTS users (
     is_active BOOLEAN DEFAULT TRUE
 );
 
--- Products Table
+-- Products Table (Master Catalog - Never Delete)
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
     sku VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
     description TEXT,
-    price DECIMAL(10, 2) NOT NULL CHECK (price >= 0),
-    cost_price DECIMAL(10, 2) NOT NULL CHECK (cost_price >= 0),
-    stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
-    low_stock_threshold INTEGER DEFAULT 10 CHECK (low_stock_threshold >= 0),
     category VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Inventory Table (Current Stock & Restock History)
+CREATE TABLE IF NOT EXISTS inventory (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    cost_price DECIMAL(10, 2) NOT NULL CHECK (cost_price >= 0),
+    selling_price DECIMAL(10, 2) NOT NULL CHECK (selling_price >= 0),
+    quantity_added INTEGER NOT NULL CHECK (quantity_added >= 0),
+    quantity_remaining INTEGER NOT NULL DEFAULT 0 CHECK (quantity_remaining >= 0),
+    low_stock_threshold INTEGER DEFAULT 10 CHECK (low_stock_threshold >= 0),
+    batch_number VARCHAR(50),
+    restock_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -44,14 +57,18 @@ CREATE TABLE IF NOT EXISTS sales (
     notes TEXT
 );
 
--- Sale Items Table
+-- Sale Items Table (Transaction History with Snapshots)
 CREATE TABLE IF NOT EXISTS sale_items (
     id SERIAL PRIMARY KEY,
-    sale_id INTEGER REFERENCES sales(id) ON DELETE CASCADE,
-    product_id INTEGER REFERENCES products(id),
+    sale_id INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    product_sku VARCHAR(50) NOT NULL,
+    product_name VARCHAR(100) NOT NULL,
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     unit_price DECIMAL(10, 2) NOT NULL CHECK (unit_price >= 0),
-    subtotal DECIMAL(10, 2) NOT NULL CHECK (subtotal >= 0)
+    cost_price_snapshot DECIMAL(10, 2) CHECK (cost_price_snapshot >= 0),
+    subtotal DECIMAL(10, 2) NOT NULL CHECK (subtotal >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Expenses Table
@@ -78,14 +95,19 @@ CREATE TABLE IF NOT EXISTS payments (
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-CREATE INDEX IF NOT EXISTS idx_products_stock ON products(stock_quantity);
+CREATE INDEX IF NOT EXISTS idx_products_is_active ON products(is_active);
+CREATE INDEX IF NOT EXISTS idx_inventory_product_id ON inventory(product_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_quantity_remaining ON inventory(quantity_remaining);
+CREATE INDEX IF NOT EXISTS idx_inventory_restock_date ON inventory(restock_date);
+CREATE INDEX IF NOT EXISTS idx_sale_items_product_id ON sale_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_sale_items_sale_id ON sale_items(sale_id);
 CREATE INDEX IF NOT EXISTS idx_sales_cashier ON sales(cashier_id);
 CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date);
 CREATE INDEX IF NOT EXISTS idx_sales_number ON sales(sale_number);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_recorded_by ON expenses(recorded_by);
 
--- Create updated_at trigger for products
+-- Create updated_at triggers
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -95,6 +117,9 @@ END;
 $$ language 'plpgsql';
 
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_inventory_updated_at BEFORE UPDATE ON inventory
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Enable Row Level Security

@@ -1,20 +1,28 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { data, error } = await supabase
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    const { data: product, error } = await supabase
       .from('products')
-      .select('*')
+      .select(`
+        *,
+        inventory (*)
+      `)
       .eq('id', params.id)
       .single()
 
     if (error) throw error
 
-    if (!data) {
+    if (!product) {
       return NextResponse.json(
         {
           success: false,
@@ -25,9 +33,23 @@ export async function GET(
       )
     }
 
+    // Transform data
+    const totalStock = product.inventory?.reduce(
+      (sum: number, inv: any) => sum + (inv.quantity_remaining || 0),
+      0
+    ) || 0
+    
+    const latestInventory = product.inventory?.[0] || null
+
     return NextResponse.json({
       success: true,
-      data,
+      data: {
+        ...product,
+        price: latestInventory?.selling_price || 0,
+        cost_price: latestInventory?.cost_price || 0,
+        stock_quantity: totalStock,
+        low_stock_threshold: latestInventory?.low_stock_threshold || 10,
+      },
     })
   } catch (error: any) {
     return NextResponse.json(
@@ -46,6 +68,11 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
     const body = await request.json()
     const {
       name,
@@ -70,62 +97,93 @@ export async function PUT(
       )
     }
 
-    if (cost_price !== undefined && cost_price < 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Cost price must be positive',
-          code: 'VALIDATION_ERROR',
-        },
-        { status: 400 }
-      )
+    // Update product info
+    const productUpdateData: any = {}
+    if (name !== undefined) productUpdateData.name = name
+    if (sku !== undefined) productUpdateData.sku = sku
+    if (description !== undefined) productUpdateData.description = description
+    if (category !== undefined) productUpdateData.category = category
+
+    if (Object.keys(productUpdateData).length > 0) {
+      const { error: productError } = await supabase
+        .from('products')
+        .update(productUpdateData)
+        .eq('id', params.id)
+
+      if (productError) {
+        if (productError.code === '23505') {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'SKU already exists',
+              code: 'DUPLICATE_SKU',
+            },
+            { status: 400 }
+          )
+        }
+        throw productError
+      }
     }
 
-    if (stock_quantity !== undefined && stock_quantity < 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Stock quantity must be positive',
-          code: 'VALIDATION_ERROR',
-        },
-        { status: 400 }
-      )
+    // Update latest inventory if price/stock changes
+    if (price !== undefined || cost_price !== undefined || low_stock_threshold !== undefined || stock_quantity !== undefined) {
+      // Get latest inventory
+      const { data: inventories } = await supabase
+        .from('inventory')
+        .select('*')
+        .eq('product_id', params.id)
+        .order('restock_date', { ascending: false })
+        .limit(1)
+
+      if (inventories && inventories.length > 0) {
+        const latestInventory = inventories[0]
+        const inventoryUpdateData: any = {}
+        
+        if (price !== undefined) inventoryUpdateData.selling_price = price
+        if (cost_price !== undefined) inventoryUpdateData.cost_price = cost_price
+        if (low_stock_threshold !== undefined) inventoryUpdateData.low_stock_threshold = low_stock_threshold
+        if (stock_quantity !== undefined) {
+          inventoryUpdateData.quantity_remaining = stock_quantity
+          inventoryUpdateData.quantity_added = latestInventory.quantity_added + (stock_quantity - latestInventory.quantity_remaining)
+        }
+
+        const { error: inventoryError } = await supabase
+          .from('inventory')
+          .update(inventoryUpdateData)
+          .eq('id', latestInventory.id)
+
+        if (inventoryError) throw inventoryError
+      }
     }
 
-    const updateData: any = {}
-    if (name !== undefined) updateData.name = name
-    if (sku !== undefined) updateData.sku = sku
-    if (description !== undefined) updateData.description = description
-    if (price !== undefined) updateData.price = price
-    if (cost_price !== undefined) updateData.cost_price = cost_price
-    if (stock_quantity !== undefined) updateData.stock_quantity = stock_quantity
-    if (low_stock_threshold !== undefined) updateData.low_stock_threshold = low_stock_threshold
-    if (category !== undefined) updateData.category = category
-
+    // Fetch updated product
     const { data, error } = await supabase
       .from('products')
-      .update(updateData)
+      .select(`
+        *,
+        inventory (*)
+      `)
       .eq('id', params.id)
-      .select()
       .single()
 
-    if (error) {
-      if (error.code === '23505') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'SKU already exists',
-            code: 'DUPLICATE_SKU',
-          },
-          { status: 400 }
-        )
-      }
-      throw error
-    }
+    if (error) throw error
+
+    const totalStock = data.inventory?.reduce(
+      (sum: number, inv: any) => sum + (inv.quantity_remaining || 0),
+      0
+    ) || 0
+    
+    const latestInventory = data.inventory?.[0] || null
 
     return NextResponse.json({
       success: true,
-      data,
+      data: {
+        ...data,
+        price: latestInventory?.selling_price || 0,
+        cost_price: latestInventory?.cost_price || 0,
+        stock_quantity: totalStock,
+        low_stock_threshold: latestInventory?.low_stock_threshold || 10,
+      },
       message: 'Product updated successfully',
     })
   } catch (error: any) {
@@ -145,16 +203,22 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    // Soft delete - set is_active to false
     const { error } = await supabase
       .from('products')
-      .delete()
+      .update({ is_active: false })
       .eq('id', params.id)
 
     if (error) throw error
 
     return NextResponse.json({
       success: true,
-      message: 'Product deleted successfully',
+      message: 'Product deactivated successfully',
     })
   } catch (error: any) {
     return NextResponse.json(

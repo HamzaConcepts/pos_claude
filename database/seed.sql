@@ -1,19 +1,31 @@
 -- POS System - Sample Data
 -- Run this after creating the schema
--- Note: You'll need to manually create auth users in Supabase first, then insert into users table
 
--- Sample Products
-INSERT INTO products (name, sku, description, price, cost_price, stock_quantity, low_stock_threshold, category) VALUES
-('Product A', 'PRD-001', 'Sample product A description', 29.99, 15.00, 100, 10, 'Electronics'),
-('Product B', 'PRD-002', 'Sample product B description', 49.99, 25.00, 5, 10, 'Electronics'),
-('Product C', 'PRD-003', 'Sample product C description', 19.99, 10.00, 50, 15, 'Accessories'),
-('Product D', 'PRD-004', 'Sample product D description', 39.99, 20.00, 75, 10, 'Electronics'),
-('Product E', 'PRD-005', 'Sample product E description', 15.99, 8.00, 120, 20, 'Accessories'),
-('Product F', 'PRD-006', 'Sample product F description', 59.99, 30.00, 8, 10, 'Premium'),
-('Product G', 'PRD-007', 'Sample product G description', 24.99, 12.00, 90, 15, 'Accessories'),
-('Product H', 'PRD-008', 'Sample product H description', 89.99, 45.00, 3, 5, 'Premium'),
-('Product I', 'PRD-009', 'Sample product I description', 12.99, 6.00, 200, 25, 'Basic'),
-('Product J', 'PRD-010', 'Sample product J description', 34.99, 17.50, 60, 10, 'Electronics');
+-- Sample Products (Master Catalog)
+INSERT INTO products (sku, name, description, category, is_active) VALUES
+('PRD-001', 'Product A', 'Sample product A description', 'Electronics', TRUE),
+('PRD-002', 'Product B', 'Sample product B description', 'Electronics', TRUE),
+('PRD-003', 'Product C', 'Sample product C description', 'Accessories', TRUE),
+('PRD-004', 'Product D', 'Sample product D description', 'Electronics', TRUE),
+('PRD-005', 'Product E', 'Sample product E description', 'Accessories', TRUE),
+('PRD-006', 'Product F', 'Sample product F description', 'Premium', TRUE),
+('PRD-007', 'Product G', 'Sample product G description', 'Accessories', TRUE),
+('PRD-008', 'Product H', 'Sample product H description', 'Premium', TRUE),
+('PRD-009', 'Product I', 'Sample product I description', 'Basic', TRUE),
+('PRD-010', 'Product J', 'Sample product J description', 'Electronics', TRUE);
+
+-- Sample Inventory (Current Stock)
+INSERT INTO inventory (product_id, cost_price, selling_price, quantity_added, quantity_remaining, low_stock_threshold, batch_number) VALUES
+(1, 15.00, 29.99, 100, 100, 10, 'BATCH-001'),
+(2, 25.00, 49.99, 5, 5, 10, 'BATCH-002'),
+(3, 10.00, 19.99, 50, 50, 15, 'BATCH-003'),
+(4, 20.00, 39.99, 75, 75, 10, 'BATCH-004'),
+(5, 8.00, 15.99, 120, 120, 20, 'BATCH-005'),
+(6, 30.00, 59.99, 8, 8, 10, 'BATCH-006'),
+(7, 12.00, 24.99, 90, 90, 15, 'BATCH-007'),
+(8, 45.00, 89.99, 3, 3, 5, 'BATCH-008'),
+(9, 6.00, 12.99, 200, 200, 25, 'BATCH-009'),
+(10, 17.50, 34.99, 60, 60, 10, 'BATCH-010');
 
 -- Note: To create test users, you need to:
 -- 1. Go to Supabase Dashboard > Authentication > Users

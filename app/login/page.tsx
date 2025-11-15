@@ -37,9 +37,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-secondary">
-      <div className="bg-white p-8 rounded border-2 border-black w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-6 text-center">POS System</h1>
-        <h2 className="text-xl font-semibold mb-6">Login</h2>
+      <div className="bg-white p-8 rounded border-2 border-gray w-full max-w-md">
+        <h1 className="text-3xl font-bold mb-3 text-center">POS System</h1>
+        <p className="text-center text-text-secondary">Sign in to your account</p>
+        {/* <h2 className="text-xl font-semibold mb-6">Login</h2> */}
 
         {error && (
           <div className="mb-4 p-3 bg-status-error text-white rounded">
@@ -57,7 +58,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
               required
               disabled={loading}
             />
@@ -72,7 +73,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
               required
               disabled={loading}
             />

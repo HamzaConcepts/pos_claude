@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET() {
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
     const now = new Date()
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -29,15 +34,39 @@ export async function GET() {
     const monthlySalesCount = monthlySales?.length || 0
     const monthlyRevenue = monthlySales?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0
 
-    // Low stock products
+    // Low stock products - get products with low inventory
     const { data: allProducts, error: productsError } = await supabase
       .from('products')
-      .select('id, name, sku, stock_quantity, low_stock_threshold')
+      .select(`
+        *,
+        inventory (
+          id,
+          quantity_remaining,
+          low_stock_threshold
+        )
+      `)
+      .eq('is_active', true)
 
     if (productsError) throw productsError
 
-    const products = allProducts?.filter(p => p.stock_quantity <= p.low_stock_threshold).slice(0, 5) || []
-    const lowStockCount = allProducts?.filter(p => p.stock_quantity <= p.low_stock_threshold).length || 0
+    const productsWithStock = allProducts?.map((product: any) => {
+      const totalStock = product.inventory?.reduce(
+        (sum: number, inv: any) => sum + (inv.quantity_remaining || 0),
+        0
+      ) || 0
+      const threshold = product.inventory?.[0]?.low_stock_threshold || 10
+      
+      return {
+        ...product,
+        stock_quantity: totalStock,
+        low_stock_threshold: threshold
+      }
+    }) || []
+
+    const lowStockProducts = productsWithStock
+      .filter(p => p.stock_quantity <= p.low_stock_threshold)
+      .slice(0, 5)
+    const lowStockCount = productsWithStock.filter(p => p.stock_quantity <= p.low_stock_threshold).length
 
     // Recent sales
     const { data: recentSales, error: recentError } = await supabase
@@ -81,14 +110,14 @@ export async function GET() {
       })
     }
 
-    // Top products (this month)
+    // Top products (this month) - use sale_items with snapshots
     const { data: saleItems, error: itemsError } = await supabase
       .from('sale_items')
       .select(`
         product_id,
+        product_name,
         subtotal,
         sale_id,
-        products (name),
         sales!inner (sale_date)
       `)
 
@@ -102,7 +131,7 @@ export async function GET() {
 
     const productRevenue: { [key: string]: number } = {}
     monthlyItems.forEach((item: any) => {
-      const name = item.products?.name || 'Unknown'
+      const name = item.product_name || 'Unknown'
       productRevenue[name] = (productRevenue[name] || 0) + Number(item.subtotal)
     })
 
@@ -125,7 +154,7 @@ export async function GET() {
         monthlyExpenses,
         netProfit: monthlyRevenue - monthlyExpenses,
         lowStockCount,
-        lowStockProducts: products || [],
+        lowStockProducts: lowStockProducts || [],
         recentSales: recentSales || [],
         topProducts,
         salesTrend,

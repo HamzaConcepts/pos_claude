@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Search, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react'
 import type { Product } from '@/lib/types'
 import ProductModal from '@/components/ProductModal'
@@ -16,6 +16,7 @@ export default function InventoryPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [error, setError] = useState('')
+  const [expandedProductId, setExpandedProductId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchProducts()
@@ -124,6 +125,10 @@ export default function InventoryPage() {
     return product.stock_quantity <= product.low_stock_threshold
   }
 
+  const toggleProductExpand = (productId: number) => {
+    setExpandedProductId(expandedProductId === productId ? null : productId)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -218,49 +223,109 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map((product, index) => (
-                  <tr
-                    key={product.id}
-                    className={index % 2 === 0 ? 'bg-white' : 'bg-bg-secondary'}
-                  >
-                    <td className="px-4 py-3 font-mono text-sm">{product.sku}</td>
-                    <td className="px-4 py-3 font-medium">{product.name}</td>
-                    <td className="px-4 py-3">{product.category || '-'}</td>
-                    <td className="px-4 py-3 text-right">${product.price.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right">${product.cost_price.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      {product.stock_quantity}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {isLowStock(product) ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-status-warning text-white text-xs rounded">
-                          <AlertTriangle size={14} />
-                          Low Stock
-                        </span>
-                      ) : (
-                        <span className="text-text-secondary text-sm">In Stock</span>
+                filteredProducts.map((product, index) => {
+                  const isExpanded = expandedProductId === product.id
+                  return (
+                    <React.Fragment key={product.id}>
+                      <tr
+                        onClick={() => toggleProductExpand(product.id)}
+                        className={`
+                          cursor-pointer transition-all duration-200
+                          ${isExpanded ? 'border-l-4 border-l-black' : ''}
+                          ${index % 2 === 0 ? 'bg-white' : 'bg-bg-secondary'}
+                          hover:bg-gray-100
+                        `}
+                      >
+                        <td className="px-4 py-3 font-mono text-sm">{product.sku}</td>
+                        <td className="px-4 py-3 font-medium">{product.name}</td>
+                        <td className="px-4 py-3">{product.category || '-'}</td>
+                        <td className="px-4 py-3 text-right">${product.price.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right">${product.cost_price.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          {product.stock_quantity}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {isLowStock(product) ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-status-warning text-white text-xs rounded">
+                              <AlertTriangle size={14} />
+                              Low Stock
+                            </span>
+                          ) : (
+                            <span className="text-text-secondary text-sm">In Stock</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-text-secondary text-xs">
+                            {isExpanded ? '▼ Click to collapse' : '▶ Click to expand'}
+                          </span>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="bg-gray-50 border-l-4 border-l-black animate-fadeIn">
+                          <td colSpan={8} className="px-4 py-4">
+                            <div className="flex items-start justify-between gap-6">
+                              <div className="flex-1">
+                                <h4 className="font-bold text-lg mb-2">Description</h4>
+                                <p className="text-text-secondary mb-4">
+                                  {product.description || 'No description available'}
+                                </p>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-text-secondary">Created:</span>
+                                    <span className="ml-2 font-medium">
+                                      {new Date(product.created_at).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-text-secondary">Last Updated:</span>
+                                    <span className="ml-2 font-medium">
+                                      {new Date(product.updated_at).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-text-secondary">Profit Margin:</span>
+                                    <span className="ml-2 font-medium">
+                                      ${(product.price - product.cost_price).toFixed(2)} (
+                                      {((product.price - product.cost_price) / product.cost_price * 100).toFixed(1)}%)
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-text-secondary">Stock Value:</span>
+                                    <span className="ml-2 font-medium">
+                                      ${(product.stock_quantity * product.cost_price).toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-2 min-w-[120px]">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleEdit(product)
+                                  }}
+                                  className="flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                                >
+                                  <Edit size={18} />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete(product.id)
+                                  }}
+                                  className="flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-black rounded hover:bg-red-50 transition-colors text-status-error"
+                                >
+                                  <Trash2 size={18} />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors"
-                          title="Edit"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors text-status-error"
-                          title="Delete"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                    </React.Fragment>
+                  )
+                })
               )}
             </tbody>
           </table>

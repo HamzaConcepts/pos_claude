@@ -1,15 +1,35 @@
 export interface Product {
   id: number
-  name: string
   sku: string
+  name: string
   description: string | null
-  price: number
-  cost_price: number
-  stock_quantity: number
-  low_stock_threshold: number
   category: string | null
+  is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface Inventory {
+  id: number
+  product_id: number
+  cost_price: number
+  selling_price: number
+  quantity_added: number
+  quantity_remaining: number
+  low_stock_threshold: number
+  batch_number: string | null
+  restock_date: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+  products?: Product
+}
+
+export interface ProductWithInventory extends Product {
+  inventory: Inventory[]
+  total_stock: number
+  current_selling_price: number
+  current_cost_price: number
 }
 
 export interface Sale {
@@ -29,9 +49,14 @@ export interface SaleItem {
   id: number
   sale_id: number
   product_id: number
+  product_sku: string
+  product_name: string
   quantity: number
   unit_price: number
+  cost_price_snapshot: number | null
   subtotal: number
+  created_at: string
+  products?: Product
 }
 
 export interface Expense {

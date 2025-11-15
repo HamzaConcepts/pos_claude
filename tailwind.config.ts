@@ -8,6 +8,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      backgroundImage: {
+        "radial-large": "radial-gradient(circle 75%, var(--tw-gradient-stops))",
+      },
       colors: {
         'bg-primary': '#FFFFFF',
         'bg-secondary': '#F5F5F5',

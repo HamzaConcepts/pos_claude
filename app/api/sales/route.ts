@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request: Request) {
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('start_date')
     const endDate = searchParams.get('end_date')
@@ -13,10 +18,7 @@ export async function GET(request: Request) {
       .select(`
         *,
         users:cashier_id (full_name),
-        sale_items (
-          *,
-          products (name, sku)
-        )
+        sale_items (*)
       `)
       .order('sale_date', { ascending: false })
 
@@ -54,6 +56,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
     const body = await request.json()
     const { items, payment_method, amount_paid, notes, cashier_id } = body
 
@@ -80,15 +87,24 @@ export async function POST(request: Request) {
       )
     }
 
-    // Fetch product details and calculate total
+    // Fetch product details with inventory and calculate total
     let totalAmount = 0
     const saleItems = []
 
     for (const item of items) {
       const { data: product, error: productError } = await supabase
         .from('products')
-        .select('*')
+        .select(`
+          *,
+          inventory (
+            id,
+            cost_price,
+            selling_price,
+            quantity_remaining
+          )
+        `)
         .eq('id', item.product_id)
+        .eq('is_active', true)
         .single()
 
       if (productError || !product) {
@@ -102,26 +118,39 @@ export async function POST(request: Request) {
         )
       }
 
+      // Calculate total stock
+      const totalStock = product.inventory?.reduce(
+        (sum: number, inv: any) => sum + (inv.quantity_remaining || 0),
+        0
+      ) || 0
+
       // Check stock availability
-      if (product.stock_quantity < item.quantity) {
+      if (totalStock < item.quantity) {
         return NextResponse.json(
           {
             success: false,
-            error: `Insufficient stock for ${product.name}. Available: ${product.stock_quantity}`,
+            error: `Insufficient stock for ${product.name}. Available: ${totalStock}`,
             code: 'INSUFFICIENT_STOCK',
           },
           { status: 400 }
         )
       }
 
-      const subtotal = product.price * item.quantity
+      const latestInventory = product.inventory?.[0]
+      const sellingPrice = latestInventory?.selling_price || 0
+      const costPrice = latestInventory?.cost_price || 0
+      const subtotal = sellingPrice * item.quantity
       totalAmount += subtotal
 
       saleItems.push({
         product_id: product.id,
+        product_sku: product.sku,
+        product_name: product.name,
         quantity: item.quantity,
-        unit_price: product.price,
+        unit_price: sellingPrice,
+        cost_price_snapshot: costPrice,
         subtotal,
+        inventoryToUpdate: product.inventory,
       })
     }
 
@@ -153,36 +182,44 @@ export async function POST(request: Request) {
 
     if (saleError) throw saleError
 
-    // Create sale items and update stock
+    // Create sale items and update inventory
     for (const saleItem of saleItems) {
-      // Insert sale item
+      // Insert sale item (with snapshots)
       const { error: itemError } = await supabase
         .from('sale_items')
         .insert([
           {
-            ...saleItem,
             sale_id: sale.id,
+            product_id: saleItem.product_id,
+            product_sku: saleItem.product_sku,
+            product_name: saleItem.product_name,
+            quantity: saleItem.quantity,
+            unit_price: saleItem.unit_price,
+            cost_price_snapshot: saleItem.cost_price_snapshot,
+            subtotal: saleItem.subtotal,
           },
         ])
 
       if (itemError) throw itemError
 
-      // Update product stock
-      // First get current stock
-      const { data: currentProduct } = await supabase
-        .from('products')
-        .select('stock_quantity')
-        .eq('id', saleItem.product_id)
-        .single()
+      // Update inventory stock (FIFO - First In, First Out)
+      let remainingQuantity = saleItem.quantity
+      const inventories = saleItem.inventoryToUpdate || []
 
-      if (currentProduct) {
-        const newStock = currentProduct.stock_quantity - saleItem.quantity
+      for (const inv of inventories) {
+        if (remainingQuantity <= 0) break
+
+        const deductQuantity = Math.min(inv.quantity_remaining, remainingQuantity)
+        const newQuantity = inv.quantity_remaining - deductQuantity
+
         const { error: updateError } = await supabase
-          .from('products')
-          .update({ stock_quantity: newStock })
-          .eq('id', saleItem.product_id)
+          .from('inventory')
+          .update({ quantity_remaining: newQuantity })
+          .eq('id', inv.id)
 
         if (updateError) throw updateError
+
+        remainingQuantity -= deductQuantity
       }
     }
 
@@ -192,10 +229,7 @@ export async function POST(request: Request) {
       .select(`
         *,
         users:cashier_id (full_name),
-        sale_items (
-          *,
-          products (name, sku)
-        )
+        sale_items (*)
       `)
       .eq('id', sale.id)
       .single()

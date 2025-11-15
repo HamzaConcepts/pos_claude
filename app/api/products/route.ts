@@ -4,7 +4,6 @@ import { cookies } from 'next/headers'
 
 export async function GET(request: Request) {
   try {
-    // Create Supabase client with service role to bypass RLS for now
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -15,9 +14,22 @@ export async function GET(request: Request) {
     const category = searchParams.get('category') || ''
     const lowStock = searchParams.get('low_stock') === 'true'
 
+    // Fetch products with their inventory
     let query = supabase
       .from('products')
-      .select('*')
+      .select(`
+        *,
+        inventory (
+          id,
+          cost_price,
+          selling_price,
+          quantity_remaining,
+          low_stock_threshold,
+          batch_number,
+          restock_date
+        )
+      `)
+      .eq('is_active', true)
       .order('created_at', { ascending: false })
 
     // Apply search filter
@@ -34,11 +46,37 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
+    // Transform data to include aggregated stock info
+    const transformedProducts = products?.map((product: any) => {
+      const totalStock = product.inventory?.reduce(
+        (sum: number, inv: any) => sum + (inv.quantity_remaining || 0),
+        0
+      ) || 0
+      
+      const latestInventory = product.inventory?.[0] || null
+      
+      return {
+        id: product.id,
+        sku: product.sku,
+        name: product.name,
+        description: product.description,
+        category: product.category,
+        is_active: product.is_active,
+        price: latestInventory?.selling_price || 0,
+        cost_price: latestInventory?.cost_price || 0,
+        stock_quantity: totalStock,
+        low_stock_threshold: latestInventory?.low_stock_threshold || 10,
+        created_at: product.created_at,
+        updated_at: product.updated_at,
+        inventory: product.inventory
+      }
+    }) || []
+
     // Filter low stock items if requested
-    let filteredProducts = products || []
+    let filteredProducts = transformedProducts
     if (lowStock) {
       filteredProducts = filteredProducts.filter(
-        (p) => p.stock_quantity <= p.low_stock_threshold
+        (p: any) => p.stock_quantity <= p.low_stock_threshold
       )
     }
 
@@ -60,7 +98,6 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    // Create Supabase client
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -112,25 +149,23 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data, error } = await supabase
+    // Insert product first
+    const { data: product, error: productError } = await supabase
       .from('products')
       .insert([
         {
           name,
           sku,
           description,
-          price,
-          cost_price,
-          stock_quantity: stock_quantity || 0,
-          low_stock_threshold: low_stock_threshold || 10,
           category,
+          is_active: true,
         },
       ])
       .select()
       .single()
 
-    if (error) {
-      if (error.code === '23505') {
+    if (productError) {
+      if (productError.code === '23505') {
         return NextResponse.json(
           {
             success: false,
@@ -140,12 +175,38 @@ export async function POST(request: Request) {
           { status: 400 }
         )
       }
-      throw error
+      throw productError
     }
+
+    // Insert initial inventory
+    const { data: inventory, error: inventoryError } = await supabase
+      .from('inventory')
+      .insert([
+        {
+          product_id: product.id,
+          cost_price,
+          selling_price: price,
+          quantity_added: stock_quantity || 0,
+          quantity_remaining: stock_quantity || 0,
+          low_stock_threshold: low_stock_threshold || 10,
+          batch_number: `BATCH-${Date.now()}`,
+        },
+      ])
+      .select()
+      .single()
+
+    if (inventoryError) throw inventoryError
 
     return NextResponse.json({
       success: true,
-      data,
+      data: {
+        ...product,
+        inventory: [inventory],
+        price,
+        cost_price,
+        stock_quantity: stock_quantity || 0,
+        low_stock_threshold: low_stock_threshold || 10,
+      },
       message: 'Product created successfully',
     })
   } catch (error: any) {
