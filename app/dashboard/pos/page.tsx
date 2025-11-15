@@ -2,19 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import { Search, Plus, Minus, Trash2, ShoppingCart, Printer } from 'lucide-react'
-import type { Product } from '@/lib/types'
+import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import { supabase } from '@/lib/supabase'
 
 interface CartItem {
-  product: Product
+  product: ProductWithBackwardCompatibility
   quantity: number
 }
 
 export default function POSPage() {
-  const [products, setProducts] = useState<Product[]>([])
+  const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
   const [amountPaid, setAmountPaid] = useState('')
   const [loading, setLoading] = useState(false)
@@ -61,7 +61,7 @@ export default function POSPage() {
     }
   }
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: ProductWithBackwardCompatibility) => {
     const existingItem = cart.find((item) => item.product.id === product.id)
 
     if (existingItem) {
