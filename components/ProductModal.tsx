@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
-import type { Product } from '@/lib/types'
+import type { ProductWithBackwardCompatibility } from '@/lib/types'
 
 interface ProductModalProps {
-  product: Product | null
+  product: ProductWithBackwardCompatibility | null
   onClose: (refresh: boolean) => void
 }
 
