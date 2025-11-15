@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangle, TrendingUp, DollarSign, ShoppingBag, Package } from 'lucide-react'
+import { AlertTriangle, TrendingUp, DollarSign, ShoppingBag, Package, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import type { DashboardStats } from '@/lib/types'
 
@@ -9,15 +9,32 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     fetchDashboardStats()
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchDashboardStats(true)
+    }, 30000)
+
+    return () => clearInterval(interval)
   }, [])
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = async (silent = false) => {
     try {
-      setLoading(true)
-      const response = await fetch('/api/dashboard/stats')
+      if (!silent) {
+        setLoading(true)
+      } else {
+        setRefreshing(true)
+      }
+      const response = await fetch('/api/dashboard/stats', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       const result = await response.json()
 
       if (result.success) {
@@ -29,7 +46,12 @@ export default function DashboardPage() {
       setError('Failed to fetch dashboard stats')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
+  }
+
+  const handleRefresh = () => {
+    fetchDashboardStats()
   }
 
   if (loading) {
@@ -50,48 +72,93 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+          <p className="text-text-secondary">Welcome back! Here's what's happening today.</p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+        >
+          <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+          <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+        </button>
+      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-6 rounded border-2 border-black">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm text-text-secondary">Today's Sales</h3>
-            <ShoppingBag size={20} className="text-text-secondary" />
+      {/* Big Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Total Sales */}
+        <div className="bg-black text-white p-8 rounded-lg shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+              <DollarSign size={32} />
+            </div>
           </div>
-          <p className="text-3xl font-bold">${stats.todaySales.revenue.toFixed(2)}</p>
-          <p className="text-sm text-text-secondary mt-1">
-            {stats.todaySales.count} {stats.todaySales.count === 1 ? 'sale' : 'sales'}
+          <p className="text-sm opacity-80 mb-2">Total Sales</p>
+          <p className="text-5xl font-bold mb-3">${stats.monthlySales.revenue.toFixed(2)}</p>
+          <div className="flex items-center gap-2 text-sm opacity-80">
+            <TrendingUp size={16} />
+            <span>This month</span>
+          </div>
+        </div>
+
+        {/* Orders Completed */}
+        <div className="bg-white p-8 rounded-lg border-4 border-black shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-black text-white p-3 rounded-lg">
+              <ShoppingBag size={32} />
+            </div>
+          </div>
+          <p className="text-sm text-text-secondary mb-2">Orders Completed</p>
+          <p className="text-5xl font-bold mb-3">{stats.monthlySales.count}</p>
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <span>{stats.todaySales.count} today</span>
+          </div>
+        </div>
+
+        {/* Net Profit */}
+        <div className="bg-white p-8 rounded-lg border-4 border-black shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="bg-black text-white p-3 rounded-lg">
+              <TrendingUp size={32} />
+            </div>
+          </div>
+          <p className="text-sm text-text-secondary mb-2">Net Profit</p>
+          <p className="text-5xl font-bold mb-3">
+            <span className={stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}>
+              ${stats.netProfit.toFixed(2)}
+            </span>
           </p>
-        </div>
-
-        <div className="bg-white p-6 rounded border-2 border-black">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm text-text-secondary">Monthly Sales</h3>
-            <TrendingUp size={20} className="text-text-secondary" />
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <span>Revenue: ${stats.monthlySales.revenue.toFixed(2)}</span>
           </div>
-          <p className="text-3xl font-bold">${stats.monthlySales.revenue.toFixed(2)}</p>
-          <p className="text-sm text-text-secondary mt-1">
-            {stats.monthlySales.count} {stats.monthlySales.count === 1 ? 'sale' : 'sales'}
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <span>Expenses: ${stats.monthlyExpenses.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Today's Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white p-4 rounded border-2 border-black">
+          <p className="text-xs text-text-secondary mb-1">Today's Sales</p>
+          <p className="text-2xl font-bold">${stats.todaySales.revenue.toFixed(2)}</p>
+        </div>
+        <div className="bg-white p-4 rounded border-2 border-black">
+          <p className="text-xs text-text-secondary mb-1">Today's Orders</p>
+          <p className="text-2xl font-bold">{stats.todaySales.count}</p>
+        </div>
+        <div className="bg-white p-4 rounded border-2 border-black">
+          <p className="text-xs text-text-secondary mb-1">Low Stock Items</p>
+          <p className="text-2xl font-bold">{stats.lowStockCount}</p>
+        </div>
+        <div className="bg-white p-4 rounded border-2 border-black">
+          <p className="text-xs text-text-secondary mb-1">Avg Order Value</p>
+          <p className="text-2xl font-bold">
+            ${stats.monthlySales.count > 0 ? (stats.monthlySales.revenue / stats.monthlySales.count).toFixed(2) : '0.00'}
           </p>
-        </div>
-
-        <div className="bg-white p-6 rounded border-2 border-black">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm text-text-secondary">Monthly Expenses</h3>
-            <DollarSign size={20} className="text-text-secondary" />
-          </div>
-          <p className="text-3xl font-bold">${stats.monthlyExpenses.toFixed(2)}</p>
-          <p className="text-sm text-text-secondary mt-1">This month</p>
-        </div>
-
-        <div className="bg-white p-6 rounded border-2 border-black">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm text-text-secondary">Net Profit</h3>
-            <DollarSign size={20} className="text-text-secondary" />
-          </div>
-          <p className="text-3xl font-bold">${stats.netProfit.toFixed(2)}</p>
-          <p className="text-sm text-text-secondary mt-1">Monthly</p>
         </div>
       </div>
 

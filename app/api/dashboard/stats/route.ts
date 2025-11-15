@@ -87,14 +87,21 @@ export async function GET() {
       .select(`
         product_id,
         subtotal,
-        products (name)
+        sale_id,
+        products (name),
+        sales!inner (sale_date)
       `)
-      .gte('created_at', startOfMonth.toISOString())
 
     if (itemsError) throw itemsError
 
+    // Filter items from this month
+    const monthlyItems = saleItems?.filter((item: any) => {
+      const saleDate = new Date(item.sales.sale_date)
+      return saleDate >= startOfMonth
+    }) || []
+
     const productRevenue: { [key: string]: number } = {}
-    saleItems?.forEach((item: any) => {
+    monthlyItems.forEach((item: any) => {
       const name = item.products?.name || 'Unknown'
       productRevenue[name] = (productRevenue[name] || 0) + Number(item.subtotal)
     })
