@@ -65,6 +65,7 @@ export interface DashboardStats {
   monthlyExpenses: number
   netProfit: number
   lowStockCount: number
+  lowStockProducts: Product[]
   recentSales: Sale[]
   topProducts: Array<{ product_name: string; revenue: number }>
   salesTrend: Array<{ date: string; revenue: number }>

@@ -2,12 +2,33 @@
 
 A modern, minimal Point of Sale system built with Next.js 14, TypeScript, Tailwind CSS, and Supabase.
 
-## Features (Phase 1 Complete)
+## Features (Phase 2 Complete)
 
 - ✅ User Authentication (Login/Signup)
 - ✅ Role-based Access Control (Manager, Admin, Cashier)
 - ✅ Responsive Sidebar Navigation
-- ✅ Dashboard Layout
+- ✅ Dashboard with Live Statistics
+- ✅ **Inventory Management (Full CRUD)**
+  - Product listing with search and filters
+  - Add/Edit/Delete products
+  - Stock management with low stock alerts
+  - Category filtering
+- ✅ **Point of Sale System**
+  - Product search and cart management
+  - Real-time total calculation
+  - Payment processing (Cash/Digital)
+  - Receipt generation and printing
+  - Automatic inventory updates
+- ✅ **Sales Tracking**
+  - Complete sales history
+  - Transaction details
+  - Payment status tracking
+- ✅ **Real-time Dashboard**
+  - Today's and monthly sales statistics
+  - Sales trend visualization
+  - Top products by revenue
+  - Low stock alerts
+  - Recent transactions
 - ✅ Black & White Minimal Theme
 
 ## Tech Stack
@@ -60,6 +81,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key-here
 1. Go to your Supabase Dashboard > SQL Editor
 2. Run the SQL script from `database/schema.sql` to create all tables
 3. Run the SQL script from `database/seed.sql` to add sample data (optional)
+   - **Important**: Copy and paste the INSERT statements into Supabase SQL Editor
+   - See `SEED_DATA_INSTRUCTIONS.md` for detailed steps
+   - This adds 10 sample products to test the system
 
 ### 6. Run the development server
 
@@ -162,20 +186,20 @@ Your app will be live at `your-app.vercel.app`
 
 ## Development Roadmap
 
-### Phase 1: Foundation ✅ (Current)
+### Phase 1: Foundation ✅ (Complete)
 - [x] Project setup with Next.js & TypeScript
 - [x] Configure Supabase database
 - [x] Implement authentication system
 - [x] Create basic layout with sidebar
 - [x] Deploy to Vercel
 
-### Phase 2: Core Features (Next)
-- [ ] Build inventory management (CRUD)
-- [ ] Implement POS system
-- [ ] Enhance dashboard with real stats
-- [ ] Build sales listing page
+### Phase 2: Core Features ✅ (Complete)
+- [x] Build inventory management (CRUD)
+- [x] Implement POS system
+- [x] Enhance dashboard with real stats
+- [x] Build sales listing page
 
-### Phase 3: Advanced Features
+### Phase 3: Advanced Features (Next)
 - [ ] Implement accounting system
 - [ ] Build report generation
 - [ ] Add CSV/PDF export

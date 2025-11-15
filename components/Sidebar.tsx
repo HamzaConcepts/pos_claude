@@ -28,12 +28,12 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
-    { href: '/pos', label: 'POS', icon: ShoppingCart, permission: 'process_sale' },
-    { href: '/inventory', label: 'Inventory', icon: Package, permission: 'view_dashboard' },
-    { href: '/sales', label: 'Sales', icon: DollarSign, permission: 'view_sales' },
-    { href: '/accounting', label: 'Accounting', icon: FileText, permission: 'view_reports' },
-    { href: '/reports', label: 'Reports', icon: FileText, permission: 'view_reports' },
-    { href: '/users', label: 'Users', icon: Users, permission: 'create_user' },
+    { href: '/dashboard/pos', label: 'POS', icon: ShoppingCart, permission: 'process_sale' },
+    { href: '/dashboard/inventory', label: 'Inventory', icon: Package, permission: 'view_dashboard' },
+    { href: '/dashboard/sales', label: 'Sales', icon: DollarSign, permission: 'view_sales' },
+    { href: '/dashboard/accounting', label: 'Accounting', icon: FileText, permission: 'view_reports' },
+    { href: '/dashboard/reports', label: 'Reports', icon: FileText, permission: 'view_reports' },
+    { href: '/dashboard/users', label: 'Users', icon: Users, permission: 'create_user' },
   ]
 
   const handleLogout = async () => {
@@ -66,7 +66,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed lg:static inset-y-0 left-0 z-40
+          fixed inset-y-0 left-0 z-40
           w-64 bg-black text-white flex flex-col
           transform transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
