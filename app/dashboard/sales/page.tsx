@@ -61,11 +61,11 @@ export default function SalesPage() {
               <thead className="bg-black text-white">
                 <tr>
                   <th className="px-4 py-3 text-left">Sale #</th>
-                  <th className="px-4 py-3 text-left">Date</th>
+                  <th className="px-4 py-3 text-left hidden md:table-cell">Date</th>
                   <th className="px-4 py-3 text-left">Cashier</th>
                   <th className="px-4 py-3 text-right">Total</th>
-                  <th className="px-4 py-3 text-center">Payment</th>
-                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-center hidden md:table-cell">Payment</th>
+                  <th className="px-4 py-3 text-center hidden md:table-cell">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -92,7 +92,7 @@ export default function SalesPage() {
                             {sale.sale_number}
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 hidden md:table-cell">
                           {new Date(sale.sale_date).toLocaleString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -105,7 +105,7 @@ export default function SalesPage() {
                         <td className="px-4 py-3 text-right font-bold">
                           ${sale.total_amount.toFixed(2)}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center hidden md:table-cell">
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-bg-secondary rounded text-sm">
                             {sale.payment_method === 'Cash' ? (
                               <DollarSign size={14} />
@@ -115,7 +115,7 @@ export default function SalesPage() {
                             {sale.payment_method}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center hidden md:table-cell">
                           <span
                             className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                               sale.payment_status === 'Paid'
@@ -133,6 +133,51 @@ export default function SalesPage() {
                         <tr key={`${sale.id}-details`} className="animate-fadeIn">
                           <td colSpan={6} className={index % 2 === 0 ? 'bg-white' : 'bg-bg-secondary'}>
                             <div className="px-4 py-4 border-t-2 border-gray-200">
+                              {/* Mobile-only info */}
+                              <div className="md:hidden mb-4 pb-4 border-b-2 border-gray-300">
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                  <div>
+                                    <span className="text-text-secondary">Date:</span>
+                                    <span className="ml-2 font-medium">
+                                      {new Date(sale.sale_date).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-text-secondary">Payment:</span>
+                                    <span className="ml-2 inline-flex items-center gap-1">
+                                      {sale.payment_method === 'Cash' ? (
+                                        <DollarSign size={12} />
+                                      ) : (
+                                        <CreditCard size={12} />
+                                      )}
+                                      {sale.payment_method}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-text-secondary">Status:</span>
+                                    <span className="ml-2">
+                                      <span
+                                        className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                          sale.payment_status === 'Paid'
+                                            ? 'bg-black text-white'
+                                            : sale.payment_status === 'Partial'
+                                            ? 'bg-status-warning text-white'
+                                            : 'bg-status-error text-white'
+                                        }`}
+                                      >
+                                        {sale.payment_status}
+                                      </span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
                               {/* Sale Summary */}
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                 <div className="p-3 border-2 border-black rounded">
