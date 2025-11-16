@@ -207,12 +207,12 @@ export default function InventoryPage() {
               <tr>
                 <th className="px-4 py-3 text-left">SKU</th>
                 <th className="px-4 py-3 text-left">Name</th>
-                <th className="px-4 py-3 text-left">Category</th>
+                <th className="px-4 py-3 text-left hidden md:table-cell">Category</th>
                 <th className="px-4 py-3 text-right">Price</th>
-                <th className="px-4 py-3 text-right">Cost</th>
+                <th className="px-4 py-3 text-right hidden md:table-cell">Cost</th>
                 <th className="px-4 py-3 text-right">Stock</th>
-                <th className="px-4 py-3 text-center">Status</th>
-                <th className="px-4 py-3 text-center">Actions</th>
+                <th className="px-4 py-3 text-center hidden md:table-cell">Status</th>
+                <th className="px-4 py-3 text-center hidden md:table-cell">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -238,13 +238,13 @@ export default function InventoryPage() {
                       >
                         <td className="px-4 py-3 font-mono text-sm">{product.sku}</td>
                         <td className="px-4 py-3 font-medium">{product.name}</td>
-                        <td className="px-4 py-3">{product.category || '-'}</td>
+                        <td className="px-4 py-3 hidden md:table-cell">{product.category || '-'}</td>
                         <td className="px-4 py-3 text-right">${product.price.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right">${product.cost_price.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right hidden md:table-cell">${product.cost_price.toFixed(2)}</td>
                         <td className="px-4 py-3 text-right font-medium">
                           {product.stock_quantity}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center hidden md:table-cell">
                           {isLowStock(product) ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 bg-status-warning text-white text-xs rounded">
                               <AlertTriangle size={14} />
@@ -254,7 +254,7 @@ export default function InventoryPage() {
                             <span className="text-text-secondary text-sm">In Stock</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-4 py-3 text-center hidden md:table-cell">
                           <span className="text-text-secondary text-xs">
                             {isExpanded ? '▼ Click to collapse' : '▶ Click to expand'}
                           </span>
@@ -263,13 +263,40 @@ export default function InventoryPage() {
                       {isExpanded && (
                         <tr className="bg-gray-50 border-l-4 border-l-black animate-fadeIn">
                           <td colSpan={8} className="px-4 py-4">
-                            <div className="flex items-start justify-between gap-6">
-                              <div className="flex-1">
+                            {/* Mobile-only info */}
+                            <div className="md:hidden mb-4 pb-4 border-b-2 border-gray-300">
+                              <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                  <span className="text-text-secondary">Category:</span>
+                                  <span className="ml-2 font-medium">{product.category || '-'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-text-secondary">Cost:</span>
+                                  <span className="ml-2 font-medium">${product.cost_price.toFixed(2)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-text-secondary">Status:</span>
+                                  <span className="ml-2">
+                                    {isLowStock(product) ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-status-warning text-white text-xs rounded">
+                                        <AlertTriangle size={12} />
+                                        Low Stock
+                                      </span>
+                                    ) : (
+                                      <span className="text-text-secondary text-sm">In Stock</span>
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col md:flex-row items-start justify-between gap-6">
+                              <div className="flex-1 w-full">
                                 <h4 className="font-bold text-lg mb-2">Description</h4>
                                 <p className="text-text-secondary mb-4">
                                   {product.description || 'No description available'}
                                 </p>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                   <div>
                                     <span className="text-text-secondary">Created:</span>
                                     <span className="ml-2 font-medium">
@@ -297,13 +324,13 @@ export default function InventoryPage() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex flex-col gap-2 min-w-[120px]">
+                              <div className="flex md:flex-col gap-2 w-full md:w-auto md:min-w-[120px]">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     handleEdit(product)
                                   }}
-                                  className="flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
                                 >
                                   <Edit size={18} />
                                   <span>Edit</span>
@@ -313,7 +340,7 @@ export default function InventoryPage() {
                                     e.stopPropagation()
                                     handleDelete(product.id)
                                   }}
-                                  className="flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-black rounded hover:bg-red-50 transition-colors text-status-error"
+                                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-black rounded hover:bg-red-50 transition-colors text-status-error"
                                 >
                                   <Trash2 size={18} />
                                   <span>Delete</span>
