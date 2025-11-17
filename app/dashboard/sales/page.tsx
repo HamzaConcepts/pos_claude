@@ -1,18 +1,35 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package } from 'lucide-react'
+import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package, Filter } from 'lucide-react'
 
 
 export default function SalesPage() {
   const [sales, setSales] = useState<any[]>([])
+  const [filteredSales, setFilteredSales] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
+  
+  // Filter states
+  const [cashiers, setCashiers] = useState<any[]>([])
+  const [products, setProducts] = useState<any[]>([])
+  const [selectedCashier, setSelectedCashier] = useState('')
+  const [selectedProduct, setSelectedProduct] = useState('')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
 
   useEffect(() => {
     fetchSales()
+    fetchCashiers()
+    fetchProducts()
   }, [])
+
+  useEffect(() => {
+    applyFilters()
+  }, [sales, selectedCashier, selectedProduct, selectedPaymentMethod, selectedPaymentStatus, startDate, endDate])
 
   const fetchSales = async () => {
     try {
@@ -22,6 +39,7 @@ export default function SalesPage() {
 
       if (result.success) {
         setSales(result.data)
+        setFilteredSales(result.data)
       } else {
         setError(result.error)
       }
@@ -30,6 +48,77 @@ export default function SalesPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchCashiers = async () => {
+    try {
+      const response = await fetch('/api/users')
+      const result = await response.json()
+      if (result.success) {
+        setCashiers(result.data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch cashiers')
+    }
+  }
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products')
+      const result = await response.json()
+      if (result.success) {
+        setProducts(result.data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch products')
+    }
+  }
+
+  const applyFilters = () => {
+    let filtered = [...sales]
+
+    // Filter by cashier
+    if (selectedCashier) {
+      filtered = filtered.filter(sale => sale.cashier_id === selectedCashier)
+    }
+
+    // Filter by product
+    if (selectedProduct) {
+      filtered = filtered.filter(sale => 
+        sale.sale_items?.some((item: any) => item.product_id === parseInt(selectedProduct))
+      )
+    }
+
+    // Filter by payment method
+    if (selectedPaymentMethod) {
+      filtered = filtered.filter(sale => sale.payment_method === selectedPaymentMethod)
+    }
+
+    // Filter by payment status
+    if (selectedPaymentStatus) {
+      filtered = filtered.filter(sale => sale.payment_status === selectedPaymentStatus)
+    }
+
+    // Filter by date range
+    if (startDate) {
+      filtered = filtered.filter(sale => new Date(sale.sale_date) >= new Date(startDate))
+    }
+    if (endDate) {
+      const endDateTime = new Date(endDate)
+      endDateTime.setHours(23, 59, 59, 999)
+      filtered = filtered.filter(sale => new Date(sale.sale_date) <= endDateTime)
+    }
+
+    setFilteredSales(filtered)
+  }
+
+  const clearFilters = () => {
+    setSelectedCashier('')
+    setSelectedProduct('')
+    setSelectedPaymentMethod('')
+    setSelectedPaymentStatus('')
+    setStartDate('')
+    setEndDate('')
   }
 
   if (loading) {
@@ -50,9 +139,119 @@ export default function SalesPage() {
         </div>
       )}
 
-      {sales.length === 0 ? (
+      {/* Filters */}
+      <div className="bg-white p-4 rounded border-2 border-black mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter size={20} />
+          <h2 className="font-bold text-lg">Filters</h2>
+          {(selectedCashier || selectedProduct || selectedPaymentMethod || selectedPaymentStatus || startDate || endDate) && (
+            <button
+              onClick={clearFilters}
+              className="ml-auto text-sm text-status-error hover:underline"
+            >
+              Clear All Filters
+            </button>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* Cashier Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Cashier</label>
+            <select
+              value={selectedCashier}
+              onChange={(e) => setSelectedCashier(e.target.value)}
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+            >
+              <option value="">All Cashiers</option>
+              {cashiers.map((cashier) => (
+                <option key={cashier.id} value={cashier.id}>
+                  {cashier.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Product Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Product</label>
+            <select
+              value={selectedProduct}
+              onChange={(e) => setSelectedProduct(e.target.value)}
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+            >
+              <option value="">All Products</option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Payment Method Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Payment Method</label>
+            <select
+              value={selectedPaymentMethod}
+              onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+            >
+              <option value="">All Methods</option>
+              <option value="Cash">Cash</option>
+              <option value="Digital">Digital</option>
+            </select>
+          </div>
+
+          {/* Payment Status Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Payment Status</label>
+            <select
+              value={selectedPaymentStatus}
+              onChange={(e) => setSelectedPaymentStatus(e.target.value)}
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+            >
+              <option value="">All Statuses</option>
+              <option value="Paid">Paid</option>
+              <option value="Partial">Partial</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+
+          {/* Start Date Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+            />
+          </div>
+
+          {/* End Date Filter */}
+          <div>
+            <label className="block text-sm font-medium mb-1">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Results Count */}
+        <div className="mt-4 text-sm text-text-secondary">
+          Showing {filteredSales.length} of {sales.length} sales
+        </div>
+      </div>
+
+      {filteredSales.length === 0 ? (
         <div className="bg-white p-8 rounded border-2 border-black text-center">
-          <p className="text-text-secondary">No sales found</p>
+          <p className="text-text-secondary">
+            {sales.length === 0 ? 'No sales found' : 'No sales match the selected filters'}
+          </p>
         </div>
       ) : (
         <div className="bg-white rounded border-2 border-black overflow-hidden">
@@ -69,7 +268,7 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody>
-                {sales.map((sale, index) => {
+                {filteredSales.map((sale, index) => {
                   const isExpanded = expandedSaleId === sale.id
                   const totalCost = sale.sale_items?.reduce(
                     (sum: number, item: any) => sum + (item.cost_price_snapshot || 0) * item.quantity,
