@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || ''
     const category = searchParams.get('category') || ''
     const lowStock = searchParams.get('low_stock') === 'true'
+    const includeInactive = searchParams.get('include_inactive') === 'true'
 
     // Fetch products with their inventory
     let query = supabase
@@ -29,8 +30,12 @@ export async function GET(request: Request) {
           restock_date
         )
       `)
-      .eq('is_active', true)
       .order('created_at', { ascending: false })
+    
+    // Filter by active status unless include_inactive is true
+    if (!includeInactive) {
+      query = query.eq('is_active', true)
+    }
 
     // Apply search filter
     if (search) {

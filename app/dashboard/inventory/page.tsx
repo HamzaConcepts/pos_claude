@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Search, Plus, Edit, Trash2, AlertTriangle } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, AlertTriangle, Package } from 'lucide-react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import ProductModal from '@/components/ProductModal'
+import RestockModal from '@/components/RestockModal'
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
@@ -14,6 +15,7 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState<string[]>([])
   const [showLowStock, setShowLowStock] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductWithBackwardCompatibility | null>(null)
   const [error, setError] = useState('')
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null)
@@ -121,6 +123,13 @@ export default function InventoryPage() {
     }
   }
 
+  const handleRestockModalClose = (refresh: boolean) => {
+    setIsRestockModalOpen(false)
+    if (refresh) {
+      fetchProducts()
+    }
+  }
+
   const isLowStock = (product: ProductWithBackwardCompatibility) => {
     return product.stock_quantity <= product.low_stock_threshold
   }
@@ -141,13 +150,22 @@ export default function InventoryPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Inventory Management</h1>
-        <button
-          onClick={handleAddNew}
-          className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors"
-        >
-          <Plus size={20} />
-          Add Product
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setIsRestockModalOpen(true)}
+            className="flex items-center gap-2 bg-white border-2 border-black px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+          >
+            <Package size={20} />
+            Restock
+          </button>
+          <button
+            onClick={handleAddNew}
+            className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors"
+          >
+            <Plus size={20} />
+            Add Product
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -363,6 +381,12 @@ export default function InventoryPage() {
         <ProductModal
           product={editingProduct}
           onClose={handleModalClose}
+        />
+      )}
+
+      {isRestockModalOpen && (
+        <RestockModal
+          onClose={handleRestockModalClose}
         />
       )}
     </div>
