@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Search, Plus, Edit, Trash2, AlertTriangle, Package } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, AlertTriangle, Package, History } from 'lucide-react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import ProductModal from '@/components/ProductModal'
 import RestockModal from '@/components/RestockModal'
+import RestockHistoryModal from '@/components/RestockHistoryModal'
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
@@ -16,6 +17,8 @@ export default function InventoryPage() {
   const [showLowStock, setShowLowStock] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false)
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [selectedProductForHistory, setSelectedProductForHistory] = useState<ProductWithBackwardCompatibility | null>(null)
   const [editingProduct, setEditingProduct] = useState<ProductWithBackwardCompatibility | null>(null)
   const [error, setError] = useState('')
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null)
@@ -128,6 +131,16 @@ export default function InventoryPage() {
     if (refresh) {
       fetchProducts()
     }
+  }
+
+  const handleViewHistory = (product: ProductWithBackwardCompatibility) => {
+    setSelectedProductForHistory(product)
+    setIsHistoryModalOpen(true)
+  }
+
+  const handleHistoryModalClose = () => {
+    setIsHistoryModalOpen(false)
+    setSelectedProductForHistory(null)
   }
 
   const isLowStock = (product: ProductWithBackwardCompatibility) => {
@@ -346,6 +359,16 @@ export default function InventoryPage() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
+                                    handleViewHistory(product)
+                                  }}
+                                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-black rounded hover:bg-gray-100 transition-colors"
+                                >
+                                  <History size={18} />
+                                  <span>History</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                     handleEdit(product)
                                   }}
                                   className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
@@ -387,6 +410,14 @@ export default function InventoryPage() {
       {isRestockModalOpen && (
         <RestockModal
           onClose={handleRestockModalClose}
+        />
+      )}
+
+      {isHistoryModalOpen && selectedProductForHistory && (
+        <RestockHistoryModal
+          productId={selectedProductForHistory.id}
+          productName={selectedProductForHistory.name}
+          onClose={handleHistoryModalClose}
         />
       )}
     </div>
