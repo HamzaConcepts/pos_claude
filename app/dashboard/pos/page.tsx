@@ -17,6 +17,7 @@ export default function POSPage() {
   const [filteredProducts, setFilteredProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
   const [amountPaid, setAmountPaid] = useState('')
+  const [saleDescription, setSaleDescription] = useState('')
   const [loading, setLoading] = useState(false)
   const [showReceipt, setShowReceipt] = useState(false)
   const [lastSale, setLastSale] = useState<any>(null)
@@ -117,6 +118,7 @@ export default function POSPage() {
     if (confirm('Clear all items from cart?')) {
       setCart([])
       setAmountPaid('')
+      setSaleDescription('')
       setError('')
     }
   }
@@ -137,6 +139,18 @@ export default function POSPage() {
       return
     }
 
+    // Validate sale description
+    let finalDescription = saleDescription.trim()
+    if (cart.length > 1 && !finalDescription) {
+      setError('Sale description is required for orders with multiple items')
+      return
+    }
+    
+    // If single item and no description, use product name
+    if (cart.length === 1 && !finalDescription) {
+      finalDescription = cart[0].product.name
+    }
+
     const total = calculateTotal()
     const paid = parseFloat(amountPaid) || 0
 
@@ -154,6 +168,7 @@ export default function POSPage() {
           product_id: item.product.id,
           quantity: item.quantity,
         })),
+        sale_description: finalDescription,
         payment_method: paymentMethod,
         amount_paid: paid,
         cashier_id: cashierId,
@@ -175,6 +190,7 @@ export default function POSPage() {
         setShowReceipt(true)
         setCart([])
         setAmountPaid('')
+        setSaleDescription('')
         fetchProducts() // Refresh product stock
       } else {
         setError(result.error)
@@ -472,6 +488,25 @@ export default function POSPage() {
                 className="w-full px-3 py-3 border-2 border-black rounded focus:outline-none text-lg"
                 placeholder="0.00"
               />
+            </div>
+
+            <div className="mb-4">
+              <label htmlFor="saleDescription" className="block mb-2 font-medium">
+                Sale Description {cart.length > 1 && <span className="text-status-error">*</span>}
+              </label>
+              <input
+                id="saleDescription"
+                type="text"
+                value={saleDescription}
+                onChange={(e) => setSaleDescription(e.target.value)}
+                className="w-full px-3 py-3 border-2 border-black rounded focus:outline-none text-lg"
+                placeholder={cart.length === 1 ? "Optional (will use product name)" : "Required for multiple items"}
+              />
+              {cart.length === 1 && !saleDescription && (
+                <p className="text-xs text-text-secondary mt-1">
+                  Will default to: {cart[0].product.name}
+                </p>
+              )}
             </div>
 
             {amountPaid && parseFloat(amountPaid) >= total && (

@@ -60,7 +60,7 @@ export default function SalesPage() {
             <table className="w-full">
               <thead className="bg-black text-white">
                 <tr>
-                  <th className="px-4 py-3 text-left">Sale #</th>
+                  <th className="px-4 py-3 text-left">Description</th>
                   <th className="px-4 py-3 text-left hidden md:table-cell">Date</th>
                   <th className="px-4 py-3 text-left">Cashier</th>
                   <th className="px-4 py-3 text-right">Total</th>
@@ -89,7 +89,7 @@ export default function SalesPage() {
                         <td className="px-4 py-3 font-mono text-sm">
                           <div className="flex items-center gap-2">
                             {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            {sale.sale_number}
+                            <span className="font-normal">{sale.sale_description || sale.sale_number}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell">

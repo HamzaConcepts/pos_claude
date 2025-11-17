@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS inventory (
 CREATE TABLE IF NOT EXISTS sales (
     id SERIAL PRIMARY KEY,
     sale_number VARCHAR(50) UNIQUE NOT NULL,
+    sale_description VARCHAR(255),
     cashier_id UUID REFERENCES users(id),
     total_amount DECIMAL(10, 2) NOT NULL CHECK (total_amount >= 0),
     payment_method VARCHAR(20) CHECK (payment_method IN ('Cash', 'Digital')),

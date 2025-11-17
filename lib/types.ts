@@ -44,6 +44,7 @@ export interface ProductWithBackwardCompatibility extends Product {
 export interface Sale {
   id: number
   sale_number: string
+  sale_description: string | null
   cashier_id: number
   total_amount: number
   payment_method: 'Cash' | 'Digital'

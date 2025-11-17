@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     )
 
     const body = await request.json()
-    const { items, payment_method, amount_paid, notes, cashier_id } = body
+    const { items, sale_description, payment_method, amount_paid, notes, cashier_id } = body
 
     // Validation
     if (!items || items.length === 0) {
@@ -168,6 +168,7 @@ export async function POST(request: Request) {
       .insert([
         {
           sale_number: saleNumber,
+          sale_description: sale_description || null,
           cashier_id: cashier_id,
           total_amount: totalAmount,
           payment_method,
