@@ -55,6 +55,19 @@ export interface Sale {
   notes: string | null
 }
 
+export interface PartialPaymentCustomer {
+  id: number
+  sale_id: number
+  customer_name: string
+  customer_cnic: string | null
+  customer_phone: string | null
+  total_amount: number
+  amount_paid: number
+  amount_remaining: number
+  created_at: string
+  updated_at: string
+}
+
 export interface SaleItem {
   id: number
   sale_id: number

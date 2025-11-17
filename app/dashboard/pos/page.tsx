@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Search, Plus, Minus, Trash2, ShoppingCart, Printer } from 'lucide-react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import { supabase } from '@/lib/supabase'
@@ -23,6 +23,33 @@ export default function POSPage() {
   const [lastSale, setLastSale] = useState<any>(null)
   const [error, setError] = useState('')
   const [cashierId, setCashierId] = useState<string>('')
+  
+  // Partial payment states
+  const [showPartialPaymentModal, setShowPartialPaymentModal] = useState(false)
+  const [showPartialPaymentConfirm, setShowPartialPaymentConfirm] = useState(false)
+  const [partialPaymentData, setPartialPaymentData] = useState({
+    customerName: '',
+    customerCnic: '',
+    customerPhone: ''
+  })
+  const [partialPaymentError, setPartialPaymentError] = useState('')
+  const [existingCustomers, setExistingCustomers] = useState<any[]>([])
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const customerNameInputRef = useRef<HTMLInputElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (customerNameInputRef.current && !customerNameInputRef.current.contains(event.target as Node)) {
+        setShowCustomerDropdown(false)
+      }
+    }
+
+    if (showCustomerDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showCustomerDropdown])
 
   useEffect(() => {
     fetchProducts()
@@ -154,15 +181,89 @@ export default function POSPage() {
     const total = calculateTotal()
     const paid = parseFloat(amountPaid) || 0
 
+    // Check if payment is less than total
     if (paid < total) {
-      setError(`Insufficient payment. Total: $${total.toFixed(2)}, Paid: $${paid.toFixed(2)}`)
+      // Show custom partial payment confirmation modal
+      setShowPartialPaymentConfirm(true)
+      setError('')
       return
     }
 
+    // If full payment, process normally
     setError('')
+    await processSaleTransaction(null)
+  }
+
+  const handlePartialPaymentConfirm = () => {
+    setShowPartialPaymentConfirm(false)
+    setShowPartialPaymentModal(true)
+    // Fetch existing customers when modal opens
+    fetchExistingCustomers('')
+  }
+
+  const fetchExistingCustomers = async (searchQuery: string) => {
+    try {
+      const url = searchQuery
+        ? `/api/partial-payment-customers?search=${encodeURIComponent(searchQuery)}`
+        : '/api/partial-payment-customers'
+      
+      const response = await fetch(url)
+      const result = await response.json()
+
+      if (result.success) {
+        setExistingCustomers(result.data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch customers')
+    }
+  }
+
+  const handleCustomerNameChange = (value: string) => {
+    setPartialPaymentData({
+      ...partialPaymentData,
+      customerName: value
+    })
+    setPartialPaymentError('')
+    
+    // Show dropdown and fetch matching customers
+    if (value.trim().length > 0) {
+      setShowCustomerDropdown(true)
+      fetchExistingCustomers(value)
+    } else {
+      setShowCustomerDropdown(false)
+      setExistingCustomers([])
+    }
+  }
+
+  const handleSelectCustomer = (customer: any) => {
+    setPartialPaymentData({
+      customerName: customer.customer_name,
+      customerCnic: customer.customer_cnic || '',
+      customerPhone: customer.customer_phone || ''
+    })
+    setShowCustomerDropdown(false)
+    setPartialPaymentError('')
+  }
+
+  const handlePartialPaymentCancel = () => {
+    setShowPartialPaymentConfirm(false)
+    const total = calculateTotal()
+    const paid = parseFloat(amountPaid) || 0
+    setError(`Insufficient payment. Total: $${total.toFixed(2)}, Paid: $${paid.toFixed(2)}`)
+  }
+
+  const processSaleTransaction = async (partialPaymentCustomer: any) => {
     setLoading(true)
 
     try {
+      const total = calculateTotal()
+      const paid = parseFloat(amountPaid) || 0
+      let finalDescription = saleDescription.trim()
+      
+      if (cart.length === 1 && !finalDescription) {
+        finalDescription = cart[0].product.name
+      }
+
       const saleData = {
         items: cart.map((item) => ({
           product_id: item.product.id,
@@ -173,6 +274,7 @@ export default function POSPage() {
         amount_paid: paid,
         cashier_id: cashierId,
         notes: null,
+        partial_payment_customer: partialPaymentCustomer,
       }
 
       const response = await fetch('/api/sales', {
@@ -191,6 +293,10 @@ export default function POSPage() {
         setCart([])
         setAmountPaid('')
         setSaleDescription('')
+        setShowPartialPaymentConfirm(false)
+        setShowPartialPaymentModal(false)
+        setPartialPaymentData({ customerName: '', customerCnic: '', customerPhone: '' })
+        setPartialPaymentError('')
         fetchProducts() // Refresh product stock
       } else {
         setError(result.error)
@@ -200,6 +306,37 @@ export default function POSPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handlePartialPaymentSubmit = () => {
+    const { customerName, customerCnic, customerPhone } = partialPaymentData
+    
+    // Clear previous errors
+    setPartialPaymentError('')
+    
+    // Validate all fields are filled
+    if (!customerName.trim() || !customerCnic.trim() || !customerPhone.trim()) {
+      setPartialPaymentError('All fields are required. Please fill in customer name, CNIC, and phone number.')
+      return
+    }
+
+    // Validate CNIC format (basic validation)
+    if (customerCnic.length < 13) {
+      setPartialPaymentError('Please enter a valid CNIC (minimum 13 digits)')
+      return
+    }
+
+    // Validate phone format (basic validation)
+    if (customerPhone.length < 10) {
+      setPartialPaymentError('Please enter a valid phone number (minimum 10 digits)')
+      return
+    }
+
+    processSaleTransaction({
+      customer_name: customerName.trim(),
+      customer_cnic: customerCnic.trim(),
+      customer_phone: customerPhone.trim(),
+    })
   }
 
   const handlePrintReceipt = () => {
@@ -240,7 +377,43 @@ export default function POSPage() {
                 <p className="text-sm text-text-secondary">Payment Method</p>
                 <p className="font-medium">{lastSale.payment_method}</p>
               </div>
+              <div>
+                <p className="text-sm text-text-secondary">Payment Status</p>
+                <p className={`font-medium ${lastSale.payment_status === 'Partial' ? 'text-status-error' : ''}`}>
+                  {lastSale.payment_status}
+                  {lastSale.payment_status === 'Partial' && ' ⚠️'}
+                </p>
+              </div>
             </div>
+
+            {/* Show customer info for partial payments */}
+            {lastSale.partial_payment_customers && lastSale.partial_payment_customers.length > 0 && (
+              <div className="mt-4 p-4 bg-red-600 border-2 border-red-800 rounded">
+                <p className="font-bold text-white mb-3 flex items-center gap-2">
+                  <span>⚠️</span> PARTIAL PAYMENT CUSTOMER
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-red-100">Name</p>
+                    <p className="font-medium text-white">{lastSale.partial_payment_customers[0].customer_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-red-100">CNIC</p>
+                    <p className="font-medium text-white">{lastSale.partial_payment_customers[0].customer_cnic}</p>
+                  </div>
+                  <div>
+                    <p className="text-red-100">Phone</p>
+                    <p className="font-medium text-white">{lastSale.partial_payment_customers[0].customer_phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-red-100">Amount Remaining</p>
+                    <p className="font-bold text-white text-lg">
+                      ${lastSale.partial_payment_customers[0].amount_remaining.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <table className="w-full mb-6">
@@ -255,7 +428,7 @@ export default function POSPage() {
             <tbody>
               {lastSale.sale_items?.map((item: any) => (
                 <tr key={item.id} className="border-b border-gray-300">
-                  <td className="py-2">{item.products?.name}</td>
+                  <td className="py-2">{item.product_name || item.products?.name || 'Unknown Product'}</td>
                   <td className="text-right">{item.quantity}</td>
                   <td className="text-right">${item.unit_price.toFixed(2)}</td>
                   <td className="text-right font-medium">
@@ -275,10 +448,24 @@ export default function POSPage() {
               <span>Amount Paid:</span>
               <span>${lastSale.amount_paid.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-lg font-medium">
-              <span>Change:</span>
-              <span>${(lastSale.amount_paid - lastSale.total_amount).toFixed(2)}</span>
-            </div>
+            {lastSale.payment_status === 'Partial' ? (
+              <div className="flex justify-between text-lg font-medium text-status-error">
+                <span>Amount Due:</span>
+                <span>${lastSale.amount_due.toFixed(2)}</span>
+              </div>
+            ) : (
+              <div className="flex justify-between text-lg font-medium">
+                <span>Change:</span>
+                <span>${(lastSale.amount_paid - lastSale.total_amount).toFixed(2)}</span>
+              </div>
+            )}
+            
+            {/* Additional warning for partial payment */}
+            {lastSale.payment_status === 'Partial' && (
+              <div className="mt-4 p-3 bg-red-600 text-white rounded font-bold text-center">
+                ⚠️ OUTSTANDING BALANCE DUE ⚠️
+              </div>
+            )}
           </div>
 
           <div className="mt-6 text-center text-sm text-text-secondary">
@@ -526,6 +713,199 @@ export default function POSPage() {
           </div>
         </div>
       </div>
+
+      {/* Partial Payment Confirmation Modal */}
+      {showPartialPaymentConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded border-2 border-black max-w-md w-full p-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold mb-2">Insufficient Payment</h2>
+              <p className="text-text-secondary text-sm">Payment amount is less than total. Would you like to proceed with partial payment?</p>
+            </div>
+            
+            <div className="mb-6 p-4 border-2 border-black rounded">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-text-secondary">Total Amount:</span>
+                  <span className="font-bold">${calculateTotal().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-secondary">Amount Paid:</span>
+                  <span className="font-bold">${(parseFloat(amountPaid) || 0).toFixed(2)}</span>
+                </div>
+                <div className="border-t-2 border-black pt-2 mt-2"></div>
+                <div className="flex justify-between">
+                  <span className="font-bold">Amount Due:</span>
+                  <span className="font-bold text-lg">
+                    ${(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6 p-3 bg-bg-secondary border-2 border-black rounded text-sm">
+              <p className="text-text-secondary">Customer information (Name, CNIC, Phone) will be required for partial payment.</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handlePartialPaymentCancel}
+                className="flex-1 px-4 py-3 border-2 border-black rounded hover:bg-bg-secondary transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePartialPaymentConfirm}
+                className="flex-1 px-4 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors font-medium"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Partial Payment Customer Information Modal */}
+      {showPartialPaymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded border-2 border-black max-w-md w-full p-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold mb-2">Customer Information</h2>
+              <p className="underline text-red-600 hover:text-red-800 text-sm">Please enter customer details for partial payment tracking.</p>
+            </div>
+
+            {/* Validation Error */}
+            {partialPaymentError && (
+              <div className="mb-4 p-3 bg-red-50 border-2 border-status-error rounded text-sm">
+                <p className="text-status-error font-medium">{partialPaymentError}</p>
+              </div>
+            )}
+            
+            <div className="mb-6 p-4 border-2 border-black rounded">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-text-secondary">Total Amount:</span>
+                  <span className="font-bold">${calculateTotal().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-secondary">Amount Paid:</span>
+                  <span className="font-bold">${(parseFloat(amountPaid) || 0).toFixed(2)}</span>
+                </div>
+                <div className="border-t-2 border-black pt-2 mt-2"></div>
+                <div className="flex justify-between">
+                  <span className="font-bold">Amount Due:</span>
+                  <span className="font-bold text-lg">
+                    ${(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="relative" ref={customerNameInputRef}>
+                <label className="block mb-2 font-medium text-sm">
+                  Customer Name <span className="text-status-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={partialPaymentData.customerName}
+                  onChange={(e) => handleCustomerNameChange(e.target.value)}
+                  onFocus={() => {
+                    if (partialPaymentData.customerName.trim().length > 0) {
+                      setShowCustomerDropdown(true)
+                    }
+                  }}
+                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none font-sans"
+                  placeholder="Enter or search customer name"
+                  autoComplete="off"
+                />
+                
+                {/* Customer Search Dropdown */}
+                {showCustomerDropdown && existingCustomers.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border-2 border-black rounded max-h-48 overflow-y-auto">
+                    {existingCustomers.map((customer, index) => (
+                      <div
+                        key={index}
+                        onClick={() => handleSelectCustomer(customer)}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                      >
+                        <div className="font-medium text-sm">{customer.customer_name}</div>
+                        <div className="text-xs text-text-secondary mt-1">
+                          {customer.customer_cnic} • {customer.customer_phone}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block mb-2 font-medium text-sm">
+                  Customer CNIC <span className="text-status-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={partialPaymentData.customerCnic}
+                  onChange={(e) => {
+                    setPartialPaymentData({
+                      ...partialPaymentData,
+                      customerCnic: e.target.value
+                    })
+                    setPartialPaymentError('')
+                  }}
+                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  placeholder="xxxxx-xxxxxxx-x"
+                  maxLength={15}
+                />
+              </div>
+
+              <div>
+                <label className="block mb-2 font-medium text-sm">
+                  Customer Phone <span className="text-status-error">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={partialPaymentData.customerPhone}
+                  onChange={(e) => {
+                    setPartialPaymentData({
+                      ...partialPaymentData,
+                      customerPhone: e.target.value
+                    })
+                    setPartialPaymentError('')
+                  }}
+                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  placeholder="03xx-xxxxxxx"
+                  maxLength={12}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPartialPaymentModal(false)
+                  setShowPartialPaymentConfirm(false)
+                  setPartialPaymentData({ customerName: '', customerCnic: '', customerPhone: '' })
+                  setPartialPaymentError('')
+                  setShowCustomerDropdown(false)
+                  setExistingCustomers([])
+                }}
+                className="flex-1 px-4 py-3 border-2 border-black rounded hover:bg-bg-secondary transition-colors font-medium"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePartialPaymentSubmit}
+                disabled={loading || !partialPaymentData.customerName.trim() || !partialPaymentData.customerCnic.trim() || !partialPaymentData.customerPhone.trim()}
+                className="flex-1 px-4 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+              >
+                {loading ? 'Processing...' : 'Confirm Sale'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

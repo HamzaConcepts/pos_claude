@@ -18,7 +18,8 @@ export async function GET(request: Request) {
       .select(`
         *,
         users:cashier_id (full_name),
-        sale_items (*)
+        sale_items (*),
+        partial_payment_customers (*)
       `)
       .order('sale_date', { ascending: false })
 
@@ -62,7 +63,15 @@ export async function POST(request: Request) {
     )
 
     const body = await request.json()
-    const { items, sale_description, payment_method, amount_paid, notes, cashier_id } = body
+    const { 
+      items, 
+      sale_description, 
+      payment_method, 
+      amount_paid, 
+      notes, 
+      cashier_id,
+      partial_payment_customer // New field for partial payment customer info
+    } = body
 
     // Validation
     if (!items || items.length === 0) {
@@ -159,6 +168,32 @@ export async function POST(request: Request) {
     const paymentStatus =
       dueAmount <= 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending'
 
+    // Validate partial payment customer info
+    if (paymentStatus === 'Partial' && !partial_payment_customer) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Customer information required for partial payment',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
+    if (partial_payment_customer) {
+      const { customer_name, customer_cnic, customer_phone } = partial_payment_customer
+      if (!customer_name || !customer_cnic || !customer_phone) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Customer name, CNIC, and phone are required for partial payment',
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        )
+      }
+    }
+
     // Generate sale number
     const saleNumber = `SALE-${Date.now()}`
 
@@ -182,6 +217,27 @@ export async function POST(request: Request) {
       .single()
 
     if (saleError) throw saleError
+
+    // Create partial payment customer record if applicable
+    if (paymentStatus === 'Partial' && partial_payment_customer) {
+      const { customer_name, customer_cnic, customer_phone } = partial_payment_customer
+      
+      const { error: partialPaymentError } = await supabase
+        .from('partial_payment_customers')
+        .insert([
+          {
+            sale_id: sale.id,
+            customer_name,
+            customer_cnic,
+            customer_phone,
+            total_amount: totalAmount,
+            amount_paid: paidAmount,
+            amount_remaining: dueAmount,
+          },
+        ])
+
+      if (partialPaymentError) throw partialPaymentError
+    }
 
     // Create sale items and update inventory
     for (const saleItem of saleItems) {
@@ -230,7 +286,8 @@ export async function POST(request: Request) {
       .select(`
         *,
         users:cashier_id (full_name),
-        sale_items (*)
+        sale_items (*),
+        partial_payment_customers (*)
       `)
       .eq('id', sale.id)
       .single()

@@ -169,7 +169,7 @@ export default function SignupPage() {
               name="role"
               value={formData.role}
               onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black font-sans"
               disabled={loading}
             >
               <option value="Cashier">Cashier</option>

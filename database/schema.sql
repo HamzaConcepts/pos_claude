@@ -83,6 +83,20 @@ CREATE TABLE IF NOT EXISTS expenses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Partial Payment Customers Table
+CREATE TABLE IF NOT EXISTS partial_payment_customers (
+    id SERIAL PRIMARY KEY,
+    sale_id INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+    customer_name VARCHAR(100) NOT NULL,
+    customer_cnic VARCHAR(20),
+    customer_phone VARCHAR(20),
+    total_amount DECIMAL(10, 2) NOT NULL CHECK (total_amount >= 0),
+    amount_paid DECIMAL(10, 2) NOT NULL CHECK (amount_paid >= 0),
+    amount_remaining DECIMAL(10, 2) NOT NULL CHECK (amount_remaining >= 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Payments Table (for partial payments)
 CREATE TABLE IF NOT EXISTS payments (
     id SERIAL PRIMARY KEY,
@@ -107,6 +121,7 @@ CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date);
 CREATE INDEX IF NOT EXISTS idx_sales_number ON sales(sale_number);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_recorded_by ON expenses(recorded_by);
+CREATE INDEX IF NOT EXISTS idx_partial_payment_customers_sale_id ON partial_payment_customers(sale_id);
 
 -- Create updated_at triggers
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -161,7 +161,7 @@ export default function SalesPage() {
             <select
               value={selectedCashier}
               onChange={(e) => setSelectedCashier(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm font-sans"
             >
               <option value="">All Cashiers</option>
               {cashiers.map((cashier) => (
@@ -178,7 +178,7 @@ export default function SalesPage() {
             <select
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm font-sans"
             >
               <option value="">All Products</option>
               {products.map((product) => (
@@ -195,7 +195,7 @@ export default function SalesPage() {
             <select
               value={selectedPaymentMethod}
               onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm font-sans"
             >
               <option value="">All Methods</option>
               <option value="Cash">Cash</option>
@@ -209,7 +209,7 @@ export default function SalesPage() {
             <select
               value={selectedPaymentStatus}
               onChange={(e) => setSelectedPaymentStatus(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm"
+              className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none text-sm font-sans"
             >
               <option value="">All Statuses</option>
               <option value="Paid">Paid</option>
@@ -282,10 +282,13 @@ export default function SalesPage() {
                         key={sale.id}
                         onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
                         className={`cursor-pointer transition-all ${
+                          sale.payment_status === 'Partial' ? 'bg-red-50 hover:bg-red-100 border-l-4 border-red-600' :
                           index % 2 === 0 ? 'bg-white' : 'bg-bg-secondary'
-                        } ${isExpanded ? 'border-l-4 border-black' : ''} hover:bg-gray-50`}
+                        } ${isExpanded && sale.payment_status !== 'Partial' ? 'border-l-4 border-black' : ''} ${
+                          sale.payment_status !== 'Partial' ? 'hover:bg-gray-50' : ''
+                        }`}
                       >
-                        <td className="px-4 py-3 font-mono text-sm">
+                        <td className="px-4 py-3 text-sm">
                           <div className="flex items-center gap-2">
                             {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                             <span className="font-normal">{sale.sale_description || sale.sale_number}</span>
@@ -320,17 +323,21 @@ export default function SalesPage() {
                               sale.payment_status === 'Paid'
                                 ? 'bg-black text-white'
                                 : sale.payment_status === 'Partial'
-                                ? 'bg-status-warning text-white'
-                                : 'bg-status-error text-white'
+                                ? 'bg-red-600 text-white'
+                                : 'bg-status-warning text-white'
                             }`}
                           >
+                            {sale.payment_status === 'Partial' && '⚠️ '}
                             {sale.payment_status}
                           </span>
                         </td>
                       </tr>
                       {isExpanded && (
                         <tr key={`${sale.id}-details`} className="animate-fadeIn">
-                          <td colSpan={6} className={index % 2 === 0 ? 'bg-white' : 'bg-bg-secondary'}>
+                          <td colSpan={6} className={
+                            sale.payment_status === 'Partial' ? 'bg-red-50' :
+                            index % 2 === 0 ? 'bg-white' : 'bg-bg-secondary'
+                          }>
                             <div className="px-4 py-4 border-t-2 border-gray-200">
                               {/* Mobile-only info */}
                               <div className="md:hidden mb-4 pb-4 border-b-2 border-gray-300">
@@ -366,16 +373,49 @@ export default function SalesPage() {
                                           sale.payment_status === 'Paid'
                                             ? 'bg-black text-white'
                                             : sale.payment_status === 'Partial'
-                                            ? 'bg-status-warning text-white'
-                                            : 'bg-status-error text-white'
+                                            ? 'bg-red-600 text-white'
+                                            : 'bg-status-warning text-white'
                                         }`}
                                       >
+                                        {sale.payment_status === 'Partial' && '⚠️ '}
                                         {sale.payment_status}
                                       </span>
                                     </span>
                                   </div>
                                 </div>
                               </div>
+
+                              {/* Partial Payment Customer Info */}
+                              {sale.payment_status === 'Partial' && (sale as any).partial_payment_customers?.[0] && (
+                                <div className="mb-4 p-4 bg-red-600 border-2 border-red-800 rounded">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <span className="text-white font-bold">⚠️ PARTIAL PAYMENT CUSTOMER</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                    <div>
+                                      <div className="text-red-100 mb-1">Customer Name</div>
+                                      <div className="font-bold text-white">{(sale as any).partial_payment_customers[0].customer_name}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-red-100 mb-1">CNIC</div>
+                                      <div className="font-medium text-white">{(sale as any).partial_payment_customers[0].customer_cnic}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-red-100 mb-1">Phone</div>
+                                      <div className="font-medium text-white">{(sale as any).partial_payment_customers[0].customer_phone}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-red-100 mb-1">Amount Remaining</div>
+                                      <div className="font-bold text-white text-lg">
+                                        ${(sale as any).partial_payment_customers[0].amount_remaining.toFixed(2)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="mt-3 p-2 bg-red-800 text-white rounded font-bold text-center">
+                                    OUTSTANDING BALANCE DUE
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Sale Summary */}
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
