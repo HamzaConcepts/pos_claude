@@ -252,7 +252,7 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-mono text-xs truncate">{sale.sale_number}</p>
                       <p className="text-xs text-text-secondary truncate">
-                        {new Date(sale.sale_date).toLocaleDateString()} • {sale.users?.full_name}
+                        {new Date(sale.sale_date).toLocaleDateString()} • {sale.managers?.full_name || 'Cashier'}
                       </p>
                     </div>
                     <div className="text-right ml-2">

@@ -73,7 +73,7 @@ export async function GET() {
       .from('sales')
       .select(`
         *,
-        users:cashier_id (full_name)
+        managers:cashier_id (full_name)
       `)
       .order('sale_date', { ascending: false })
       .limit(10)

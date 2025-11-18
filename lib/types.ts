@@ -110,7 +110,9 @@ export interface DashboardStats {
     count: number
     revenue: number
   }
+  todayExpenses: number
   monthlyExpenses: number
+  expensesByCategory: Array<{ category: string; total: number }>
   netProfit: number
   lowStockCount: number
   lowStockProducts: ProductWithBackwardCompatibility[]
