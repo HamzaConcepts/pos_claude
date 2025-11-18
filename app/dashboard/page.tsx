@@ -88,232 +88,217 @@ export default function DashboardPage() {
       </div>
 
       {/* Big Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {/* Total Sales */}
-        <div className="bg-black text-white p-8 rounded-lg shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-              <DollarSign size={32} />
-            </div>
+        <div className="bg-black text-white p-6 rounded shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <DollarSign size={24} />
+            <p className="text-sm opacity-80">Total Sales</p>
           </div>
-          <p className="text-sm opacity-80 mb-2">Total Sales</p>
-          <p className="text-5xl font-bold mb-3">${stats.monthlySales.revenue.toFixed(2)}</p>
-          <div className="flex items-center gap-2 text-sm opacity-80">
-            <TrendingUp size={16} />
-            <span>This month</span>
-          </div>
+          <p className="text-3xl font-bold mb-1">${stats.monthlySales.revenue.toFixed(2)}</p>
+          <p className="text-xs opacity-70">This month</p>
         </div>
 
         {/* Orders Completed */}
-        <div className="bg-white p-8 rounded-lg border-4 border-black shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-black text-white p-3 rounded-lg">
-              <ShoppingBag size={32} />
-            </div>
+        <div className="bg-white p-6 rounded border-2 border-black shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <ShoppingBag size={24} />
+            <p className="text-sm text-text-secondary">Orders</p>
           </div>
-          <p className="text-sm text-text-secondary mb-2">Orders Completed</p>
-          <p className="text-5xl font-bold mb-3">{stats.monthlySales.count}</p>
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <span>{stats.todaySales.count} today</span>
+          <p className="text-3xl font-bold mb-1">{stats.monthlySales.count}</p>
+          <p className="text-xs text-text-secondary">{stats.todaySales.count} today</p>
+        </div>
+
+        {/* Monthly Expenses */}
+        <div className="bg-white p-6 rounded border-2 border-black shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <TrendingUp size={24} className="text-status-error" />
+            <p className="text-sm text-text-secondary">Expenses</p>
           </div>
+          <p className="text-3xl font-bold text-status-error mb-1">${stats.monthlyExpenses.toFixed(2)}</p>
+          <p className="text-xs text-text-secondary">${stats.todayExpenses?.toFixed(2) || '0.00'} today</p>
         </div>
 
         {/* Net Profit */}
-        <div className="bg-white p-8 rounded-lg border-4 border-black shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <div className="bg-black text-white p-3 rounded-lg">
-              <TrendingUp size={32} />
-            </div>
+        <div className="bg-white p-6 rounded border-2 border-black shadow-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <TrendingUp size={24} />
+            <p className="text-sm text-text-secondary">Net Profit</p>
           </div>
-          <p className="text-sm text-text-secondary mb-2">Net Profit</p>
-          <p className="text-5xl font-bold mb-3">
-            <span className={stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}>
-              ${stats.netProfit.toFixed(2)}
-            </span>
+          <p className={`text-3xl font-bold mb-1 ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            ${stats.netProfit.toFixed(2)}
           </p>
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <span>Revenue: ${stats.monthlySales.revenue.toFixed(2)}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-text-secondary">
-            <span>Expenses: ${stats.monthlyExpenses.toFixed(2)}</span>
-          </div>
+          <p className="text-xs text-text-secondary">This month</p>
         </div>
       </div>
 
-      {/* Today's Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-4 rounded border-2 border-black">
-          <p className="text-xs text-text-secondary mb-1">Today's Sales</p>
-          <p className="text-2xl font-bold">${stats.todaySales.revenue.toFixed(2)}</p>
-        </div>
-        <div className="bg-white p-4 rounded border-2 border-black">
-          <p className="text-xs text-text-secondary mb-1">Today's Orders</p>
-          <p className="text-2xl font-bold">{stats.todaySales.count}</p>
-        </div>
+      {/* Quick Stats & Expenses */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-4 rounded border-2 border-black">
           <p className="text-xs text-text-secondary mb-1">Low Stock Items</p>
           <p className="text-2xl font-bold">{stats.lowStockCount}</p>
         </div>
-        <div className="bg-white p-4 rounded border-2 border-black">
-          <p className="text-xs text-text-secondary mb-1">Avg Order Value</p>
-          <p className="text-2xl font-bold">
-            ${stats.monthlySales.count > 0 ? (stats.monthlySales.revenue / stats.monthlySales.count).toFixed(2) : '0.00'}
-          </p>
+
+        <div className="bg-white p-4 rounded border-2 border-black lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-bold">Top Expense Categories</p>
+            <Link href="/dashboard/expenses" className="text-xs text-black hover:underline">
+              View All →
+            </Link>
+          </div>
+          {stats.expensesByCategory && stats.expensesByCategory.length > 0 ? (
+            <div className="flex gap-4">
+              {stats.expensesByCategory.slice(0, 3).map((cat: any) => (
+                <div key={cat.category} className="flex-1">
+                  <p className="text-xs text-text-secondary">{cat.category}</p>
+                  <p className="text-lg font-bold">${cat.total.toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-text-secondary">No expenses recorded</p>
+          )}
         </div>
       </div>
 
       {/* Low Stock Alert */}
       {stats.lowStockCount > 0 && (
-        <div className="bg-status-warning text-white p-4 rounded border-2 border-black mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={24} />
-            <h3 className="font-bold text-lg">Low Stock Alert</h3>
+        <div className="bg-status-warning text-white p-4 rounded border-2 border-black mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={20} />
+            <span className="font-medium">
+              {stats.lowStockCount} {stats.lowStockCount === 1 ? 'product is' : 'products are'} running low on stock
+            </span>
           </div>
-          <p className="mb-3">
-            {stats.lowStockCount} {stats.lowStockCount === 1 ? 'product is' : 'products are'} running low on stock
-          </p>
           <Link
             href="/dashboard/inventory?low_stock=true"
-            className="inline-block bg-white text-black px-4 py-2 rounded hover:bg-gray-100 transition-colors font-medium"
+            className="bg-white text-black px-4 py-2 rounded hover:bg-gray-100 transition-colors font-medium text-sm"
           >
             View Inventory
           </Link>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Sales Trend */}
-        <div className="bg-white p-6 rounded border-2 border-black">
-          <h2 className="text-xl font-bold mb-4">Sales Trend (Last 7 Days)</h2>
+        <div className="bg-white p-4 rounded border-2 border-black">
+          <h2 className="text-lg font-bold mb-3">Sales Trend (Last 7 Days)</h2>
           {stats.salesTrend.length > 0 ? (
             <div className="space-y-2">
               {stats.salesTrend.map((day) => (
                 <div key={day.date} className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">
+                  <span className="text-xs text-text-secondary w-16">
                     {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
-                  <div className="flex items-center gap-2 flex-1 mx-4">
-                    <div className="flex-1 bg-bg-secondary rounded-full h-2">
-                      <div
-                        className="bg-black h-2 rounded-full"
-                        style={{
-                          width: `${Math.min((day.revenue / Math.max(...stats.salesTrend.map(d => d.revenue))) * 100, 100)}%`
-                        }}
-                      />
-                    </div>
+                  <div className="flex-1 mx-3 bg-bg-secondary rounded-full h-2">
+                    <div
+                      className="bg-black h-2 rounded-full"
+                      style={{
+                        width: `${Math.min((day.revenue / Math.max(...stats.salesTrend.map(d => d.revenue))) * 100, 100)}%`
+                      }}
+                    />
                   </div>
-                  <span className="font-bold">${day.revenue.toFixed(2)}</span>
+                  <span className="font-bold text-sm">${day.revenue.toFixed(2)}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-text-secondary text-center py-4">No sales data available</p>
+            <p className="text-text-secondary text-center py-4 text-sm">No sales data available</p>
           )}
         </div>
 
         {/* Top Products */}
-        <div className="bg-white p-6 rounded border-2 border-black">
-          <h2 className="text-xl font-bold mb-4">Top Products (This Month)</h2>
+        <div className="bg-white p-4 rounded border-2 border-black">
+          <h2 className="text-lg font-bold mb-3">Top Products (This Month)</h2>
           {stats.topProducts.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {stats.topProducts.map((product, index) => (
-                <div key={product.product_name} className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center font-bold">
+                <div key={product.product_name} className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold">
                     {index + 1}
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{product.product_name}</p>
-                    <p className="text-sm text-text-secondary">
-                      Revenue: ${product.revenue.toFixed(2)}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{product.product_name}</p>
+                    <p className="text-xs text-text-secondary">
+                      ${product.revenue.toFixed(2)}
                     </p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-text-secondary text-center py-4">No sales data available</p>
+            <p className="text-text-secondary text-center py-4 text-sm">No sales data available</p>
           )}
         </div>
       </div>
 
       {/* Recent Sales & Low Stock Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Recent Sales */}
         <div className="bg-white rounded border-2 border-black">
-          <div className="p-4 bg-black text-white">
-            <h2 className="text-xl font-bold">Recent Sales</h2>
+          <div className="p-3 bg-black text-white flex items-center justify-between">
+            <h2 className="text-lg font-bold">Recent Sales</h2>
+            {stats.recentSales.length > 0 && (
+              <Link href="/dashboard/sales" className="text-xs hover:underline">
+                View All →
+              </Link>
+            )}
           </div>
-          <div className="p-4">
+          <div className="p-3">
             {stats.recentSales.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {stats.recentSales.slice(0, 5).map((sale: any) => (
-                  <div key={sale.id} className="flex items-center justify-between p-3 border-2 border-black rounded">
-                    <div className="flex-1">
-                      <p className="font-mono text-sm">{sale.sale_number}</p>
-                      <p className="text-sm text-text-secondary">
-                        {new Date(sale.sale_date).toLocaleString()} • {sale.users?.full_name}
+                  <div key={sale.id} className="flex items-center justify-between p-2 border border-black rounded">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-mono text-xs truncate">{sale.sale_number}</p>
+                      <p className="text-xs text-text-secondary truncate">
+                        {new Date(sale.sale_date).toLocaleDateString()} • {sale.users?.full_name}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold">${sale.total_amount.toFixed(2)}</p>
+                    <div className="text-right ml-2">
+                      <p className="font-bold text-sm">${sale.total_amount.toFixed(2)}</p>
                       <p className="text-xs text-text-secondary">{sale.payment_method}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-text-secondary text-center py-8">No recent sales</p>
-            )}
-            {stats.recentSales.length > 0 && (
-              <Link
-                href="/sales"
-                className="block mt-4 text-center py-2 border-2 border-black rounded hover:bg-bg-secondary transition-colors"
-              >
-                View All Sales
-              </Link>
+              <p className="text-text-secondary text-center py-6 text-sm">No recent sales</p>
             )}
           </div>
         </div>
 
         {/* Low Stock Products */}
         <div className="bg-white rounded border-2 border-black">
-          <div className="p-4 bg-black text-white flex items-center justify-between">
-            <h2 className="text-xl font-bold">Low Stock Products</h2>
+          <div className="p-3 bg-black text-white flex items-center justify-between">
+            <h2 className="text-lg font-bold">Low Stock Products</h2>
             {stats.lowStockCount > 0 && (
-              <span className="bg-white text-black px-2 py-1 rounded text-sm font-bold">
+              <span className="bg-white text-black px-2 py-1 rounded text-xs font-bold">
                 {stats.lowStockCount}
               </span>
             )}
           </div>
-          <div className="p-4">
+          <div className="p-3">
             {stats.lowStockProducts && stats.lowStockProducts.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {stats.lowStockProducts.map((product: any) => (
-                  <div key={product.id} className="flex items-center justify-between p-3 border-2 border-status-warning rounded">
-                    <div className="flex items-center gap-2">
-                      <Package size={20} className="text-text-secondary" />
-                      <div>
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-text-secondary">{product.sku}</p>
+                  <div key={product.id} className="flex items-center justify-between p-2 border border-status-warning rounded">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Package size={16} className="text-text-secondary flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{product.name}</p>
+                        <p className="text-xs text-text-secondary truncate">{product.sku}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold">{product.stock_quantity}</p>
+                    <div className="text-right ml-2">
+                      <p className="font-bold text-sm">{product.stock_quantity}</p>
                       <p className="text-xs text-text-secondary">in stock</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-text-secondary text-center py-8">All products are well stocked</p>
-            )}
-            {stats.lowStockCount > 5 && (
-              <Link
-                href="/dashboard/inventory?low_stock=true"
-                className="block mt-4 text-center py-2 border-2 border-black rounded hover:bg-bg-secondary transition-colors"
-              >
-                View All Low Stock Items
-              </Link>
+              <p className="text-text-secondary text-center py-6 text-sm">All products are well stocked</p>
             )}
           </div>
         </div>

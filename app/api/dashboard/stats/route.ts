@@ -83,12 +83,31 @@ export async function GET() {
     // Monthly expenses
     const { data: expenses, error: expensesError } = await supabase
       .from('expenses')
-      .select('amount')
+      .select('amount, category')
       .gte('expense_date', startOfMonth.toISOString().split('T')[0])
 
     if (expensesError) throw expensesError
 
     const monthlyExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
+
+    // Today's expenses
+    const { data: todayExpensesData } = await supabase
+      .from('expenses')
+      .select('amount')
+      .gte('expense_date', startOfToday.toISOString().split('T')[0])
+
+    const todayExpenses = todayExpensesData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
+
+    // Expenses by category
+    const categoryTotals: { [key: string]: number } = {}
+    expenses?.forEach((exp: any) => {
+      const category = exp.category || 'Miscellaneous'
+      categoryTotals[category] = (categoryTotals[category] || 0) + Number(exp.amount)
+    })
+
+    const expensesByCategory = Object.entries(categoryTotals)
+      .map(([category, total]) => ({ category, total }))
+      .sort((a, b) => b.total - a.total)
 
     // Sales trend (last 7 days)
     const salesTrend = []
@@ -151,7 +170,9 @@ export async function GET() {
           count: monthlySalesCount,
           revenue: monthlyRevenue,
         },
+        todayExpenses,
         monthlyExpenses,
+        expensesByCategory,
         netProfit: monthlyRevenue - monthlyExpenses,
         lowStockCount,
         lowStockProducts: lowStockProducts || [],
