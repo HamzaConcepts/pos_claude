@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package, Filter } from 'lucide-react'
+import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package, Filter, FileText } from 'lucide-react'
+import { generateSalesPDF } from '@/lib/pdf-generator'
 
 
 export default function SalesPage() {
@@ -20,6 +21,10 @@ export default function SalesPage() {
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [showPdfModal, setShowPdfModal] = useState(false)
+  const [pdfPeriod, setPdfPeriod] = useState<'day' | 'month' | 'year'>('day')
+  const [pdfDate, setPdfDate] = useState(new Date().toISOString().split('T')[0])
+  const [generatingPdf, setGeneratingPdf] = useState(false)
 
   useEffect(() => {
     fetchSales()
@@ -121,6 +126,19 @@ export default function SalesPage() {
     setEndDate('')
   }
 
+  const generatePDF = async () => {
+    setGeneratingPdf(true)
+    try {
+      await generateSalesPDF(sales, pdfPeriod, pdfDate)
+      setShowPdfModal(false)
+    } catch (err: any) {
+      console.error('Failed to generate PDF:', err)
+      alert(err.message || 'Failed to generate PDF. Please try again.')
+    } finally {
+      setGeneratingPdf(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -131,7 +149,16 @@ export default function SalesPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Sales History</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Sales History</h1>
+        <button
+          onClick={() => setShowPdfModal(true)}
+          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors flex items-center gap-2"
+        >
+          <FileText size={20} />
+          Sales Record
+        </button>
+      </div>
 
       {error && (
         <div className="mb-4 p-4 bg-status-error text-white rounded">
@@ -501,6 +528,78 @@ export default function SalesPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Generation Modal */}
+      {showPdfModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded border-2 border-black max-w-md w-full p-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold mb-2">Generate Sales Record</h2>
+              <p className="text-sm text-text-secondary">Select the time period for the sales report</p>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block mb-2 font-medium text-sm">
+                  Period Type <span className="text-status-error">*</span>
+                </label>
+                <select
+                  value={pdfPeriod}
+                  onChange={(e) => setPdfPeriod(e.target.value as 'day' | 'month' | 'year')}
+                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none font-sans"
+                >
+                  <option value="day">Daily Report</option>
+                  <option value="month">Monthly Report</option>
+                  <option value="year">Yearly Report</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-2 font-medium text-sm">
+                  {pdfPeriod === 'day' ? 'Select Date' : pdfPeriod === 'month' ? 'Select Month' : 'Select Year'} <span className="text-status-error">*</span>
+                </label>
+                <input
+                  type={pdfPeriod === 'year' ? 'number' : pdfPeriod === 'month' ? 'month' : 'date'}
+                  value={pdfPeriod === 'year' ? new Date(pdfDate).getFullYear() : pdfDate}
+                  onChange={(e) => {
+                    if (pdfPeriod === 'year') {
+                      setPdfDate(`${e.target.value}-01-01`)
+                    } else {
+                      setPdfDate(e.target.value)
+                    }
+                  }}
+                  min={pdfPeriod === 'year' ? '2020' : undefined}
+                  max={pdfPeriod === 'year' ? new Date().getFullYear().toString() : undefined}
+                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none font-sans"
+                />
+              </div>
+
+              <div className="p-3 bg-bg-secondary border-2 border-black rounded text-sm">
+                <p className="text-text-secondary">
+                  The report will include all sales for the selected {pdfPeriod} and can be printed or saved as PDF.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowPdfModal(false)}
+                className="flex-1 px-4 py-3 border-2 border-black rounded hover:bg-bg-secondary transition-colors font-medium"
+                disabled={generatingPdf}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={generatePDF}
+                disabled={generatingPdf}
+                className="flex-1 px-4 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+              >
+                {generatingPdf ? 'Generating...' : 'Generate PDF'}
+              </button>
+            </div>
           </div>
         </div>
       )}
