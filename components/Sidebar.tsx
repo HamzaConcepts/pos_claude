@@ -31,6 +31,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     { href: '/dashboard/pos', label: 'POS', icon: ShoppingCart, permission: 'process_sale' },
     { href: '/dashboard/inventory', label: 'Inventory', icon: Package, permission: 'view_dashboard' },
     { href: '/dashboard/sales', label: 'Sales', icon: DollarSign, permission: 'view_sales' },
+    { href: '/dashboard/expenses', label: 'Expenses', icon: FileText, permission: 'view_reports' },
     { href: '/dashboard/accounting', label: 'Accounting', icon: FileText, permission: 'view_reports' },
     { href: '/dashboard/reports', label: 'Reports', icon: FileText, permission: 'view_reports' },
     { href: '/dashboard/users', label: 'Users', icon: Users, permission: 'create_user' },
