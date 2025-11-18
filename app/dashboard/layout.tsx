@@ -44,6 +44,11 @@ export default function DashboardLayout({
         role: userData.role as UserRole,
         name: userData.full_name,
       })
+
+      // Redirect Cashier to POS page if on dashboard root
+      if (userData.role === 'Cashier' && window.location.pathname === '/dashboard') {
+        router.push('/dashboard/pos')
+      }
     } catch (error) {
       console.error('Error checking user:', error)
       router.push('/login')

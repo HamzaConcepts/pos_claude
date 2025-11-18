@@ -5,7 +5,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-export type UserRole = 'Manager' | 'Admin' | 'Cashier'
+export type UserRole = 'Manager' | 'Cashier'
 
 export interface User {
   id: string
@@ -24,14 +24,10 @@ export const permissions = {
     'view_reports', 'export_reports',
     'view_dashboard'
   ],
-  Admin: [
-    'create_product', 'edit_product', 'delete_product',
-    'process_sale', 'view_sales',
-    'add_expense', 'edit_expense', 'view_reports',
-    'export_reports', 'view_dashboard'
-  ],
   Cashier: [
-    'process_sale', 'view_sales', 'view_dashboard'
+    'create_product', 'edit_product',
+    'process_sale',
+    'add_expense'
   ]
 }
 
