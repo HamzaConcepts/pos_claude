@@ -4,11 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -18,8 +20,43 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // First, check if it's a cashier account (direct database auth)
+      // We need to use crypt() function to compare hashed passwords
+      const { data: cashierData, error: cashierError } = await supabase
+        .rpc('verify_cashier_login', {
+          identifier: name,
+          password_input: password
+        })
+
+      if (cashierData && cashierData.length > 0) {
+        const cashier = cashierData[0]
+        // Create a session manually for cashier
+        localStorage.setItem('user_session', JSON.stringify({
+          id: cashier.id,
+          role: 'Cashier',
+          full_name: cashier.full_name,
+          phone_number: cashier.phone_number,
+        }))
+        router.push('/dashboard/pos')
+        return
+      }
+
+      // If not cashier, try manager login with Supabase Auth
+      const { data: managerData, error: managerError } = await supabase
+        .from('managers')
+        .select('email, phone_number, full_name')
+        .or(`full_name.ilike.%${name}%,phone_number.eq.${name}`)
+        .maybeSingle()
+
+      if (managerError || !managerData) {
+        setError('User not found')
+        setLoading(false)
+        return
+      }
+
+      // Manager login with Supabase Auth
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: managerData.email,
         password,
       })
 
@@ -29,7 +66,7 @@ export default function LoginPage() {
         router.push('/dashboard')
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during login')
+      setError(err.message || 'Invalid credentials')
     } finally {
       setLoading(false)
     }
@@ -50,15 +87,16 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin}>
           <div className="mb-4">
-            <label htmlFor="email" className="block mb-2 font-medium">
-              Email
+            <label htmlFor="name" className="block mb-2 font-medium">
+              Name or Phone Number
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+              placeholder="Enter your name or phone number"
               required
               disabled={loading}
             />
@@ -68,15 +106,24 @@ export default function LoginPage() {
             <label htmlFor="password" className="block mb-2 font-medium">
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
-              required
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black pr-10"
+                required
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-black"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <button

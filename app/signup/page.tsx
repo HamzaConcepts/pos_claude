@@ -5,16 +5,20 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import type { UserRole } from '@/lib/supabase'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function SignupPage() {
   const router = useRouter()
+  const [accountType, setAccountType] = useState<'Manager' | 'Cashier'>('Manager')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [formData, setFormData] = useState({
-    username: '',
+    storeName: '',
+    fullName: '',
+    phoneNumber: '',
     email: '',
     password: '',
     confirmPassword: '',
-    fullName: '',
-    role: 'Cashier' as UserRole,
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -46,50 +50,102 @@ export default function SignupPage() {
       return
     }
 
-    if (formData.username.length < 3 || formData.username.length > 50) {
-      setError('Username must be 3-50 characters')
+    // Phone number validation
+    if (!/^\d{11}$/.test(formData.phoneNumber)) {
+      setError('Phone number must be exactly 11 digits')
       return
     }
 
-    if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      setError('Username can only contain letters, numbers, and underscores')
-      return
+    // Manager-specific validations
+    if (accountType === 'Manager') {
+      if (!formData.storeName.trim()) {
+        setError('Store name is required')
+        return
+      }
+      if (!formData.email.trim()) {
+        setError('Email is required for Manager accounts')
+        return
+      }
     }
 
     setLoading(true)
 
     try {
-      // Sign up with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            username: formData.username,
-            full_name: formData.fullName,
-            role: formData.role,
+      // Check if phone number already exists in either table
+      const { data: existingManager } = await supabase
+        .from('managers')
+        .select('phone_number')
+        .eq('phone_number', formData.phoneNumber)
+        .maybeSingle()
+
+      const { data: existingCashier } = await supabase
+        .from('cashier_accounts')
+        .select('phone_number')
+        .eq('phone_number', formData.phoneNumber)
+        .maybeSingle()
+
+      if (existingManager || existingCashier) {
+        setError('Phone number already exists')
+        setLoading(false)
+        return
+      }
+
+      if (accountType === 'Manager') {
+        // Manager signup with email verification (uses Supabase Auth)
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              full_name: formData.fullName,
+              phone_number: formData.phoneNumber,
+              store_name: formData.storeName,
+              role: 'Manager',
+            },
           },
-        },
-      })
+        })
 
-      if (authError) throw authError
+        if (authError) throw authError
 
-      if (authData.user) {
-        // Insert user data into users table
-        const { error: dbError } = await supabase
-          .from('users')
+        if (authData.user) {
+          // Insert manager data into managers table
+          const { error: dbError } = await supabase
+            .from('managers')
+            .insert([
+              {
+                id: authData.user.id,
+                email: formData.email,
+                full_name: formData.fullName,
+                phone_number: formData.phoneNumber,
+                store_name: formData.storeName,
+              },
+            ])
+
+          if (dbError) throw dbError
+
+          alert('Please check your email to verify your account')
+          router.push('/login')
+        }
+      } else {
+        // Cashier signup - direct database insert (no Supabase Auth)
+        // Hash password using a simple approach for cashier-only accounts
+        const { data: insertData, error: insertError } = await supabase
+          .from('cashier_accounts')
           .insert([
             {
-              id: authData.user.id,
-              username: formData.username,
-              email: formData.email,
               full_name: formData.fullName,
-              role: formData.role,
+              phone_number: formData.phoneNumber,
+              password_hash: formData.password, // Will be hashed by database trigger/function
+              role: 'Cashier',
             },
           ])
+          .select()
+          .single()
 
-        if (dbError) throw dbError
+        if (insertError) throw insertError
 
+        // Direct login for cashier (session management handled separately)
+        alert('Account created successfully! Please login.')
         router.push('/login')
       }
     } catch (err: any) {
@@ -103,7 +159,33 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg-secondary py-8">
       <div className="bg-white p-8 rounded border-2 border-gray w-full max-w-md">
         <h1 className="text-3xl font-bold mb-3 text-center">POS System</h1>
-        <p className="text-center text-text-secondary">Create a new account</p>
+        <p className="text-center text-text-secondary mb-6">Create a new account</p>
+
+        {/* Account Type Toggle */}
+        <div className="flex gap-2 mb-6">
+          <button
+            type="button"
+            onClick={() => setAccountType('Manager')}
+            className={`flex-1 py-2 rounded font-medium transition-colors ${
+              accountType === 'Manager'
+                ? 'bg-black text-white'
+                : 'bg-gray-200 text-black hover:bg-gray-300'
+            }`}
+          >
+            Manager
+          </button>
+          <button
+            type="button"
+            onClick={() => setAccountType('Cashier')}
+            className={`flex-1 py-2 rounded font-medium transition-colors ${
+              accountType === 'Cashier'
+                ? 'bg-black text-white'
+                : 'bg-gray-200 text-black hover:bg-gray-300'
+            }`}
+          >
+            Cashier
+          </button>
+        </div>
 
         {error && (
           <div className="mb-4 p-3 bg-status-error text-white rounded">
@@ -112,25 +194,27 @@ export default function SignupPage() {
         )}
 
         <form onSubmit={handleSignup}>
-          <div className="mb-4">
-            <label htmlFor="username" className="block mb-2 font-medium">
-              Username
-            </label>
-            <input
-              id="username"
-              name="username"
-              type="text"
-              value={formData.username}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
-              required
-              disabled={loading}
-            />
-          </div>
+          {accountType === 'Manager' && (
+            <div className="mb-4">
+              <label htmlFor="storeName" className="block mb-2 font-medium">
+                Store Name
+              </label>
+              <input
+                id="storeName"
+                name="storeName"
+                type="text"
+                value={formData.storeName}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+                required
+                disabled={loading}
+              />
+            </div>
+          )}
 
           <div className="mb-4">
             <label htmlFor="fullName" className="block mb-2 font-medium">
-              Full Name
+              {accountType === 'Manager' ? 'Manager Name' : 'Name'}
             </label>
             <input
               id="fullName"
@@ -145,69 +229,89 @@ export default function SignupPage() {
           </div>
 
           <div className="mb-4">
-            <label htmlFor="email" className="block mb-2 font-medium">
-              Email
+            <label htmlFor="phoneNumber" className="block mb-2 font-medium">
+              Phone Number <span className="text-sm text-text-secondary">(11 digits)</span>
             </label>
             <input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              value={formData.phoneNumber}
               onChange={handleChange}
               className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+              placeholder="03001234567"
+              maxLength={11}
               required
               disabled={loading}
             />
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="role" className="block mb-2 font-medium">
-              Role
-            </label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black font-sans"
-              disabled={loading}
-            >
-              <option value="Cashier">Cashier</option>
-              <option value="Admin">Admin</option>
-              <option value="Manager">Manager</option>
-            </select>
-          </div>
+          {accountType === 'Manager' && (
+            <div className="mb-4">
+              <label htmlFor="email" className="block mb-2 font-medium">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+                required
+                disabled={loading}
+              />
+            </div>
+          )}
 
           <div className="mb-4">
             <label htmlFor="password" className="block mb-2 font-medium">
               Password
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
-              required
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black pr-10"
+                required
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-black"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <div className="mb-6">
             <label htmlFor="confirmPassword" className="block mb-2 font-medium">
-              Confirm Password
+              Repeat Password
             </label>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
-              required
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black pr-10"
+                required
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-black"
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           <button

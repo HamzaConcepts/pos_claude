@@ -12,7 +12,7 @@ export async function GET() {
       .from('expenses')
       .select(`
         *,
-        users (
+        managers (
           full_name
         )
       `)

@@ -8,17 +8,31 @@ export async function GET() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    // Fetch all users
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('id, email, full_name, role')
+    // Fetch managers
+    const { data: managers, error: managersError } = await supabase
+      .from('managers')
+      .select('id, email, full_name, created_at')
       .order('full_name', { ascending: true })
 
-    if (error) throw error
+    if (managersError) throw managersError
+
+    // Fetch cashiers
+    const { data: cashiers, error: cashiersError } = await supabase
+      .from('cashier_accounts')
+      .select('id, phone_number, full_name, created_at')
+      .order('full_name', { ascending: true })
+
+    if (cashiersError) throw cashiersError
+
+    // Combine and add role field
+    const allUsers = [
+      ...(managers || []).map(m => ({ ...m, role: 'Manager' })),
+      ...(cashiers || []).map(c => ({ ...c, email: c.phone_number, role: 'Cashier' }))
+    ]
 
     return NextResponse.json({
       success: true,
-      data: users || [],
+      data: allUsers,
     })
   } catch (error: any) {
     return NextResponse.json(

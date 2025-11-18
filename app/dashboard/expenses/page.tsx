@@ -11,7 +11,7 @@ interface Expense {
   category: string
   expense_date: string
   recorded_by: string
-  users?: {
+  managers?: {
     full_name: string
   }
   created_at: string
@@ -50,6 +50,15 @@ export default function ExpensesPage() {
   }, [])
 
   const fetchCurrentUser = async () => {
+    // Check for cashier session first
+    const cashierSession = localStorage.getItem('user_session')
+    if (cashierSession) {
+      const session = JSON.parse(cashierSession)
+      setUserId(session.id.toString()) // Cashier ID from localStorage
+      return
+    }
+    
+    // Check for manager auth session
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       setUserId(user.id)
@@ -254,7 +263,7 @@ export default function ExpensesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {expense.users?.full_name || 'Unknown'}
+                      {expense.managers?.full_name || 'Cashier'}
                     </td>
                     <td className="px-4 py-3 text-sm text-right font-bold text-status-error">
                       ${expense.amount.toFixed(2)}

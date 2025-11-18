@@ -36,6 +36,9 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
   ]
 
   const handleLogout = async () => {
+    // Clear cashier session if exists
+    localStorage.removeItem('user_session')
+    // Logout from Supabase Auth (for managers)
     await supabase.auth.signOut()
     router.push('/login')
   }

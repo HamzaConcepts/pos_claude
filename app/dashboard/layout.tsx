@@ -21,6 +21,19 @@ export default function DashboardLayout({
 
   const checkUser = async () => {
     try {
+      // First check for cashier session in localStorage
+      const cashierSession = localStorage.getItem('user_session')
+      if (cashierSession) {
+        const session = JSON.parse(cashierSession)
+        setUser({
+          role: session.role as UserRole,
+          name: session.full_name,
+        })
+        setLoading(false)
+        return
+      }
+
+      // Check Supabase Auth for Manager accounts
       const { data: { user: authUser } } = await supabase.auth.getUser()
 
       if (!authUser) {
@@ -28,27 +41,22 @@ export default function DashboardLayout({
         return
       }
 
-      // Fetch user details from users table
-      const { data: userData, error } = await supabase
-        .from('users')
-        .select('role, full_name')
+      // Fetch manager details from managers table
+      const { data: managerData, error } = await supabase
+        .from('managers')
+        .select('full_name')
         .eq('id', authUser.id)
         .single()
 
-      if (error || !userData) {
+      if (error || !managerData) {
         router.push('/login')
         return
       }
 
       setUser({
-        role: userData.role as UserRole,
-        name: userData.full_name,
+        role: 'Manager' as UserRole,
+        name: managerData.full_name,
       })
-
-      // Redirect Cashier to POS page if on dashboard root
-      if (userData.role === 'Cashier' && window.location.pathname === '/dashboard') {
-        router.push('/dashboard/pos')
-      }
     } catch (error) {
       console.error('Error checking user:', error)
       router.push('/login')

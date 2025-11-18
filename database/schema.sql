@@ -4,13 +4,13 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Users Table
-CREATE TABLE IF NOT EXISTS users (
+-- Managers Table (Supabase Auth users)
+CREATE TABLE IF NOT EXISTS managers (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('Manager', 'Admin', 'Cashier')),
     full_name VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(11) UNIQUE NOT NULL,
+    store_name VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN DEFAULT TRUE
 );
@@ -139,48 +139,45 @@ CREATE TRIGGER update_inventory_updated_at BEFORE UPDATE ON inventory
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Enable Row Level Security
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE managers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for users table
-CREATE POLICY "Users can view their own data" ON users
+-- RLS Policies for managers table
+CREATE POLICY "Managers can view their own data" ON managers
     FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Users can update their own data" ON users
+CREATE POLICY "Managers can update their own data" ON managers
     FOR UPDATE USING (auth.uid() = id);
 
--- RLS Policies for products (everyone authenticated can view, admins/managers can modify)
+-- RLS Policies for products (everyone authenticated can view, managers can modify)
 CREATE POLICY "Anyone authenticated can view products" ON products
     FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Admins and Managers can insert products" ON products
+CREATE POLICY "Managers can insert products" ON products
     FOR INSERT WITH CHECK (
         EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role IN ('Admin', 'Manager')
+            SELECT 1 FROM managers 
+            WHERE managers.id = auth.uid()
         )
     );
 
-CREATE POLICY "Admins and Managers can update products" ON products
+CREATE POLICY "Managers can update products" ON products
     FOR UPDATE USING (
         EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role IN ('Admin', 'Manager')
+            SELECT 1 FROM managers 
+            WHERE managers.id = auth.uid()
         )
     );
 
 CREATE POLICY "Managers can delete products" ON products
     FOR DELETE USING (
         EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role = 'Manager'
+            SELECT 1 FROM managers 
+            WHERE managers.id = auth.uid()
         )
     );
 
@@ -202,30 +199,27 @@ CREATE POLICY "Anyone authenticated can insert sale items" ON sale_items
 CREATE POLICY "Anyone authenticated can view expenses" ON expenses
     FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Admins and Managers can insert expenses" ON expenses
+CREATE POLICY "Managers can insert expenses" ON expenses
     FOR INSERT WITH CHECK (
         EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role IN ('Admin', 'Manager')
+            SELECT 1 FROM managers 
+            WHERE managers.id = auth.uid()
         )
     );
 
-CREATE POLICY "Admins and Managers can update expenses" ON expenses
+CREATE POLICY "Managers can update expenses" ON expenses
     FOR UPDATE USING (
         EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role IN ('Admin', 'Manager')
+            SELECT 1 FROM managers 
+            WHERE managers.id = auth.uid()
         )
     );
 
 CREATE POLICY "Managers can delete expenses" ON expenses
     FOR DELETE USING (
         EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role = 'Manager'
+            SELECT 1 FROM managers 
+            WHERE managers.id = auth.uid()
         )
     );
 
