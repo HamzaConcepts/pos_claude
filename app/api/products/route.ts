@@ -13,6 +13,47 @@ const supabaseAdmin = createClient(
   }
 )
 
+// Helper function to generate next SKU
+async function generateNextSKU(storeId: number): Promise<string> {
+  // Get store name for prefix
+  const { data: store } = await supabaseAdmin
+    .from('stores')
+    .select('store_name')
+    .eq('id', storeId)
+    .single()
+
+  if (!store) {
+    throw new Error('Store not found')
+  }
+
+  // Get last SKU for this store
+  const { data: lastProduct } = await supabaseAdmin
+    .from('products')
+    .select('sku')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  // Extract first 3 letters from store name
+  const prefix = store.store_name
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .substring(0, 3)
+    .padEnd(3, 'X')
+
+  // Determine next sequence number
+  let nextNumber = 1
+  if (lastProduct?.sku) {
+    const lastNumber = parseInt(lastProduct.sku.split('-')[1] || '0')
+    nextNumber = lastNumber + 1
+  }
+
+  // Format: XXX-0001
+  return `${prefix}-${nextNumber.toString().padStart(4, '0')}`
+}
+
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -121,15 +162,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
     const body = await request.json()
     const {
       name,
-      sku,
       description,
       price,
       cost_price,
@@ -140,7 +175,7 @@ export async function POST(request: Request) {
     } = body
 
     // Validation
-    if (!name || !sku || price === undefined || cost_price === undefined || !store_id) {
+    if (!name || price === undefined || cost_price === undefined || !store_id) {
       return NextResponse.json(
         {
           success: false,
@@ -173,13 +208,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Insert product first
-    const { data: product, error: productError } = await supabase
+    // Generate SKU automatically
+    const generatedSKU = await generateNextSKU(parseInt(store_id))
+
+    // Insert product first using admin client
+    const { data: product, error: productError } = await supabaseAdmin
       .from('products')
       .insert([
         {
           name,
-          sku,
+          sku: generatedSKU,
           description,
           category,
           store_id: parseInt(store_id),
