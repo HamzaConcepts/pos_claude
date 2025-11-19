@@ -7,9 +7,7 @@ interface Sale {
   amount_paid?: number
   payment_method: string
   payment_status: string
-  users?: {
-    full_name: string
-  }
+  cashier_name?: string
   sale_items?: Array<{
     quantity: number
     cost_price_snapshot?: number
@@ -274,7 +272,7 @@ export async function generateSalesPDF(
                 minute: '2-digit' 
               })}</td>
               <td>${sale.sale_description || sale.sale_number}</td>
-              <td>${sale.users?.full_name || 'Unknown'}</td>
+              <td>${sale.cashier_name || 'Unknown'}</td>
               <td class="text-center">${sale.payment_method}</td>
               <td class="text-center">${sale.payment_status}</td>
               <td class="text-right"><strong>$${sale.total_amount.toFixed(2)}</strong></td>

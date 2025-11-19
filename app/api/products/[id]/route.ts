@@ -1,17 +1,24 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Create admin client to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+)
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
-    const { data: product, error } = await supabase
+    const { data: product, error } = await supabaseAdmin
       .from('products')
       .select(`
         *,
@@ -68,11 +75,6 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
     const body = await request.json()
     const {
       name,
@@ -105,7 +107,7 @@ export async function PUT(
     if (category !== undefined) productUpdateData.category = category
 
     if (Object.keys(productUpdateData).length > 0) {
-      const { error: productError } = await supabase
+      const { error: productError } = await supabaseAdmin
         .from('products')
         .update(productUpdateData)
         .eq('id', params.id)
@@ -128,7 +130,7 @@ export async function PUT(
     // Update latest inventory if price/stock changes
     if (price !== undefined || cost_price !== undefined || low_stock_threshold !== undefined || stock_quantity !== undefined) {
       // Get latest inventory
-      const { data: inventories } = await supabase
+      const { data: inventories } = await supabaseAdmin
         .from('inventory')
         .select('*')
         .eq('product_id', params.id)
@@ -147,7 +149,7 @@ export async function PUT(
           inventoryUpdateData.quantity_added = latestInventory.quantity_added + (stock_quantity - latestInventory.quantity_remaining)
         }
 
-        const { error: inventoryError } = await supabase
+        const { error: inventoryError } = await supabaseAdmin
           .from('inventory')
           .update(inventoryUpdateData)
           .eq('id', latestInventory.id)
@@ -157,7 +159,7 @@ export async function PUT(
     }
 
     // Fetch updated product
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('products')
       .select(`
         *,
@@ -203,13 +205,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
     // Soft delete - set is_active to false
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('products')
       .update({ is_active: false })
       .eq('id', params.id)

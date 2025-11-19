@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Create admin client to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+)
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
     const productId = parseInt(params.id)
     const body = await request.json()
     const {
@@ -34,10 +41,10 @@ export async function POST(
       )
     }
 
-    // Check if product exists
-    const { data: product, error: productError } = await supabase
+    // Check if product exists and get store_id
+    const { data: product, error: productError } = await supabaseAdmin
       .from('products')
-      .select('*')
+      .select('*, store_id')
       .eq('id', productId)
       .single()
 
@@ -54,17 +61,18 @@ export async function POST(
 
     // If product is inactive, reactivate it
     if (!product.is_active) {
-      await supabase
+      await supabaseAdmin
         .from('products')
         .update({ is_active: true })
         .eq('id', productId)
     }
 
-    // Create new inventory entry
-    const { data: inventory, error: inventoryError } = await supabase
+    // Create new inventory entry with store_id
+    const { data: inventory, error: inventoryError } = await supabaseAdmin
       .from('inventory')
       .insert({
         product_id: productId,
+        store_id: product.store_id,
         cost_price: cost_price,
         selling_price: selling_price,
         quantity_added: quantity_added,
