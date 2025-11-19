@@ -42,30 +42,31 @@ export async function GET(request: Request) {
       const recordedByIds = [...new Set(data.map(e => e.recorded_by).filter(Boolean))]
       
       if (recordedByIds.length > 0) {
-        // Try to fetch from managers first
-        const { data: managers } = await supabaseAdmin
-          .from('managers')
-          .select('id, full_name')
-          .in('id', recordedByIds)
+        // Separate UUIDs (managers) from integers (cashiers)
+        const managerIds = recordedByIds.filter(id => typeof id === 'string' && id.includes('-'))
+        const cashierIds = recordedByIds.filter(id => typeof id === 'number' || (typeof id === 'string' && !id.includes('-')))
         
-        // Then try cashiers for any remaining IDs
-        const managerIds = new Set(managers?.map(m => m.id) || [])
-        const cashierIds = recordedByIds.filter(id => !managerIds.has(id))
+        const nameMap = new Map()
         
-        let cashiers = []
+        // Fetch managers
+        if (managerIds.length > 0) {
+          const { data: managers } = await supabaseAdmin
+            .from('managers')
+            .select('id, full_name')
+            .in('id', managerIds)
+          
+          managers?.forEach(m => nameMap.set(m.id, m.full_name))
+        }
+        
+        // Fetch cashiers
         if (cashierIds.length > 0) {
-          const { data: cashierData } = await supabaseAdmin
+          const { data: cashiers } = await supabaseAdmin
             .from('cashier_accounts')
             .select('id, full_name')
             .in('id', cashierIds)
-          cashiers = cashierData || []
+          
+          cashiers?.forEach(c => nameMap.set(c.id, c.full_name))
         }
-        
-        // Create combined name map
-        const nameMap = new Map([
-          ...(managers?.map(m => [m.id, m.full_name]) || []),
-          ...(cashiers?.map(c => [c.id, c.full_name]) || [])
-        ])
         
         // Add recorder names to expenses
         data.forEach(expense => {
