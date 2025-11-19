@@ -76,7 +76,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-bg-secondary">
       <div className="bg-white p-8 rounded border-2 border-gray w-full max-w-md">
         <h1 className="text-3xl font-bold mb-3 text-center">POS System</h1>
-        <p className="text-center text-text-secondary">Sign in to your account</p>
+        <p className="mb-5 text-center text-text-secondary">Sign in to your account</p>
         {/* <h2 className="text-xl font-semibold mb-6">Login</h2> */}
 
         {error && (

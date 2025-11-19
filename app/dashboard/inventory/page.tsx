@@ -22,6 +22,9 @@ export default function InventoryPage() {
   const [editingProduct, setEditingProduct] = useState<ProductWithBackwardCompatibility | null>(null)
   const [error, setError] = useState('')
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState('')
+  const [importSuccess, setImportSuccess] = useState('')
 
   useEffect(() => {
     fetchProducts()
@@ -151,6 +154,97 @@ export default function InventoryPage() {
     setExpandedProductId(expandedProductId === productId ? null : productId)
   }
 
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.name.endsWith('.csv')) {
+      setImportError('Please select a CSV file')
+      return
+    }
+
+    setImporting(true)
+    setImportError('')
+    setImportSuccess('')
+
+    try {
+      const text = await file.text()
+      const lines = text.split('\n').filter(line => line.trim())
+      
+      if (lines.length < 2) {
+        setImportError('CSV file is empty or invalid')
+        setImporting(false)
+        return
+      }
+
+      // Parse CSV (skip header row)
+      const products = []
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line) continue
+
+        // Split by comma but handle quoted values
+        const values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || []
+        
+        if (values.length < 6) {
+          console.warn(`Skipping invalid line ${i + 1}: insufficient fields`)
+          continue
+        }
+
+        const [sku, name, description, category, price, cost_price, stock_quantity, low_stock_threshold] = values
+
+        // Validate required fields
+        if (!sku || !name || !price || !cost_price) {
+          console.warn(`Skipping line ${i + 1}: missing required fields`)
+          continue
+        }
+
+        products.push({
+          sku: sku.trim(),
+          name: name.trim(),
+          description: description?.trim() || null,
+          category: category?.trim() || null,
+          price: parseFloat(price),
+          cost_price: parseFloat(cost_price),
+          stock_quantity: stock_quantity ? parseInt(stock_quantity) : 0,
+          low_stock_threshold: low_stock_threshold ? parseInt(low_stock_threshold) : 10
+        })
+      }
+
+      if (products.length === 0) {
+        setImportError('No valid products found in CSV file')
+        setImporting(false)
+        return
+      }
+
+      // Send to API
+      const response = await fetch('/api/products/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setImportSuccess(`Successfully imported ${result.data.count} products`)
+        fetchProducts()
+        // Clear success message after 5 seconds
+        setTimeout(() => setImportSuccess(''), 5000)
+      } else {
+        setImportError(result.error || 'Failed to import products')
+      }
+    } catch (err) {
+      setImportError('Error reading CSV file')
+      console.error('Import error:', err)
+    } finally {
+      setImporting(false)
+      // Reset file input
+      event.target.value = ''
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -164,6 +258,17 @@ export default function InventoryPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Inventory Management</h1>
         <div className="flex gap-3">
+          <label className="flex items-center gap-2 bg-white border-2 border-black px-4 py-2 rounded hover:bg-gray-100 transition-colors cursor-pointer">
+            <Package size={20} />
+            {importing ? 'Importing...' : 'Import CSV'}
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileImport}
+              disabled={importing}
+              className="hidden"
+            />
+          </label>
           <button
             onClick={() => setIsRestockModalOpen(true)}
             className="flex items-center gap-2 bg-white border-2 border-black px-4 py-2 rounded hover:bg-gray-100 transition-colors"
@@ -184,6 +289,24 @@ export default function InventoryPage() {
       {error && (
         <div className="mb-4 p-4 bg-status-error text-white rounded">
           {error}
+        </div>
+      )}
+
+      {importError && (
+        <div className="mb-4 p-4 bg-status-error text-white rounded flex items-center justify-between">
+          <span>{importError}</span>
+          <button onClick={() => setImportError('')} className="text-white hover:text-gray-200">
+            ✕
+          </button>
+        </div>
+      )}
+
+      {importSuccess && (
+        <div className="mb-4 p-4 bg-green-600 text-white rounded flex items-center justify-between">
+          <span>{importSuccess}</span>
+          <button onClick={() => setImportSuccess('')} className="text-white hover:text-gray-200">
+            ✕
+          </button>
         </div>
       )}
 

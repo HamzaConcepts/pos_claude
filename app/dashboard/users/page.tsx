@@ -23,7 +23,13 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/users')
+      setError('')
+      const response = await fetch('/api/users', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       const result = await response.json()
 
       if (result.success) {
@@ -33,6 +39,7 @@ export default function UsersPage() {
       }
     } catch (err) {
       setError('Failed to fetch users')
+      console.error('Error fetching users:', err)
     } finally {
       setLoading(false)
     }
