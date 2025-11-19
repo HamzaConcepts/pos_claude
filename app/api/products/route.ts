@@ -1,22 +1,36 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+
+// Create admin client to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+)
 
 export async function GET(request: Request) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const category = searchParams.get('category') || ''
     const lowStock = searchParams.get('low_stock') === 'true'
     const includeInactive = searchParams.get('include_inactive') === 'true'
+    const storeId = searchParams.get('store_id')
+
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'Store ID is required' },
+        { status: 400 }
+      )
+    }
 
     // Fetch products with their inventory
-    let query = supabase
+    let query = supabaseAdmin
       .from('products')
       .select(`
         *,
@@ -30,6 +44,7 @@ export async function GET(request: Request) {
           restock_date
         )
       `)
+      .eq('store_id', parseInt(storeId))
       .order('created_at', { ascending: false })
     
     // Filter by active status unless include_inactive is true
@@ -49,7 +64,10 @@ export async function GET(request: Request) {
 
     const { data: products, error } = await query
 
-    if (error) throw error
+    if (error) {
+      console.error('Error fetching products:', error)
+      throw error
+    }
 
     // Transform data to include aggregated stock info
     const transformedProducts = products?.map((product: any) => {
@@ -118,10 +136,11 @@ export async function POST(request: Request) {
       stock_quantity,
       low_stock_threshold,
       category,
+      store_id,
     } = body
 
     // Validation
-    if (!name || !sku || price === undefined || cost_price === undefined) {
+    if (!name || !sku || price === undefined || cost_price === undefined || !store_id) {
       return NextResponse.json(
         {
           success: false,
@@ -163,6 +182,7 @@ export async function POST(request: Request) {
           sku,
           description,
           category,
+          store_id: parseInt(store_id),
           is_active: true,
         },
       ])
@@ -170,6 +190,7 @@ export async function POST(request: Request) {
       .single()
 
     if (productError) {
+      console.error('Error creating product:', productError)
       if (productError.code === '23505') {
         return NextResponse.json(
           {
@@ -184,7 +205,7 @@ export async function POST(request: Request) {
     }
 
     // Insert initial inventory
-    const { data: inventory, error: inventoryError } = await supabase
+    const { data: inventory, error: inventoryError } = await supabaseAdmin
       .from('inventory')
       .insert([
         {
@@ -195,12 +216,16 @@ export async function POST(request: Request) {
           quantity_remaining: stock_quantity || 0,
           low_stock_threshold: low_stock_threshold || 10,
           batch_number: `BATCH-${Date.now()}`,
+          store_id: parseInt(store_id),
         },
       ])
       .select()
       .single()
 
-    if (inventoryError) throw inventoryError
+    if (inventoryError) {
+      console.error('Error creating inventory:', inventoryError)
+      throw inventoryError
+    }
 
     return NextResponse.json({
       success: true,
@@ -215,6 +240,7 @@ export async function POST(request: Request) {
       message: 'Product created successfully',
     })
   } catch (error: any) {
+    console.error('Product creation error:', error)
     return NextResponse.json(
       {
         success: false,

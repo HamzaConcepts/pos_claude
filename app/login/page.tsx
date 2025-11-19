@@ -30,42 +30,127 @@ export default function LoginPage() {
 
       if (cashierData && cashierData.length > 0) {
         const cashier = cashierData[0]
+        
+        // Check if cashier has store_id (approved)
+        if (!cashier.store_id) {
+          setError('Your account is pending approval from the store manager.')
+          setLoading(false)
+          return
+        }
+        
         // Create a session manually for cashier
         localStorage.setItem('user_session', JSON.stringify({
           id: cashier.id,
           role: 'Cashier',
           full_name: cashier.full_name,
           phone_number: cashier.phone_number,
+          store_id: cashier.store_id,
         }))
+        
+        // Also set sessionStorage for consistency (used by layout and getStoreId)
+        sessionStorage.setItem('store_id', cashier.store_id.toString())
+        sessionStorage.setItem('user_type', 'Cashier')
+        
         router.push('/dashboard/pos')
         return
       }
 
       // If not cashier, try manager login with Supabase Auth
-      const { data: managerData, error: managerError } = await supabase
-        .from('managers')
-        .select('email, phone_number, full_name')
-        .or(`full_name.ilike.%${name}%,phone_number.eq.${name}`)
-        .maybeSingle()
+      // First check if input looks like an email
+      const isEmail = name.includes('@')
+      let loginEmail = name
+      
+      if (!isEmail) {
+        // Use API to look up manager by name or phone (bypasses RLS)
+        const response = await fetch('/api/auth/lookup-manager', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: name }),
+        })
 
-      if (managerError || !managerData) {
-        setError('User not found')
-        setLoading(false)
-        return
+        const result = await response.json()
+
+        if (!response.ok || !result.email) {
+          setError('Manager not found. Please use your registered email, name, or phone number.')
+          setLoading(false)
+          return
+        }
+        
+        loginEmail = result.email
       }
 
-      // Manager login with Supabase Auth
+      // Manager login with Supabase Auth using email
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: managerData.email,
+        email: loginEmail,
         password,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase Auth Error:', error)
+        throw error
+      }
 
       if (data.user) {
+        // Wait for auth session to establish
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // Now with auth.uid() set, query manager data (RLS will allow access)
+        const { data: managerData, error: managerCheckError } = await supabase
+          .from('managers')
+          .select('store_id')
+          .eq('id', data.user.id)
+          .maybeSingle()
+
+        if (managerCheckError) {
+          console.error('Manager check error:', managerCheckError)
+          await supabase.auth.signOut()
+          setError('Error fetching manager data. Please try again.')
+          setLoading(false)
+          return
+        }
+
+        if (!managerData) {
+          await supabase.auth.signOut()
+          setError('Manager account not found. Please contact support.')
+          setLoading(false)
+          return
+        }
+
+        if (!managerData.store_id) {
+          // Check for pending join request
+          const { data: request } = await supabase
+            .from('join_requests')
+            .select('status')
+            .eq('user_id', data.user.id)
+            .eq('status', 'pending')
+            .maybeSingle()
+
+          if (request) {
+            await supabase.auth.signOut()
+            setError('Your account is pending approval from the store manager.')
+            setLoading(false)
+            return
+          } else {
+            await supabase.auth.signOut()
+            setError('Your account is not associated with any store.')
+            setLoading(false)
+            return
+          }
+        }
+
+        // Store store_id and user_type in sessionStorage
+        sessionStorage.setItem('store_id', managerData.store_id.toString())
+        sessionStorage.setItem('user_type', 'Manager')
+        sessionStorage.setItem('user_id', data.user.id)
+        
+        // Wait a moment to ensure sessionStorage is persisted
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
+        // Redirect to dashboard
         router.push('/dashboard')
       }
     } catch (err: any) {
+      console.error('Login error:', err)
       setError(err.message || 'Invalid credentials')
     } finally {
       setLoading(false)

@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react'
 import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package, Filter, FileText } from 'lucide-react'
 import { generateSalesPDF } from '@/lib/pdf-generator'
+import { getStoreId } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 
 export default function SalesPage() {
+  const router = useRouter()
   const [sales, setSales] = useState<any[]>([])
   const [filteredSales, setFilteredSales] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,7 +42,15 @@ export default function SalesPage() {
   const fetchSales = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/sales')
+      
+      const storeId = getStoreId()
+      if (!storeId) {
+        setError('No store ID found. Please login again.')
+        router.push('/login')
+        return
+      }
+
+      const response = await fetch(`/api/sales?store_id=${storeId}`)
       const result = await response.json()
 
       if (result.success) {
@@ -57,7 +68,10 @@ export default function SalesPage() {
 
   const fetchCashiers = async () => {
     try {
-      const response = await fetch('/api/users')
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/users?store_id=${storeId}`)
       const result = await response.json()
       if (result.success) {
         setCashiers(result.data)
@@ -69,7 +83,10 @@ export default function SalesPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products')
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/products?store_id=${storeId}`)
       const result = await response.json()
       if (result.success) {
         setProducts(result.data)
@@ -330,7 +347,7 @@ export default function SalesPage() {
                             minute: '2-digit'
                           })}
                         </td>
-                        <td className="px-4 py-3">{sale.users?.full_name || 'Unknown'}</td>
+                        <td className="px-4 py-3">{sale.cashier_name || 'Unknown'}</td>
                         <td className="px-4 py-3 text-right font-bold">
                           ${sale.total_amount.toFixed(2)}
                         </td>
@@ -460,7 +477,7 @@ export default function SalesPage() {
                                 </div>
                                 <div className="p-3 border-2 border-black rounded">
                                   <div className="text-xs text-text-secondary mb-1">Cashier</div>
-                                  <div className="font-bold">{sale.users?.full_name || 'Unknown'}</div>
+                                  <div className="font-bold">{sale.cashier_name || 'Unknown'}</div>
                                 </div>
                                 <div className="p-3 border-2 border-black rounded">
                                   <div className="text-xs text-text-secondary mb-1">Amount Paid</div>
@@ -511,6 +528,55 @@ export default function SalesPage() {
                                   </table>
                                 </div>
                               </div>
+
+                              {/* Payment History */}
+                              {(sale as any).payments && (sale as any).payments.length > 0 && (
+                                <div className="mb-3">
+                                  <div className="flex items-center gap-2 text-sm font-bold mb-2">
+                                    <DollarSign size={16} />
+                                    Payment History ({(sale as any).payments.length})
+                                  </div>
+                                  <div className="border-2 border-black rounded overflow-hidden">
+                                    <table className="w-full text-sm">
+                                      <thead className="bg-gray-100">
+                                        <tr>
+                                          <th className="px-3 py-2 text-left">Date</th>
+                                          <th className="px-3 py-2 text-left">Method</th>
+                                          <th className="px-3 py-2 text-left">Recorded By</th>
+                                          <th className="px-3 py-2 text-right">Amount</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {(sale as any).payments.map((payment: any, idx: number) => (
+                                          <tr key={payment.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                            <td className="px-3 py-2">
+                                              {new Date(payment.payment_date).toLocaleString('en-US', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                              })}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                              <span className="inline-flex items-center gap-1">
+                                                {payment.payment_method === 'Cash' ? (
+                                                  <DollarSign size={12} />
+                                                ) : (
+                                                  <CreditCard size={12} />
+                                                )}
+                                                {payment.payment_method}
+                                              </span>
+                                            </td>
+                                            <td className="px-3 py-2">{payment.recorded_by_name || 'Unknown'}</td>
+                                            <td className="px-3 py-2 text-right font-bold">${payment.amount.toFixed(2)}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Notes */}
                               {sale.notes && (

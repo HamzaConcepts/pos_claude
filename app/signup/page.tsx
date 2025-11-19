@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import type { UserRole } from '@/lib/supabase'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Store, UserPlus } from 'lucide-react'
 
 export default function SignupPage() {
   const router = useRouter()
   const [accountType, setAccountType] = useState<'Manager' | 'Cashier'>('Manager')
+  const [storeOption, setStoreOption] = useState<'create' | 'join'>('create') // For managers
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -19,7 +20,9 @@ export default function SignupPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    storeCode: '', // For joining existing store
   })
+  const [generatedStoreCode, setGeneratedStoreCode] = useState('') // Show code after store creation
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -58,12 +61,24 @@ export default function SignupPage() {
 
     // Manager-specific validations
     if (accountType === 'Manager') {
-      if (!formData.storeName.trim()) {
+      if (!formData.email.trim()) {
+        setError('Email is required for Manager accounts')
+        return
+      }
+      if (storeOption === 'create' && !formData.storeName.trim()) {
         setError('Store name is required')
         return
       }
-      if (!formData.email.trim()) {
-        setError('Email is required for Manager accounts')
+      if (storeOption === 'join' && formData.storeCode.length !== 3) {
+        setError('Store code must be exactly 3 characters')
+        return
+      }
+    }
+
+    // Cashier-specific validations
+    if (accountType === 'Cashier') {
+      if (formData.storeCode.length !== 3) {
+        setError('Store code must be exactly 3 characters')
         return
       }
     }
@@ -91,61 +106,75 @@ export default function SignupPage() {
       }
 
       if (accountType === 'Manager') {
-        // Manager signup with email verification (uses Supabase Auth)
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.fullName,
-              phone_number: formData.phoneNumber,
-              store_name: formData.storeName,
-              role: 'Manager',
-            },
-          },
-        })
+        if (storeOption === 'create') {
+          // For creating a new store, use the signup API which handles everything
+          const response = await fetch('/api/auth/signup-manager', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: formData.email,
+              password: formData.password,
+              fullName: formData.fullName,
+              phoneNumber: formData.phoneNumber,
+              storeName: formData.storeName,
+              action: 'create',
+            }),
+          })
 
-        if (authError) throw authError
+          const result = await response.json()
 
-        if (authData.user) {
-          // Insert manager data into managers table
-          const { error: dbError } = await supabase
-            .from('managers')
-            .insert([
-              {
-                id: authData.user.id,
-                email: formData.email,
-                full_name: formData.fullName,
-                phone_number: formData.phoneNumber,
-                store_name: formData.storeName,
-              },
-            ])
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to create account')
+          }
 
-          if (dbError) throw dbError
+          setGeneratedStoreCode(result.storeCode)
+          alert(`Store created! Your store code is: ${result.storeCode}\n\nShare this code with your employees to join your store.\n\nPlease check your email to verify your account.`)
+          router.push('/login')
+        } else {
+          // For joining an existing store, use the signup API
+          const response = await fetch('/api/auth/signup-manager', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: formData.email,
+              password: formData.password,
+              fullName: formData.fullName,
+              phoneNumber: formData.phoneNumber,
+              storeName: formData.storeName,
+              storeCode: formData.storeCode.toUpperCase(),
+              action: 'join',
+            }),
+          })
 
-          alert('Please check your email to verify your account')
+          const result = await response.json()
+
+          if (!response.ok) {
+            throw new Error(result.error || 'Failed to create account')
+          }
+
+          alert('Join request submitted! Please wait for the store manager to approve your request.\n\nAlso check your email to verify your account.')
           router.push('/login')
         }
       } else {
-        // Cashier signup - direct database insert (no Supabase Auth)
-        // Hash password using a simple approach for cashier-only accounts
-        const { data: insertData, error: insertError } = await supabase
-          .from('cashier_accounts')
-          .insert([
-            {
-              full_name: formData.fullName,
-              phone_number: formData.phoneNumber,
-              password_hash: formData.password, // Will be hashed by database trigger/function
-              role: 'Cashier',
-            },
-          ])
-          .select()
-          .single()
+        // Cashier signup - use API to bypass RLS
+        const response = await fetch('/api/auth/signup-cashier', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: formData.fullName,
+            phoneNumber: formData.phoneNumber,
+            password: formData.password,
+            storeCode: formData.storeCode.toUpperCase(),
+          }),
+        })
 
-        if (insertError) throw insertError
+        const result = await response.json()
 
-        // Direct login for cashier (session management handled separately)
-        alert('Account created successfully! Please login.')
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to create account')
+        }
+
+        alert('Join request submitted! Please wait for the store manager to approve your request.')
         router.push('/login')
       }
     } catch (err: any) {
@@ -195,20 +224,101 @@ export default function SignupPage() {
 
         <form onSubmit={handleSignup}>
           {accountType === 'Manager' && (
+            <>
+              {/* Store Option Selection */}
+              <div className="mb-6 border-2 border-gray rounded p-4">
+                <label className="block mb-3 font-medium">Store Option</label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStoreOption('create')}
+                    className={`flex-1 p-3 rounded border-2 transition-all ${
+                      storeOption === 'create'
+                        ? 'border-black bg-black text-white'
+                        : 'border-gray bg-white hover:border-gray-400'
+                    }`}
+                  >
+                    <Store className="mx-auto mb-1" size={20} />
+                    <div className="text-sm font-medium">Create New Store</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStoreOption('join')}
+                    className={`flex-1 p-3 rounded border-2 transition-all ${
+                      storeOption === 'join'
+                        ? 'border-black bg-black text-white'
+                        : 'border-gray bg-white hover:border-gray-400'
+                    }`}
+                  >
+                    <UserPlus className="mx-auto mb-1" size={20} />
+                    <div className="text-sm font-medium">Join Existing Store</div>
+                  </button>
+                </div>
+              </div>
+
+              {storeOption === 'create' && (
+                <div className="mb-4">
+                  <label htmlFor="storeName" className="block mb-2 font-medium">
+                    Store Name
+                  </label>
+                  <input
+                    id="storeName"
+                    name="storeName"
+                    type="text"
+                    value={formData.storeName}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+                    required
+                    disabled={loading}
+                  />
+                </div>
+              )}
+
+              {storeOption === 'join' && (
+                <div className="mb-4">
+                  <label htmlFor="storeCode" className="block mb-2 font-medium">
+                    Store Code <span className="text-sm text-text-secondary">(3 characters)</span>
+                  </label>
+                  <input
+                    id="storeCode"
+                    name="storeCode"
+                    type="text"
+                    value={formData.storeCode}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black uppercase"
+                    placeholder="A1B"
+                    maxLength={3}
+                    required
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-text-secondary mt-1">
+                    Ask your store manager for the store code
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {accountType === 'Cashier' && (
             <div className="mb-4">
-              <label htmlFor="storeName" className="block mb-2 font-medium">
-                Store Name
+              <label htmlFor="storeCode" className="block mb-2 font-medium">
+                Store Code <span className="text-sm text-text-secondary">(3 characters)</span>
               </label>
               <input
-                id="storeName"
-                name="storeName"
+                id="storeCode"
+                name="storeCode"
                 type="text"
-                value={formData.storeName}
+                value={formData.storeCode}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black uppercase"
+                placeholder="A1B"
+                maxLength={3}
                 required
                 disabled={loading}
               />
+              <p className="text-xs text-text-secondary mt-1">
+                Ask your manager for the store code
+              </p>
             </div>
           )}
 

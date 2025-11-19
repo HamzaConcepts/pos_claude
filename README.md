@@ -1,6 +1,14 @@
 # POS System - Point of Sale Software
 
-A modern, minimal Point of Sale system built with Next.js 14, TypeScript, Tailwind CSS, and Supabase.
+A modern, minimal **multi-tenant** Point of Sale system built with Next.js 14, TypeScript, Tailwind CSS, and Supabase.
+
+## 🎯 Multi-Tenant Features (NEW!)
+
+- ✅ **Store Isolation** - Each store's data is completely separate
+- ✅ **3-Character Store Codes** - Easy to share with employees (e.g., A1B, X9Z)
+- ✅ **Join Request System** - Managers approve employee access
+- ✅ **Multiple Stores** - One database supports unlimited stores
+- ✅ **Secure Data Access** - Database-level isolation with RLS policies
 
 ## Features (Phase 2 Complete)
 
@@ -28,6 +36,7 @@ A modern, minimal Point of Sale system built with Next.js 14, TypeScript, Tailwi
   - Complete sales history
   - Transaction details with snapshots
   - Payment status tracking (Paid/Partial/Pending)
+  - **Payment history with recorder tracking** (Shows who processed each payment)
   - **Partial payment customer records** (Name, CNIC, Phone)
   - Comprehensive filters (Cashier, Product, Payment, Date)
   - Visual indicators for partial payments
@@ -50,12 +59,28 @@ A modern, minimal Point of Sale system built with Next.js 14, TypeScript, Tailwi
 ## Prerequisites
 
 - Node.js 18+ installed
-- A Supabase account (free tier works)
+- Supabase account (free tier works)
 - Git installed
 
-## Getting Started
+## 🚀 Quick Start (Fresh Supabase Project)
 
-### 1. Clone the repository
+**For a brand new deployment, follow this guide:**
+
+👉 **[QUICKSTART_FRESH.md](./QUICKSTART_FRESH.md)** - 10-minute setup guide
+
+**Quick Steps:**
+1. Create new Supabase project
+2. Run `database/schema_fresh.sql` in SQL Editor
+3. Configure `.env.local` with Supabase credentials
+4. Run `npm install && npm run dev`
+5. Sign up first manager to create your store
+6. Save the store code for your employees!
+
+---
+
+## 📖 Detailed Setup (If Not Using Quick Start)
+
+### 1. Clone Repository
 
 ```bash
 git clone <your-repo-url>
@@ -72,9 +97,14 @@ npm install
 
 1. Go to [supabase.com](https://supabase.com) and create a new project
 2. Wait for the database to be provisioned
-3. Go to Project Settings > API to get your credentials:
+3. **Run database schema:**
+   - Go to SQL Editor
+   - Copy and paste contents of `database/schema_fresh.sql`
+   - Click "Run" to create all tables
+4. Go to Project Settings > API to get your credentials:
    - `NEXT_PUBLIC_SUPABASE_URL`: Your project URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your anon/public key
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your service role secret (for admin operations)
 
 ### 4. Configure Environment Variables
 
@@ -83,6 +113,7 @@ Create a `.env.local` file in the root directory:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url-here
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
 ### 5. Set up Database Tables

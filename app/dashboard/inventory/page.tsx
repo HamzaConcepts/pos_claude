@@ -6,8 +6,11 @@ import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import ProductModal from '@/components/ProductModal'
 import RestockModal from '@/components/RestockModal'
 import RestockHistoryModal from '@/components/RestockHistoryModal'
+import { getStoreId } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function InventoryPage() {
+  const router = useRouter()
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [filteredProducts, setFilteredProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,7 +41,15 @@ export default function InventoryPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/products')
+      
+      const storeId = getStoreId()
+      if (!storeId) {
+        setError('No store ID found. Please login again.')
+        router.push('/login')
+        return
+      }
+
+      const response = await fetch(`/api/products?store_id=${storeId}`)
       const result = await response.json()
 
       if (result.success) {
@@ -187,21 +198,20 @@ export default function InventoryPage() {
         // Split by comma but handle quoted values
         const values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g)?.map(v => v.replace(/^"|"$/g, '').trim()) || []
         
-        if (values.length < 6) {
+        if (values.length < 3) {
           console.warn(`Skipping invalid line ${i + 1}: insufficient fields`)
           continue
         }
 
-        const [sku, name, description, category, price, cost_price, stock_quantity, low_stock_threshold] = values
+        const [name, description, category, price, cost_price, stock_quantity, low_stock_threshold] = values
 
         // Validate required fields
-        if (!sku || !name || !price || !cost_price) {
+        if (!name || !price || !cost_price) {
           console.warn(`Skipping line ${i + 1}: missing required fields`)
           continue
         }
 
         products.push({
-          sku: sku.trim(),
           name: name.trim(),
           description: description?.trim() || null,
           category: category?.trim() || null,
@@ -218,11 +228,20 @@ export default function InventoryPage() {
         return
       }
 
+      // Get store ID
+      const storeId = getStoreId()
+      if (!storeId) {
+        setImportError('No store ID found. Please login again.')
+        setImporting(false)
+        router.push('/login')
+        return
+      }
+
       // Send to API
       const response = await fetch('/api/products/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products })
+        body: JSON.stringify({ products, store_id: storeId })
       })
 
       const result = await response.json()

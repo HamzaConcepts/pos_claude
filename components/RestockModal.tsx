@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, Search } from 'lucide-react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
+import { getStoreId } from '@/lib/supabase'
 
 interface RestockModalProps {
   onClose: (refresh: boolean) => void
@@ -30,7 +31,14 @@ export default function RestockModal({ onClose }: RestockModalProps) {
 
   const fetchAllProducts = async () => {
     try {
-      const response = await fetch('/api/products?include_inactive=true')
+      const storeId = getStoreId()
+      if (!storeId) {
+        console.error('No store ID found')
+        setSearching(false)
+        return
+      }
+
+      const response = await fetch(`/api/products?include_inactive=true&store_id=${storeId}`)
       const result = await response.json()
 
       if (result.success) {

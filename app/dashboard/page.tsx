@@ -4,12 +4,15 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, TrendingUp, DollarSign, ShoppingBag, Package, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import type { DashboardStats } from '@/lib/types'
+import { getStoreId } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     fetchDashboardStats()
@@ -29,7 +32,28 @@ export default function DashboardPage() {
       } else {
         setRefreshing(true)
       }
-      const response = await fetch('/api/dashboard/stats', {
+
+      // Wait a moment for sessionStorage to be set by layout
+      let storeId = getStoreId()
+      let retries = 0
+      
+      while (!storeId && retries < 5) {
+        console.log(`[DASHBOARD PAGE] Waiting for store_id... attempt ${retries + 1}`)
+        await new Promise(resolve => setTimeout(resolve, 300))
+        storeId = getStoreId()
+        retries++
+      }
+      
+      if (!storeId) {
+        console.log('[DASHBOARD PAGE] No store ID found after retries, redirecting to login')
+        setError('No store ID found. Please login again.')
+        router.push('/login')
+        return
+      }
+
+      console.log('[DASHBOARD PAGE] Store ID found:', storeId)
+      
+      const response = await fetch(`/api/dashboard/stats?store_id=${storeId}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache'

@@ -1,26 +1,42 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Create admin client to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+)
+
 export async function GET(request: Request) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('start_date')
     const endDate = searchParams.get('end_date')
     const cashierId = searchParams.get('cashier_id')
+    const storeId = searchParams.get('store_id')
 
-    let query = supabase
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'Store ID is required' },
+        { status: 400 }
+      )
+    }
+
+    let query = supabaseAdmin
       .from('sales')
       .select(`
         *,
-        users:cashier_id (full_name),
         sale_items (*),
-        partial_payment_customers (*)
+        partial_payment_customers (*),
+        payments (*)
       `)
+      .eq('store_id', parseInt(storeId))
       .order('sale_date', { ascending: false })
 
     if (startDate) {
@@ -37,13 +53,96 @@ export async function GET(request: Request) {
 
     const { data: sales, error } = await query
 
-    if (error) throw error
+    if (error) {
+      console.error('Error fetching sales:', error)
+      throw error
+    }
+
+    // Fetch cashier names separately if needed
+    if (sales && sales.length > 0) {
+      const allCashierIds = [...new Set(sales.map(s => s.cashier_id).filter(Boolean))]
+      
+      // Separate UUIDs (managers) from integers (cashiers)
+      const managerCashierIds = allCashierIds.filter(id => typeof id === 'string' && id.includes('-'))
+      const cashierAccountIds = allCashierIds.filter(id => typeof id === 'number' || (typeof id === 'string' && !id.includes('-')))
+      
+      const cashierNameMap = new Map()
+      
+      // Fetch manager names
+      if (managerCashierIds.length > 0) {
+        const { data: managers } = await supabaseAdmin
+          .from('managers')
+          .select('id, full_name')
+          .in('id', managerCashierIds)
+        
+        managers?.forEach(m => cashierNameMap.set(m.id, m.full_name))
+      }
+      
+      // Fetch cashier names
+      if (cashierAccountIds.length > 0) {
+        const { data: cashiers } = await supabaseAdmin
+          .from('cashier_accounts')
+          .select('id, full_name')
+          .in('id', cashierAccountIds)
+        
+        cashiers?.forEach(c => cashierNameMap.set(c.id, c.full_name))
+      }
+      
+      // Add cashier names to sales
+      sales.forEach(sale => {
+        if (sale.cashier_id) {
+          sale.cashier_name = cashierNameMap.get(sale.cashier_id) || 'Unknown'
+        }
+      })
+      
+      // Fetch payment recorder names (can be manager UUID or cashier ID)
+      const allPayments = sales.flatMap(s => s.payments || [])
+      const managerIds = [...new Set(allPayments.map(p => p.manager_id).filter(Boolean))]
+      const paymentCashierIds = [...new Set(allPayments.map(p => p.cashier_id).filter(Boolean))]
+      
+      let managerMap = new Map()
+      let paymentCashierMap = new Map()
+      
+      // Fetch managers
+      if (managerIds.length > 0) {
+        const { data: managers } = await supabaseAdmin
+          .from('managers')
+          .select('id, full_name')
+          .in('id', managerIds)
+        
+        managerMap = new Map(managers?.map(m => [m.id, m.full_name]) || [])
+      }
+      
+      // Fetch cashiers for payments
+      if (paymentCashierIds.length > 0) {
+        const { data: cashiers } = await supabaseAdmin
+          .from('cashier_accounts')
+          .select('id, full_name')
+          .in('id', paymentCashierIds)
+        
+        paymentCashierMap = new Map(cashiers?.map(c => [c.id, c.full_name]) || [])
+      }
+      
+      // Add recorder names to payments
+      sales.forEach(sale => {
+        if (sale.payments) {
+          sale.payments.forEach((payment: any) => {
+            if (payment.manager_id) {
+              payment.recorded_by_name = managerMap.get(payment.manager_id) || 'Unknown'
+            } else if (payment.cashier_id) {
+              payment.recorded_by_name = paymentCashierMap.get(payment.cashier_id) || 'Unknown'
+            }
+          })
+        }
+      })
+    }
 
     return NextResponse.json({
       success: true,
       data: sales || [],
     })
   } catch (error: any) {
+    console.error('Sales API error:', error)
     return NextResponse.json(
       {
         success: false,
@@ -57,11 +156,6 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
     const body = await request.json()
     const { 
       items, 
@@ -70,7 +164,8 @@ export async function POST(request: Request) {
       amount_paid, 
       notes, 
       cashier_id,
-      partial_payment_customer // New field for partial payment customer info
+      partial_payment_customer, // New field for partial payment customer info
+      store_id
     } = body
 
     // Validation
@@ -79,6 +174,17 @@ export async function POST(request: Request) {
         {
           success: false,
           error: 'Cart is empty',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
+    if (!store_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Store ID is required',
           code: 'VALIDATION_ERROR',
         },
         { status: 400 }
@@ -101,7 +207,7 @@ export async function POST(request: Request) {
     const saleItems = []
 
     for (const item of items) {
-      const { data: product, error: productError } = await supabase
+      const { data: product, error: productError } = await supabaseAdmin
         .from('products')
         .select(`
           *,
@@ -198,7 +304,7 @@ export async function POST(request: Request) {
     const saleNumber = `SALE-${Date.now()}`
 
     // Create sale
-    const { data: sale, error: saleError } = await supabase
+    const { data: sale, error: saleError } = await supabaseAdmin
       .from('sales')
       .insert([
         {
@@ -210,6 +316,7 @@ export async function POST(request: Request) {
           payment_status: paymentStatus,
           amount_paid: paidAmount,
           amount_due: dueAmount > 0 ? dueAmount : 0,
+          store_id: parseInt(store_id),
           notes,
         },
       ])
@@ -218,11 +325,41 @@ export async function POST(request: Request) {
 
     if (saleError) throw saleError
 
+    // Create payment record (track all payments)
+    if (paidAmount > 0) {
+      // Determine if cashier_id is a UUID (manager) or integer (cashier)
+      const isUUID = typeof cashier_id === 'string' && cashier_id.includes('-')
+      
+      const paymentData: any = {
+        sale_id: sale.id,
+        amount: paidAmount,
+        payment_method,
+        payment_date: new Date().toISOString(),
+        store_id: parseInt(store_id),
+      }
+      
+      // Insert into correct column based on ID type
+      if (isUUID) {
+        paymentData.manager_id = cashier_id  // Manager UUID
+      } else {
+        paymentData.cashier_id = cashier_id  // Cashier integer ID
+      }
+      
+      const { error: paymentError } = await supabaseAdmin
+        .from('payments')
+        .insert([paymentData])
+
+      if (paymentError) {
+        console.error('Error creating payment record:', paymentError)
+        throw paymentError
+      }
+    }
+
     // Create partial payment customer record if applicable
     if (paymentStatus === 'Partial' && partial_payment_customer) {
       const { customer_name, customer_cnic, customer_phone } = partial_payment_customer
       
-      const { error: partialPaymentError } = await supabase
+      const { error: partialPaymentError } = await supabaseAdmin
         .from('partial_payment_customers')
         .insert([
           {
@@ -233,6 +370,7 @@ export async function POST(request: Request) {
             total_amount: totalAmount,
             amount_paid: paidAmount,
             amount_remaining: dueAmount,
+            store_id: parseInt(store_id),
           },
         ])
 
@@ -242,7 +380,7 @@ export async function POST(request: Request) {
     // Create sale items and update inventory
     for (const saleItem of saleItems) {
       // Insert sale item (with snapshots)
-      const { error: itemError } = await supabase
+      const { error: itemError } = await supabaseAdmin
         .from('sale_items')
         .insert([
           {
@@ -269,7 +407,7 @@ export async function POST(request: Request) {
         const deductQuantity = Math.min(inv.quantity_remaining, remainingQuantity)
         const newQuantity = inv.quantity_remaining - deductQuantity
 
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from('inventory')
           .update({ quantity_remaining: newQuantity })
           .eq('id', inv.id)
@@ -281,16 +419,45 @@ export async function POST(request: Request) {
     }
 
     // Fetch complete sale data with items
-    const { data: completeSale, error: fetchError } = await supabase
+    const { data: completeSale, error: fetchError } = await supabaseAdmin
       .from('sales')
       .select(`
         *,
-        users:cashier_id (full_name),
         sale_items (*),
         partial_payment_customers (*)
       `)
       .eq('id', sale.id)
       .single()
+    
+    // Fetch cashier name separately
+    if (completeSale && completeSale.cashier_id) {
+      // Check if cashier_id is UUID (manager) or integer (cashier)
+      const isUUID = typeof completeSale.cashier_id === 'string' && completeSale.cashier_id.includes('-')
+      
+      if (isUUID) {
+        // Fetch from managers table
+        const { data: manager } = await supabaseAdmin
+          .from('managers')
+          .select('full_name')
+          .eq('id', completeSale.cashier_id)
+          .single()
+        
+        if (manager) {
+          completeSale.cashier_name = manager.full_name
+        }
+      } else {
+        // Fetch from cashier_accounts table
+        const { data: cashier } = await supabaseAdmin
+          .from('cashier_accounts')
+          .select('full_name')
+          .eq('id', completeSale.cashier_id)
+          .single()
+        
+        if (cashier) {
+          completeSale.cashier_name = cashier.full_name
+        }
+      }
+    }
 
     if (fetchError) throw fetchError
 

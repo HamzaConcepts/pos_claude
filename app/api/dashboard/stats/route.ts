@@ -1,99 +1,92 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-export async function GET() {
+// Create admin client to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+)
+
+export async function GET(request: Request) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    // Get store_id from query params
+    const { searchParams } = new URL(request.url)
+    const storeId = searchParams.get('store_id')
+
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'Store ID is required' },
+        { status: 400 }
+      )
+    }
 
     const now = new Date()
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
     // Today's sales
-    const { data: todaySales, error: todayError } = await supabase
+    const { data: todaySales } = await supabaseAdmin
       .from('sales')
       .select('total_amount')
+      .eq('store_id', parseInt(storeId))
       .gte('sale_date', startOfToday.toISOString())
-
-    if (todayError) throw todayError
 
     const todaySalesCount = todaySales?.length || 0
     const todayRevenue = todaySales?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0
 
     // Monthly sales
-    const { data: monthlySales, error: monthlyError } = await supabase
+    const { data: monthlySales } = await supabaseAdmin
       .from('sales')
       .select('total_amount, sale_date')
+      .eq('store_id', parseInt(storeId))
       .gte('sale_date', startOfMonth.toISOString())
-
-    if (monthlyError) throw monthlyError
 
     const monthlySalesCount = monthlySales?.length || 0
     const monthlyRevenue = monthlySales?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0
 
-    // Low stock products - get products with low inventory
-    const { data: allProducts, error: productsError } = await supabase
+    // Low stock products
+    const { data: allProducts } = await supabaseAdmin
       .from('products')
-      .select(`
-        *,
-        inventory (
-          id,
-          quantity_remaining,
-          low_stock_threshold
-        )
-      `)
+      .select('id, name, price, stock_quantity, low_stock_threshold, is_active')
+      .eq('store_id', parseInt(storeId))
       .eq('is_active', true)
 
-    if (productsError) throw productsError
-
-    const productsWithStock = allProducts?.map((product: any) => {
-      const totalStock = product.inventory?.reduce(
-        (sum: number, inv: any) => sum + (inv.quantity_remaining || 0),
-        0
-      ) || 0
-      const threshold = product.inventory?.[0]?.low_stock_threshold || 10
-      
-      return {
-        ...product,
-        stock_quantity: totalStock,
-        low_stock_threshold: threshold
-      }
-    }) || []
-
-    const lowStockProducts = productsWithStock
-      .filter(p => p.stock_quantity <= p.low_stock_threshold)
-      .slice(0, 5)
-    const lowStockCount = productsWithStock.filter(p => p.stock_quantity <= p.low_stock_threshold).length
+    const lowStockProducts = allProducts?.filter(p => 
+      p.stock_quantity <= (p.low_stock_threshold || 10)
+    ).slice(0, 5) || []
+    
+    const lowStockCount = allProducts?.filter(p => 
+      p.stock_quantity <= (p.low_stock_threshold || 10)
+    ).length || 0
 
     // Recent sales
-    const { data: recentSales, error: recentError } = await supabase
+    const { data: recentSales } = await supabaseAdmin
       .from('sales')
-      .select(`
-        *,
-        managers:cashier_id (full_name)
-      `)
+      .select('id, total_amount, sale_date, payment_method, cashier_id')
+      .eq('store_id', parseInt(storeId))
       .order('sale_date', { ascending: false })
       .limit(10)
 
-    if (recentError) throw recentError
-
     // Monthly expenses
-    const { data: expenses, error: expensesError } = await supabase
+    const { data: expenses } = await supabaseAdmin
       .from('expenses')
       .select('amount, category')
+      .eq('store_id', parseInt(storeId))
       .gte('expense_date', startOfMonth.toISOString().split('T')[0])
-
-    if (expensesError) throw expensesError
 
     const monthlyExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
 
     // Today's expenses
-    const { data: todayExpensesData } = await supabase
+    const { data: todayExpensesData } = await supabaseAdmin
       .from('expenses')
       .select('amount')
+      .eq('store_id', parseInt(storeId))
       .gte('expense_date', startOfToday.toISOString().split('T')[0])
 
     const todayExpenses = todayExpensesData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
@@ -129,33 +122,38 @@ export async function GET() {
       })
     }
 
-    // Top products (this month) - use sale_items with snapshots
-    const { data: saleItems, error: itemsError } = await supabase
+    // Top products (this month)
+    const { data: saleItems } = await supabaseAdmin
       .from('sale_items')
-      .select(`
-        product_id,
-        product_name,
-        subtotal,
-        sale_id,
-        sales!inner (sale_date)
-      `)
+      .select('product_name, subtotal, quantity, sale_id')
 
-    if (itemsError) throw itemsError
+    // Get sale dates for filtering
+    const saleIds = saleItems?.map(item => item.sale_id) || []
+    const { data: salesDates } = await supabaseAdmin
+      .from('sales')
+      .select('id, sale_date')
+      .in('id', saleIds)
+      .gte('sale_date', startOfMonth.toISOString())
 
-    // Filter items from this month
-    const monthlyItems = saleItems?.filter((item: any) => {
-      const saleDate = new Date(item.sales.sale_date)
-      return saleDate >= startOfMonth
-    }) || []
+    const monthlySaleIds = new Set(salesDates?.map(s => s.id) || [])
+    const monthlyItems = saleItems?.filter(item => monthlySaleIds.has(item.sale_id)) || []
 
-    const productRevenue: { [key: string]: number } = {}
+    const productStats: { [key: string]: { revenue: number, quantity: number } } = {}
     monthlyItems.forEach((item: any) => {
       const name = item.product_name || 'Unknown'
-      productRevenue[name] = (productRevenue[name] || 0) + Number(item.subtotal)
+      if (!productStats[name]) {
+        productStats[name] = { revenue: 0, quantity: 0 }
+      }
+      productStats[name].revenue += Number(item.subtotal)
+      productStats[name].quantity += Number(item.quantity)
     })
 
-    const topProducts = Object.entries(productRevenue)
-      .map(([name, revenue]) => ({ product_name: name, revenue }))
+    const topProducts = Object.entries(productStats)
+      .map(([name, stats]) => ({ 
+        product_name: name, 
+        revenue: stats.revenue,
+        quantity: stats.quantity 
+      }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5)
 
@@ -182,11 +180,11 @@ export async function GET() {
       },
     })
   } catch (error: any) {
+    console.error('Dashboard stats error:', error)
     return NextResponse.json(
       {
         success: false,
         error: error.message || 'Failed to fetch dashboard stats',
-        code: 'FETCH_STATS_ERROR',
       },
       { status: 500 }
     )

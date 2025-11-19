@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Create admin client to bypass RLS
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+)
+
 interface ImportProduct {
-  sku: string
   name: string
   description: string | null
   category: string | null
@@ -12,20 +23,65 @@ interface ImportProduct {
   low_stock_threshold: number
 }
 
+// Helper function to generate next SKU
+async function generateNextSKU(storeId: number): Promise<string> {
+  // Get store code (first 3 letters of store name)
+  const { data: store } = await supabaseAdmin
+    .from('stores')
+    .select('store_name')
+    .eq('id', storeId)
+    .single()
+  
+  const storeCode = store?.store_name
+    ? store.store_name.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, 'X')
+    : 'XXX'
+  
+  // Ensure exactly 3 characters
+  const paddedCode = (storeCode + 'XXX').substring(0, 3)
+  
+  // Get latest SKU for this store
+  const { data: latestProduct } = await supabaseAdmin
+    .from('products')
+    .select('sku')
+    .eq('store_id', storeId)
+    .like('sku', `${paddedCode}-%`)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  
+  let nextNumber = 1
+  if (latestProduct?.sku) {
+    const match = latestProduct.sku.match(/-(\d+)$/)
+    if (match) {
+      nextNumber = parseInt(match[1]) + 1
+    }
+  }
+  
+  // Format as XXX-0000
+  const formattedNumber = nextNumber.toString().padStart(4, '0')
+  return `${paddedCode}-${formattedNumber}`
+}
+
 export async function POST(request: Request) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
-    const { products } = await request.json() as { products: ImportProduct[] }
+    const { products, store_id } = await request.json() as { products: ImportProduct[], store_id: number }
 
     if (!products || !Array.isArray(products) || products.length === 0) {
       return NextResponse.json(
         {
           success: false,
           error: 'No products provided',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
+    if (!store_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Store ID is required',
           code: 'VALIDATION_ERROR',
         },
         { status: 400 }
@@ -39,52 +95,46 @@ export async function POST(request: Request) {
     for (const product of products) {
       try {
         // Validate required fields
-        if (!product.sku || !product.name || product.price === undefined || product.cost_price === undefined) {
-          errors.push(`Skipped product: ${product.sku || 'unknown'} - missing required fields`)
+        if (!product.name || product.price === undefined || product.cost_price === undefined) {
+          errors.push(`Skipped product: ${product.name || 'unknown'} - missing required fields`)
           failCount++
           continue
         }
 
         // Validate numeric values
         if (isNaN(product.price) || isNaN(product.cost_price) || product.price < 0 || product.cost_price < 0) {
-          errors.push(`Skipped product: ${product.sku} - invalid price values`)
+          errors.push(`Skipped product: ${product.name} - invalid price values`)
           failCount++
           continue
         }
 
-        // Check if product with SKU already exists
-        const { data: existing } = await supabase
-          .from('products')
-          .select('id')
-          .eq('sku', product.sku)
-          .single()
-
-        if (existing) {
-          errors.push(`Skipped product: ${product.sku} - SKU already exists`)
-          failCount++
-          continue
-        }
+        // Generate unique SKU
+        const sku = await generateNextSKU(store_id)
 
         // Insert product
-        const { data: newProduct, error: productError } = await supabase
+        const { data: newProduct, error: productError } = await supabaseAdmin
           .from('products')
           .insert([
             {
-              sku: product.sku,
+              sku: sku,
               name: product.name,
               description: product.description,
               category: product.category,
+              store_id: store_id,
               is_active: true,
             },
           ])
           .select()
           .single()
 
-        if (productError) throw productError
+        if (productError) {
+          console.error('Product insert error:', productError)
+          throw productError
+        }
 
         // Insert initial inventory if stock_quantity > 0
         if (product.stock_quantity > 0) {
-          const { error: inventoryError } = await supabase
+          const { error: inventoryError } = await supabaseAdmin
             .from('inventory')
             .insert([
               {
@@ -96,16 +146,20 @@ export async function POST(request: Request) {
                 low_stock_threshold: product.low_stock_threshold || 10,
                 batch_number: `IMPORT-${Date.now()}`,
                 restock_date: new Date().toISOString(),
+                store_id: store_id,
                 notes: 'Imported from CSV',
               },
             ])
 
-          if (inventoryError) throw inventoryError
+          if (inventoryError) {
+            console.error('Inventory insert error:', inventoryError)
+            throw inventoryError
+          }
         }
 
         successCount++
       } catch (err: any) {
-        errors.push(`Error importing ${product.sku}: ${err.message}`)
+        errors.push(`Error importing ${product.name}: ${err.message}`)
         failCount++
       }
     }
@@ -119,6 +173,7 @@ export async function POST(request: Request) {
       },
     })
   } catch (error: any) {
+    console.error('Import error:', error)
     return NextResponse.json(
       {
         success: false,

@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { Search, Plus, Minus, Trash2, ShoppingCart, Printer } from 'lucide-react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
-import { supabase } from '@/lib/supabase'
+import { supabase, getStoreId } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 interface CartItem {
   product: ProductWithBackwardCompatibility
@@ -11,6 +12,7 @@ interface CartItem {
 }
 
 export default function POSPage() {
+  const router = useRouter()
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -78,7 +80,14 @@ export default function POSPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products')
+      const storeId = getStoreId()
+      if (!storeId) {
+        setError('No store ID found. Please login again.')
+        router.push('/login')
+        return
+      }
+
+      const response = await fetch(`/api/products?store_id=${storeId}`)
       const result = await response.json()
 
       if (result.success) {
@@ -264,6 +273,13 @@ export default function POSPage() {
         finalDescription = cart[0].product.name
       }
 
+      const storeId = getStoreId()
+      if (!storeId) {
+        setError('No store ID found. Please login again.')
+        router.push('/login')
+        return
+      }
+
       const saleData = {
         items: cart.map((item) => ({
           product_id: item.product.id,
@@ -275,6 +291,7 @@ export default function POSPage() {
         cashier_id: cashierId,
         notes: null,
         partial_payment_customer: partialPaymentCustomer,
+        store_id: storeId,
       }
 
       const response = await fetch('/api/sales', {
@@ -371,7 +388,7 @@ export default function POSPage() {
               </div>
               <div>
                 <p className="text-sm text-text-secondary">Cashier</p>
-                <p className="font-medium">{lastSale.users?.full_name}</p>
+                <p className="font-medium">{lastSale.cashier_name || 'Unknown'}</p>
               </div>
               <div>
                 <p className="text-sm text-text-secondary">Payment Method</p>

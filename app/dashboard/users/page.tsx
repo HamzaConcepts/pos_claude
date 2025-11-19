@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Shield, User } from 'lucide-react'
+import { Users, Shield, User, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { getStoreId } from '@/lib/supabase'
 
 interface UserData {
   id: string
@@ -11,20 +12,42 @@ interface UserData {
   created_at: string
 }
 
+interface JoinRequest {
+  id: number
+  user_id: string
+  user_type: string
+  user_email: string | null
+  user_name: string
+  user_phone: string
+  requested_at: string
+  status: string
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<UserData[]>([])
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [processing, setProcessing] = useState<number | null>(null)
 
   useEffect(() => {
     fetchUsers()
+    fetchJoinRequests()
   }, [])
 
   const fetchUsers = async () => {
     try {
       setLoading(true)
       setError('')
-      const response = await fetch('/api/users', {
+      
+      const storeId = getStoreId()
+      if (!storeId) {
+        setError('No store ID found. Please login again.')
+        setLoading(false)
+        return
+      }
+
+      const response = await fetch(`/api/users?store_id=${storeId}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache'
@@ -42,6 +65,73 @@ export default function UsersPage() {
       console.error('Error fetching users:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchJoinRequests = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) {
+        console.error('No store ID found')
+        return
+      }
+
+      const response = await fetch(`/api/join-requests?storeId=${storeId}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
+      const result = await response.json()
+
+      if (result.requests) {
+        setJoinRequests(result.requests)
+      }
+    } catch (err) {
+      console.error('Error fetching join requests:', err)
+    }
+  }
+
+  const handleJoinRequest = async (requestId: number, action: 'approve' | 'reject') => {
+    try {
+      setProcessing(requestId)
+      setError('')
+
+      // Get current user ID from session (manager ID who is approving/rejecting)
+      const reviewerId = sessionStorage.getItem('user_id') || ''
+      
+      if (!reviewerId) {
+        setError('Unable to identify reviewer. Please login again.')
+        setProcessing(null)
+        return
+      }
+
+      const response = await fetch('/api/join-requests', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requestId,
+          action,
+          reviewerId,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Refresh both lists
+        await fetchJoinRequests()
+        await fetchUsers()
+      } else {
+        setError(result.error || 'Failed to process join request')
+      }
+    } catch (err) {
+      setError('Failed to process join request')
+      console.error('Error processing join request:', err)
+    } finally {
+      setProcessing(null)
     }
   }
 
@@ -87,6 +177,76 @@ export default function UsersPage() {
       {error && (
         <div className="mb-4 p-4 bg-status-error text-white rounded">
           {error}
+        </div>
+      )}
+
+      {/* Pending Join Requests */}
+      {joinRequests.length > 0 && (
+        <div className="mb-6 bg-white rounded border-2 border-black overflow-hidden">
+          <div className="p-4 bg-yellow-100 border-b-2 border-black">
+            <div className="flex items-center gap-2">
+              <Clock size={20} />
+              <h2 className="text-lg font-bold">Pending Join Requests ({joinRequests.length})</h2>
+            </div>
+          </div>
+
+          <div className="p-4">
+            {joinRequests.map((request) => (
+              <div
+                key={request.id}
+                className="flex items-center justify-between p-4 mb-3 bg-bg-secondary rounded border-2 border-gray-300 last:mb-0"
+              >
+                  <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-400 text-white rounded-full flex items-center justify-center font-bold">
+                      {request.user_name?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                    <div>
+                      <p className="font-bold">{request.user_name}</p>
+                      <p className="text-sm text-text-secondary">
+                        {request.user_email || request.user_phone}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                          request.user_type === 'Manager' ? 'bg-black text-white' : 'bg-gray-400 text-white'
+                        }`}>
+                          {request.user_type === 'Manager' ? <Shield size={12} /> : <User size={12} />}
+                          {request.user_type}
+                        </span>
+                        <span className="text-xs text-text-secondary">
+                          Requested: {new Date(request.requested_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 ml-4">
+                  <button
+                    onClick={() => handleJoinRequest(request.id, 'approve')}
+                    disabled={processing === request.id}
+                    className="flex items-center gap-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <CheckCircle size={16} />
+                    {processing === request.id ? 'Processing...' : 'Approve'}
+                  </button>
+                  <button
+                    onClick={() => handleJoinRequest(request.id, 'reject')}
+                    disabled={processing === request.id}
+                    className="flex items-center gap-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <XCircle size={16} />
+                    {processing === request.id ? 'Processing...' : 'Reject'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

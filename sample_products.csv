@@ -1,0 +1,16 @@
+name,description,category,price,cost_price,stock_quantity,low_stock_threshold
+Wireless Mouse,Ergonomic wireless mouse with 3 buttons,Electronics,25.99,15.50,50,10
+Laptop Stand,Adjustable aluminum laptop stand,Electronics,45.00,28.00,30,5
+Office Chair,Ergonomic office chair with lumbar support,Furniture,199.99,120.00,15,3
+Desk Lamp,LED desk lamp with adjustable brightness,Electronics,35.50,22.00,40,8
+Notebook A4,Spiral bound notebook 200 pages,Stationery,8.99,4.50,100,20
+Ballpoint Pen,Blue ink ballpoint pen pack of 10,Stationery,12.99,6.00,150,30
+USB Cable,USB-C to USB-A cable 2m,Electronics,9.99,5.00,80,15
+Coffee Mug,Ceramic coffee mug 350ml,Kitchen,12.50,7.00,60,12
+Water Bottle,Stainless steel water bottle 1L,Kitchen,22.99,13.50,45,10
+Backpack,Travel backpack 40L capacity,Accessories,79.99,45.00,25,5
+Phone Case,Silicone phone case for iPhone,Accessories,15.99,8.00,70,15
+Screen Protector,Tempered glass screen protector,Accessories,7.99,3.50,100,20
+Headphones,Over-ear wireless headphones,Electronics,89.99,52.00,20,4
+Keyboard,Mechanical gaming keyboard RGB,Electronics,119.99,68.00,18,3
+Mouse Pad,Extended gaming mouse pad,Accessories,19.99,10.00,55,10

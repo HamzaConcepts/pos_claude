@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { DollarSign, TrendingUp, Calendar, Plus, X } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { supabase, getStoreId } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 interface Expense {
   id: number
@@ -31,6 +32,7 @@ const EXPENSE_CATEGORIES = [
 ]
 
 export default function ExpensesPage() {
+  const router = useRouter()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -68,7 +70,15 @@ export default function ExpensesPage() {
   const fetchExpenses = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/expenses')
+      
+      const storeId = getStoreId()
+      if (!storeId) {
+        setError('No store ID found. Please login again.')
+        router.push('/login')
+        return
+      }
+
+      const response = await fetch(`/api/expenses?store_id=${storeId}`)
       const result = await response.json()
 
       if (result.success) {
@@ -118,6 +128,13 @@ export default function ExpensesPage() {
     setError('')
 
     try {
+      const storeId = getStoreId()
+      if (!storeId) {
+        setError('No store ID found. Please login again.')
+        router.push('/login')
+        return
+      }
+
       const response = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -126,7 +143,8 @@ export default function ExpensesPage() {
           amount: parseFloat(amount),
           category,
           expense_date: expenseDate,
-          recorded_by: userId
+          recorded_by: userId,
+          store_id: storeId
         })
       })
 

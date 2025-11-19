@@ -34,3 +34,36 @@ export const permissions = {
 export function hasPermission(role: UserRole, permission: string): boolean {
   return permissions[role].includes(permission)
 }
+
+// Multi-Tenant Helper: Get store_id from current session
+export function getStoreId(): number | null {
+  if (typeof window === 'undefined') return null // Server-side
+  
+  // First, try to get directly from sessionStorage (for managers)
+  const storeIdFromSession = sessionStorage.getItem('store_id')
+  if (storeIdFromSession) {
+    return parseInt(storeIdFromSession)
+  }
+  
+  // Then check user_type to determine where to look
+  const userType = sessionStorage.getItem('user_type')
+  
+  if (userType === 'Manager') {
+    // For managers, get from sessionStorage
+    const storeId = sessionStorage.getItem('store_id')
+    return storeId ? parseInt(storeId) : null
+  }
+  
+  // For cashiers, get from localStorage user_session
+  const cashierSession = localStorage.getItem('user_session')
+  if (cashierSession) {
+    try {
+      const cashierData = JSON.parse(cashierSession)
+      return cashierData.store_id || null
+    } catch {
+      return null
+    }
+  }
+  
+  return null
+}
