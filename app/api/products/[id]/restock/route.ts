@@ -85,7 +85,12 @@ export async function POST(
       .select()
       .single()
 
-    if (inventoryError) throw inventoryError
+    if (inventoryError) {
+      console.error('Inventory insert error:', inventoryError)
+      throw inventoryError
+    }
+
+    console.log('Successfully created inventory record:', inventory.id)
 
     return NextResponse.json({
       success: true,

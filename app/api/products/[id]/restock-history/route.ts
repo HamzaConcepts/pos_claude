@@ -27,13 +27,19 @@ export async function GET(
       .eq('product_id', productId)
       .order('restock_date', { ascending: false })
 
-    if (error) throw error
+    if (error) {
+      console.error('Restock history fetch error:', error)
+      throw error
+    }
+
+    console.log(`Found ${inventory?.length || 0} inventory records for product ${productId}`)
 
     return NextResponse.json({
       success: true,
       data: inventory || [],
     })
   } catch (error: any) {
+    console.error('Restock history error:', error)
     return NextResponse.json(
       {
         success: false,
