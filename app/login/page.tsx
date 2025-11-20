@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
@@ -13,6 +13,48 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
+
+  useEffect(() => {
+    checkExistingSession()
+  }, [])
+
+  const checkExistingSession = async () => {
+    try {
+      // Check for cashier session
+      const cashierSession = localStorage.getItem('user_session')
+      if (cashierSession) {
+        const session = JSON.parse(cashierSession)
+        if (session.store_id) {
+          router.replace('/dashboard/pos')
+          return
+        }
+      }
+
+      // Check for manager session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        // Verify manager has store_id
+        const { data: managerData } = await supabase
+          .from('managers')
+          .select('store_id')
+          .eq('id', session.user.id)
+          .maybeSingle()
+
+        if (managerData?.store_id) {
+          router.replace('/dashboard')
+          return
+        } else {
+          // Manager exists but no store - sign them out
+          await supabase.auth.signOut()
+        }
+      }
+    } catch (err) {
+      console.error('Session check error:', err)
+    } finally {
+      setCheckingSession(false)
+    }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -155,6 +197,14 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-bg-secondary">
+        <div className="text-xl">Checking session...</div>
+      </div>
+    )
   }
 
   return (
