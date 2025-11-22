@@ -24,10 +24,27 @@ export default function RestockModal({ onClose }: RestockModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [searching, setSearching] = useState(true)
+  const [userRole, setUserRole] = useState<string>('')
 
   useEffect(() => {
     fetchAllProducts()
+    checkUserRole()
   }, [])
+
+  const checkUserRole = () => {
+    // Check if it's a cashier (localStorage session)
+    const cashierSession = localStorage.getItem('user_session')
+    if (cashierSession) {
+      setUserRole('Cashier')
+      return
+    }
+
+    // Check if it's a manager (sessionStorage)
+    const userType = sessionStorage.getItem('user_type')
+    if (userType === 'Manager') {
+      setUserRole('Manager')
+    }
+  }
 
   const fetchAllProducts = async () => {
     try {
@@ -239,6 +256,9 @@ export default function RestockModal({ onClose }: RestockModalProps) {
                   <div>
                     <label htmlFor="selling_price" className="block mb-2 font-medium">
                       Selling Price *
+                      {userRole === 'Cashier' && (
+                        <span className="ml-2 text-xs text-text-secondary">(View only)</span>
+                      )}
                     </label>
                     <input
                       id="selling_price"
@@ -248,15 +268,18 @@ export default function RestockModal({ onClose }: RestockModalProps) {
                       min="0"
                       value={formData.selling_price}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                       required
-                      disabled={loading}
+                      disabled={loading || userRole === 'Cashier'}
                     />
                   </div>
 
                   <div>
                     <label htmlFor="cost_price" className="block mb-2 font-medium">
                       Cost Price *
+                      {userRole === 'Cashier' && (
+                        <span className="ml-2 text-xs text-text-secondary">(View only)</span>
+                      )}
                     </label>
                     <input
                       id="cost_price"
@@ -266,9 +289,9 @@ export default function RestockModal({ onClose }: RestockModalProps) {
                       min="0"
                       value={formData.cost_price}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                       required
-                      disabled={loading}
+                      disabled={loading || userRole === 'Cashier'}
                     />
                   </div>
 

@@ -169,7 +169,9 @@ export async function POST(request: Request) {
       notes, 
       cashier_id,
       partial_payment_customer, // New field for partial payment customer info
-      store_id
+      store_id,
+      discount_type,
+      discount_value
     } = body
 
     // Validation
@@ -273,6 +275,19 @@ export async function POST(request: Request) {
       })
     }
 
+    // Calculate discount
+    let discountAmount = 0
+    if (discount_value && discount_value > 0) {
+      if (discount_type === 'percentage') {
+        discountAmount = (totalAmount * discount_value) / 100
+      } else if (discount_type === 'amount') {
+        discountAmount = Math.min(discount_value, totalAmount)
+      }
+    }
+
+    // Apply discount to total
+    totalAmount = totalAmount - discountAmount
+
     const paidAmount = amount_paid || 0
     const dueAmount = totalAmount - paidAmount
     const paymentStatus =
@@ -322,6 +337,8 @@ export async function POST(request: Request) {
           amount_due: dueAmount > 0 ? dueAmount : 0,
           store_id: parseInt(store_id),
           notes,
+          discount_type: discount_type || 'none',
+          discount_value: discount_value || 0,
         },
       ])
       .select()

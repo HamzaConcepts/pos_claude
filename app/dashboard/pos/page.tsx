@@ -25,6 +25,8 @@ export default function POSPage() {
   const [lastSale, setLastSale] = useState<any>(null)
   const [error, setError] = useState('')
   const [cashierId, setCashierId] = useState<string>('')
+  const [discountType, setDiscountType] = useState<'percentage' | 'amount'>('percentage')
+  const [discountValue, setDiscountValue] = useState('')
   
   // Partial payment states
   const [showPartialPaymentModal, setShowPartialPaymentModal] = useState(false)
@@ -155,12 +157,28 @@ export default function POSPage() {
       setCart([])
       setAmountPaid('')
       setSaleDescription('')
+      setDiscountValue('')
       setError('')
     }
   }
 
-  const calculateTotal = () => {
+  const calculateSubtotal = () => {
     return cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
+  }
+
+  const calculateDiscount = () => {
+    const subtotal = calculateSubtotal()
+    const discount = parseFloat(discountValue) || 0
+    
+    if (discountType === 'percentage') {
+      return (subtotal * discount) / 100
+    } else {
+      return Math.min(discount, subtotal) // Can't discount more than subtotal
+    }
+  }
+
+  const calculateTotal = () => {
+    return calculateSubtotal() - calculateDiscount()
   }
 
   const calculateChange = () => {
@@ -280,6 +298,8 @@ export default function POSPage() {
         return
       }
 
+      const discount = calculateDiscount()
+      
       const saleData = {
         items: cart.map((item) => ({
           product_id: item.product.id,
@@ -292,6 +312,8 @@ export default function POSPage() {
         notes: null,
         partial_payment_customer: partialPaymentCustomer,
         store_id: storeId,
+        discount_type: discount > 0 ? discountType : 'none',
+        discount_value: parseFloat(discountValue) || 0,
       }
 
       const response = await fetch('/api/sales', {
@@ -310,6 +332,7 @@ export default function POSPage() {
         setCart([])
         setAmountPaid('')
         setSaleDescription('')
+        setDiscountValue('')
         setShowPartialPaymentConfirm(false)
         setShowPartialPaymentModal(false)
         setPartialPaymentData({ customerName: '', customerCnic: '', customerPhone: '' })
@@ -457,6 +480,32 @@ export default function POSPage() {
           </table>
 
           <div className="border-t-2 border-black pt-4">
+            {lastSale.discount_value > 0 && lastSale.discount_type !== 'none' && (
+              <>
+                <div className="flex justify-between mb-2">
+                  <span>Subtotal:</span>
+                  <span>
+                    ${(
+                      lastSale.discount_type === 'percentage'
+                        ? lastSale.total_amount / (1 - lastSale.discount_value / 100)
+                        : lastSale.total_amount + lastSale.discount_value
+                    ).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between mb-2 text-green-600">
+                  <span>
+                    Discount ({lastSale.discount_type === 'percentage' ? `${lastSale.discount_value}%` : 'Amount'}):
+                  </span>
+                  <span>
+                    -${(
+                      lastSale.discount_type === 'percentage'
+                        ? (lastSale.total_amount / (1 - lastSale.discount_value / 100)) * (lastSale.discount_value / 100)
+                        : lastSale.discount_value
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between text-xl font-bold mb-2">
               <span>Total:</span>
               <span>${lastSale.total_amount.toFixed(2)}</span>
@@ -648,8 +697,20 @@ export default function POSPage() {
             )}
 
             <div className="mb-6">
-              <p className="text-sm text-text-secondary mb-2">Total Amount</p>
-              <p className="text-4xl font-bold">${total.toFixed(2)}</p>
+              <p className="text-sm text-text-secondary mb-2">Subtotal</p>
+              <p className="text-2xl font-bold">${calculateSubtotal().toFixed(2)}</p>
+              
+              {calculateDiscount() > 0 && (
+                <>
+                  <p className="text-sm text-status-success mt-2">Discount ({discountType === 'percentage' ? `${discountValue}%` : 'Amount'})</p>
+                  <p className="text-xl font-bold text-status-success">-${calculateDiscount().toFixed(2)}</p>
+                </>
+              )}
+              
+              <div className="border-t-2 border-black mt-3 pt-3">
+                <p className="text-sm text-text-secondary mb-2">Total Amount</p>
+                <p className="text-4xl font-bold">${total.toFixed(2)}</p>
+              </div>
             </div>
 
             <div className="mb-4">
@@ -676,6 +737,49 @@ export default function POSPage() {
                   Digital
                 </button>
               </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block mb-2 font-medium">Discount</label>
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setDiscountType('percentage')}
+                  className={`flex-1 px-3 py-2 text-sm rounded border-2 transition-colors ${
+                    discountType === 'percentage'
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white border-black hover:bg-gray-100'
+                  }`}
+                >
+                  Percentage %
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDiscountType('amount')}
+                  className={`flex-1 px-3 py-2 text-sm rounded border-2 transition-colors ${
+                    discountType === 'amount'
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white border-black hover:bg-gray-100'
+                  }`}
+                >
+                  Amount $
+                </button>
+              </div>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max={discountType === 'percentage' ? '100' : calculateSubtotal().toString()}
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+                className="w-full px-3 py-3 border-2 border-black rounded focus:outline-none text-lg"
+                placeholder={discountType === 'percentage' ? '0 - 100' : '0.00'}
+              />
+              {discountValue && parseFloat(discountValue) > 0 && (
+                <p className="text-xs text-text-secondary mt-1">
+                  Discount: ${calculateDiscount().toFixed(2)}
+                </p>
+              )}
             </div>
 
             <div className="mb-4">
