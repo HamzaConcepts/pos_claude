@@ -208,27 +208,39 @@ export async function POST(request: Request) {
       )
     }
 
-    // Fetch product details with inventory and calculate total
+    // Fetch product details and calculate total
     let totalAmount = 0
     const saleItems = []
 
     for (const item of items) {
+      console.log(`[SALES API] Processing item: product_id=${item.product_id}, quantity=${item.quantity}`)
+      
+      // First, get the product details with aggregated stock
       const { data: product, error: productError } = await supabaseAdmin
         .from('products')
         .select(`
-          *,
-          inventory (
-            id,
-            cost_price,
-            selling_price,
-            quantity_remaining
+          id,
+          sku,
+          name,
+          description,
+          is_phone,
+          is_active,
+          store_id,
+          aggregated_stock (
+            aggregated_cost_price,
+            aggregated_selling_price,
+            aggregated_lowest_negotiable,
+            total_quantity_remaining
           )
         `)
         .eq('id', item.product_id)
-        .eq('is_active', true)
+        .eq('store_id', parseInt(store_id))
         .single()
 
+      console.log(`[SALES API] Product query result:`, { product, productError })
+
       if (productError || !product) {
+        console.error(`[SALES API] ❌ Product not found: ${item.product_id}`, productError)
         return NextResponse.json(
           {
             success: false,
@@ -239,11 +251,36 @@ export async function POST(request: Request) {
         )
       }
 
-      // Calculate total stock
-      const totalStock = product.inventory?.reduce(
-        (sum: number, inv: any) => sum + (inv.quantity_remaining || 0),
+      // Get available stock batches ordered by FIFO (oldest first)
+      const { data: batches, error: batchError } = await supabaseAdmin
+        .from('stock_batches')
+        .select('id, quantity_remaining, purchase_date')
+        .eq('product_id', item.product_id)
+        .eq('store_id', parseInt(store_id))
+        .eq('is_depleted', false)
+        .gt('quantity_remaining', 0)
+        .order('purchase_date', { ascending: true })
+        .order('id', { ascending: true })
+
+      console.log(`[SALES API] Batches query result:`, { batches, batchError })
+
+      if (batchError || !batches || batches.length === 0) {
+        console.error(`[SALES API] ❌ No stock available for product ${product.name}`, batchError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: `No stock available for ${product.name}`,
+            code: 'NO_STOCK',
+          },
+          { status: 400 }
+        )
+      }
+
+      // Calculate total stock from all available batches
+      const totalStock = batches.reduce(
+        (sum, batch) => sum + batch.quantity_remaining,
         0
-      ) || 0
+      )
 
       // Check stock availability
       if (totalStock < item.quantity) {
@@ -257,9 +294,61 @@ export async function POST(request: Request) {
         )
       }
 
-      const latestInventory = product.inventory?.[0]
-      const sellingPrice = latestInventory?.selling_price || 0
-      const costPrice = latestInventory?.cost_price || 0
+      // Validate IMEI numbers for phone products
+      if (product.is_phone) {
+        if (!item.imei_numbers || item.imei_numbers.length !== item.quantity) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Please select ${item.quantity} IMEI number${item.quantity > 1 ? 's' : ''} for ${product.name}`,
+              code: 'IMEI_REQUIRED',
+            },
+            { status: 400 }
+          )
+        }
+
+        // Verify all IMEIs are available (in_stock status)
+        const { data: imeiRecords, error: imeiError } = await supabaseAdmin
+          .from('product_imeis')
+          .select('id, imei_number, status')
+          .in('imei_number', item.imei_numbers)
+          .eq('product_id', product.id)
+          .eq('store_id', parseInt(store_id))
+
+        if (imeiError || !imeiRecords || imeiRecords.length !== item.imei_numbers.length) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Some IMEI numbers not found for ${product.name}`,
+              code: 'IMEI_NOT_FOUND',
+            },
+            { status: 400 }
+          )
+        }
+
+        const unavailableIMEIs = imeiRecords.filter((imei: any) => imei.status !== 'in_stock')
+        if (unavailableIMEIs.length > 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `IMEI ${unavailableIMEIs[0].imei_number} is not available (status: ${unavailableIMEIs[0].status})`,
+              code: 'IMEI_UNAVAILABLE',
+            },
+            { status: 400 }
+          )
+        }
+      }
+
+      // Use aggregated_selling_price from aggregated_stock
+      const aggStock = Array.isArray(product.aggregated_stock) 
+        ? product.aggregated_stock[0] 
+        : product.aggregated_stock
+      
+      const sellingPrice = aggStock?.aggregated_selling_price || 0
+      
+      // Use aggregated_cost_price for cost calculation (for profit tracking)
+      const costPrice = aggStock?.aggregated_cost_price || 0
+      
       const subtotal = sellingPrice * item.quantity
       totalAmount += subtotal
 
@@ -271,7 +360,8 @@ export async function POST(request: Request) {
         unit_price: sellingPrice,
         cost_price_snapshot: costPrice,
         subtotal,
-        inventoryToUpdate: product.inventory,
+        imei_numbers: item.imei_numbers || [],
+        is_phone: product.is_phone,
       })
     }
 
@@ -306,12 +396,12 @@ export async function POST(request: Request) {
     }
 
     if (partial_payment_customer) {
-      const { customer_name, customer_cnic, customer_phone } = partial_payment_customer
-      if (!customer_name || !customer_cnic || !customer_phone) {
+      const { customer_name, customer_phone } = partial_payment_customer
+      if (!customer_name || !customer_phone) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Customer name, CNIC, and phone are required for partial payment',
+            error: 'Customer name and phone are required for partial payment',
             code: 'VALIDATION_ERROR',
           },
           { status: 400 }
@@ -378,7 +468,7 @@ export async function POST(request: Request) {
 
     // Create partial payment customer record if applicable
     if (paymentStatus === 'Partial' && partial_payment_customer) {
-      const { customer_name, customer_cnic, customer_phone } = partial_payment_customer
+      const { customer_name, customer_phone } = partial_payment_customer
       
       const { error: partialPaymentError } = await supabaseAdmin
         .from('partial_payment_customers')
@@ -386,7 +476,6 @@ export async function POST(request: Request) {
           {
             sale_id: sale.id,
             customer_name,
-            customer_cnic,
             customer_phone,
             total_amount: totalAmount,
             amount_paid: paidAmount,
@@ -398,7 +487,7 @@ export async function POST(request: Request) {
       if (partialPaymentError) throw partialPaymentError
     }
 
-    // Create sale items and update inventory
+    // Create sale items and update inventory using FIFO
     for (const saleItem of saleItems) {
       // Insert sale item (with snapshots)
       const { error: itemError } = await supabaseAdmin
@@ -418,24 +507,37 @@ export async function POST(request: Request) {
 
       if (itemError) throw itemError
 
-      // Update inventory stock (FIFO - First In, First Out)
-      let remainingQuantity = saleItem.quantity
-      const inventories = saleItem.inventoryToUpdate || []
+      // Use FIFO function to deduct stock from batches
+      const { data: fifoResult, error: fifoError } = await supabaseAdmin
+        .rpc('deduct_stock_fifo', {
+          p_product_id: saleItem.product_id,
+          p_store_id: parseInt(store_id),
+          p_quantity: saleItem.quantity,
+          p_sale_id: sale.id,
+        })
 
-      for (const inv of inventories) {
-        if (remainingQuantity <= 0) break
+      if (fifoError) {
+        console.error('FIFO deduction error:', fifoError)
+        throw new Error(`Failed to deduct stock for ${saleItem.product_name}: ${fifoError.message}`)
+      }
 
-        const deductQuantity = Math.min(inv.quantity_remaining, remainingQuantity)
-        const newQuantity = inv.quantity_remaining - deductQuantity
+      // Mark IMEIs as sold if it's a phone product
+      if (saleItem.is_phone && saleItem.imei_numbers && saleItem.imei_numbers.length > 0) {
+        const { error: imeiUpdateError } = await supabaseAdmin
+          .from('product_imeis')
+          .update({
+            status: 'sold',
+            sold_at: new Date().toISOString(),
+            sale_id: sale.id,
+          })
+          .in('imei_number', saleItem.imei_numbers)
+          .eq('product_id', saleItem.product_id)
+          .eq('store_id', parseInt(store_id))
 
-        const { error: updateError } = await supabaseAdmin
-          .from('inventory')
-          .update({ quantity_remaining: newQuantity })
-          .eq('id', inv.id)
-
-        if (updateError) throw updateError
-
-        remainingQuantity -= deductQuantity
+        if (imeiUpdateError) {
+          console.error('IMEI update error:', imeiUpdateError)
+          throw new Error(`Failed to mark IMEIs as sold for ${saleItem.product_name}`)
+        }
       }
     }
 

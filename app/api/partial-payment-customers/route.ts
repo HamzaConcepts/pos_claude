@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
     let query = supabaseAdmin
       .from('partial_payment_customers')
-      .select('customer_name, customer_cnic, customer_phone')
+      .select('customer_name, customer_phone')
       .order('created_at', { ascending: false })
 
     if (searchQuery) {

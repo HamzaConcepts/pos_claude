@@ -11,7 +11,8 @@ import {
   Users,
   LogOut,
   Menu,
-  X
+  X,
+  BookOpen
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase, hasPermission, type UserRole } from '@/lib/supabase'
@@ -32,7 +33,8 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     { href: '/dashboard/inventory', label: 'Inventory', icon: Package, permission: 'create_product' },
     { href: '/dashboard/sales', label: 'Sales', icon: DollarSign, permission: 'view_sales' },
     { href: '/dashboard/expenses', label: 'Expenses', icon: FileText, permission: 'add_expense' },
-    { href: '/dashboard/users', label: 'Users', icon: Users, permission: 'create_user' },
+    { href: '/dashboard/khaata', label: 'Khaata System', icon: BookOpen, permission: 'create_user' },
+    { href: '/dashboard/store', label: 'Store', icon: Users, permission: 'create_user' },
   ]
 
   const handleLogout = async () => {
@@ -69,19 +71,19 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
       <aside
         className={`
           fixed inset-y-0 left-0 z-40
-          w-64 bg-black text-white flex flex-col
+          w-56 bg-black text-white flex flex-col
           transform transition-transform duration-300 ease-in-out
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-gray-700">
-          <h1 className="text-2xl font-bold">POS System</h1>
+        <div className="p-5 border-b border-gray-700">
+          <h1 className="text-xl font-bold">POS System</h1>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 overflow-y-auto">
-          <ul className="space-y-2">
+        <nav className="flex-1 p-3 overflow-y-auto">
+          <ul className="space-y-1.5">
             {filteredNavItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -92,15 +94,15 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                     href={item.href}
                     onClick={closeMobileMenu}
                     className={`
-                      flex items-center gap-3 px-4 py-3 rounded transition-colors
+                      flex items-center gap-2.5 px-3 py-2.5 rounded transition-colors
                       ${isActive 
                         ? 'bg-white text-black' 
                         : 'text-white hover:bg-gray-800'
                       }
                     `}
                   >
-                    <Icon size={20} />
-                    <span>{item.label}</span>
+                    <Icon size={17} />
+                    <span className="text-sm">{item.label}</span>
                   </Link>
                 </li>
               )
@@ -109,16 +111,16 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
         </nav>
 
         {/* User section */}
-        <div className="p-4 border-t border-gray-700">
-          <div className="mb-3">
-            <p className="font-medium">{userName}</p>
-            <p className="text-sm text-gray-400">{userRole}</p>
+        <div className="p-3 border-t border-gray-700">
+          <div className="mb-2.5">
+            <p className="font-medium text-sm">{userName}</p>
+            <p className="text-xs text-gray-400">{userRole}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 w-full px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded transition-colors text-sm"
           >
-            <LogOut size={20} />
+            <LogOut size={17} />
             <span>Logout</span>
           </button>
         </div>

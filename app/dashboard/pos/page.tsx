@@ -5,10 +5,12 @@ import { Search, Plus, Minus, Trash2, ShoppingCart, Printer } from 'lucide-react
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import { supabase, getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import IMEISelectionModal from '@/components/IMEISelectionModal'
 
 interface CartItem {
   product: ProductWithBackwardCompatibility
   quantity: number
+  imei_numbers?: string[]  // For phone products
 }
 
 export default function POSPage() {
@@ -25,15 +27,16 @@ export default function POSPage() {
   const [lastSale, setLastSale] = useState<any>(null)
   const [error, setError] = useState('')
   const [cashierId, setCashierId] = useState<string>('')
-  const [discountType, setDiscountType] = useState<'percentage' | 'amount'>('percentage')
-  const [discountValue, setDiscountValue] = useState('')
+  
+  // IMEI selection states
+  const [showIMEIModal, setShowIMEIModal] = useState(false)
+  const [currentIMEIProduct, setCurrentIMEIProduct] = useState<CartItem | null>(null)
   
   // Partial payment states
   const [showPartialPaymentModal, setShowPartialPaymentModal] = useState(false)
   const [showPartialPaymentConfirm, setShowPartialPaymentConfirm] = useState(false)
   const [partialPaymentData, setPartialPaymentData] = useState({
     customerName: '',
-    customerCnic: '',
     customerPhone: ''
   })
   const [partialPaymentError, setPartialPaymentError] = useState('')
@@ -105,19 +108,36 @@ export default function POSPage() {
 
     if (existingItem) {
       if (existingItem.quantity < product.stock_quantity) {
-        setCart(
-          cart.map((item) =>
-            item.product.id === product.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
+        const newQuantity = existingItem.quantity + 1
+        
+        // If it's a phone, prompt for IMEI selection
+        if (product.is_phone) {
+          const updatedItem = { ...existingItem, quantity: newQuantity }
+          setCurrentIMEIProduct(updatedItem)
+          setShowIMEIModal(true)
+        } else {
+          setCart(
+            cart.map((item) =>
+              item.product.id === product.id
+                ? { ...item, quantity: newQuantity }
+                : item
+            )
           )
-        )
+        }
       } else {
         alert(`Only ${product.stock_quantity} units available`)
       }
     } else {
       if (product.stock_quantity > 0) {
-        setCart([...cart, { product, quantity: 1 }])
+        const newItem = { product, quantity: 1 }
+        
+        // If it's a phone, prompt for IMEI selection
+        if (product.is_phone) {
+          setCurrentIMEIProduct(newItem)
+          setShowIMEIModal(true)
+        } else {
+          setCart([...cart, newItem])
+        }
       } else {
         alert('Product out of stock')
       }
@@ -125,6 +145,30 @@ export default function POSPage() {
 
     setSearchTerm('')
     setFilteredProducts([])
+  }
+
+  const handleIMEISelection = (imeis: string[]) => {
+    if (!currentIMEIProduct) return
+
+    const existingIndex = cart.findIndex(
+      (item) => item.product.id === currentIMEIProduct.product.id
+    )
+
+    const updatedItem = {
+      ...currentIMEIProduct,
+      imei_numbers: imeis,
+    }
+
+    if (existingIndex >= 0) {
+      const newCart = [...cart]
+      newCart[existingIndex] = updatedItem
+      setCart(newCart)
+    } else {
+      setCart([...cart, updatedItem])
+    }
+
+    setShowIMEIModal(false)
+    setCurrentIMEIProduct(null)
   }
 
   const updateQuantity = (productId: number, newQuantity: number) => {
@@ -141,11 +185,20 @@ export default function POSPage() {
       return
     }
 
-    setCart(
-      cart.map((item) =>
-        item.product.id === productId ? { ...item, quantity: newQuantity } : item
+    // If it's a phone and quantity changed, require IMEI re-selection
+    if (item.product.is_phone) {
+      const updatedItem = { ...item, quantity: newQuantity }
+      setCurrentIMEIProduct(updatedItem)
+      setShowIMEIModal(true)
+    } else {
+      setCart(
+        cart.map((cartItem) =>
+          cartItem.product.id === productId
+            ? { ...cartItem, quantity: newQuantity }
+            : cartItem
+        )
       )
-    )
+    }
   }
 
   const removeFromCart = (productId: number) => {
@@ -157,28 +210,22 @@ export default function POSPage() {
       setCart([])
       setAmountPaid('')
       setSaleDescription('')
-      setDiscountValue('')
       setError('')
     }
   }
 
-  const calculateSubtotal = () => {
-    return cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0)
-  }
-
-  const calculateDiscount = () => {
-    const subtotal = calculateSubtotal()
-    const discount = parseFloat(discountValue) || 0
-    
-    if (discountType === 'percentage') {
-      return (subtotal * discount) / 100
-    } else {
-      return Math.min(discount, subtotal) // Can't discount more than subtotal
-    }
-  }
-
   const calculateTotal = () => {
-    return calculateSubtotal() - calculateDiscount()
+    return cart.reduce((sum, item) => {
+      const price = item.product.aggregated_stock?.aggregated_selling_price || 0
+      return sum + price * item.quantity
+    }, 0)
+  }
+
+  const calculateLowestNegotiable = () => {
+    return cart.reduce((sum, item) => {
+      const price = item.product.aggregated_stock?.aggregated_lowest_negotiable || 0
+      return sum + price * item.quantity
+    }, 0)
   }
 
   const calculateChange = () => {
@@ -188,6 +235,13 @@ export default function POSPage() {
   }
 
   const handleProcessSale = async () => {
+    console.log('[POS] === CONFIRM SALE BUTTON PRESSED ===')
+    console.log('[POS] Cart:', JSON.stringify(cart.map(item => ({
+      product_id: item.product.id,
+      product_name: item.product.name,
+      quantity: item.quantity
+    })), null, 2))
+    
     if (cart.length === 0) {
       setError('Cart is empty')
       return
@@ -206,11 +260,20 @@ export default function POSPage() {
     }
 
     const total = calculateTotal()
+    const lowestNegotiable = calculateLowestNegotiable()
     const paid = parseFloat(amountPaid) || 0
+    
+    console.log('[POS] Payment details:', { total, lowestNegotiable, paid })
+
+    // Check if payment is less than lowest negotiable price
+    if (paid < lowestNegotiable) {
+      setError(`Payment cannot be completed. Amount paid ($${paid.toFixed(2)}) is below the minimum acceptable price ($${lowestNegotiable.toFixed(2)})`)
+      return
+    }
 
     // Check if payment is less than total
     if (paid < total) {
-      // Show custom partial payment confirmation modal
+      // Show discount/partial payment choice modal
       setShowPartialPaymentConfirm(true)
       setError('')
       return
@@ -218,10 +281,20 @@ export default function POSPage() {
 
     // If full payment, process normally
     setError('')
-    await processSaleTransaction(null)
+    await processSaleTransaction(null, 0)
   }
 
-  const handlePartialPaymentConfirm = () => {
+  const handleApplyDiscount = async () => {
+    setShowPartialPaymentConfirm(false)
+    const total = calculateTotal()
+    const paid = parseFloat(amountPaid) || 0
+    const discountAmount = total - paid
+    
+    // Process sale with automatic discount
+    await processSaleTransaction(null, discountAmount)
+  }
+
+  const handleGoToPartialPayment = () => {
     setShowPartialPaymentConfirm(false)
     setShowPartialPaymentModal(true)
     // Fetch existing customers when modal opens
@@ -265,7 +338,6 @@ export default function POSPage() {
   const handleSelectCustomer = (customer: any) => {
     setPartialPaymentData({
       customerName: customer.customer_name,
-      customerCnic: customer.customer_cnic || '',
       customerPhone: customer.customer_phone || ''
     })
     setShowCustomerDropdown(false)
@@ -279,7 +351,7 @@ export default function POSPage() {
     setError(`Insufficient payment. Total: $${total.toFixed(2)}, Paid: $${paid.toFixed(2)}`)
   }
 
-  const processSaleTransaction = async (partialPaymentCustomer: any) => {
+  const processSaleTransaction = async (partialPaymentCustomer: any, discountAmount: number = 0) => {
     setLoading(true)
 
     try {
@@ -298,12 +370,22 @@ export default function POSPage() {
         return
       }
 
-      const discount = calculateDiscount()
-      
+      // Validate IMEI numbers for phone products
+      for (const item of cart) {
+        if (item.product.is_phone) {
+          if (!item.imei_numbers || item.imei_numbers.length !== item.quantity) {
+            setError(`Please select ${item.quantity} IMEI number${item.quantity > 1 ? 's' : ''} for ${item.product.name}`)
+            setLoading(false)
+            return
+          }
+        }
+      }
+
       const saleData = {
         items: cart.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,
+          imei_numbers: item.imei_numbers || [], // Include IMEI numbers
         })),
         sale_description: finalDescription,
         payment_method: paymentMethod,
@@ -312,9 +394,11 @@ export default function POSPage() {
         notes: null,
         partial_payment_customer: partialPaymentCustomer,
         store_id: storeId,
-        discount_type: discount > 0 ? discountType : 'none',
-        discount_value: parseFloat(discountValue) || 0,
+        discount_type: discountAmount > 0 ? 'amount' : 'none',
+        discount_value: discountAmount,
       }
+      
+      console.log('[POS] Sending sale data to API:', JSON.stringify(saleData, null, 2))
 
       const response = await fetch('/api/sales', {
         method: 'POST',
@@ -325,23 +409,28 @@ export default function POSPage() {
       })
 
       const result = await response.json()
+      
+      console.log('[POS] API Response:', JSON.stringify(result, null, 2))
 
       if (result.success) {
+        console.log('[POS] Sale successful!')
         setLastSale(result.data)
         setShowReceipt(true)
         setCart([])
         setAmountPaid('')
         setSaleDescription('')
-        setDiscountValue('')
         setShowPartialPaymentConfirm(false)
         setShowPartialPaymentModal(false)
-        setPartialPaymentData({ customerName: '', customerCnic: '', customerPhone: '' })
+        setPartialPaymentData({ customerName: '', customerPhone: '' })
         setPartialPaymentError('')
         fetchProducts() // Refresh product stock
       } else {
+        console.error('[POS] ❌ Sale failed:', result.error)
+        console.error('[POS] Error code:', result.code)
         setError(result.error)
       }
     } catch (err) {
+      console.error('[POS] ❌ Exception during sale:', err)
       setError('Failed to process sale')
     } finally {
       setLoading(false)
@@ -349,20 +438,14 @@ export default function POSPage() {
   }
 
   const handlePartialPaymentSubmit = () => {
-    const { customerName, customerCnic, customerPhone } = partialPaymentData
+    const { customerName, customerPhone } = partialPaymentData
     
     // Clear previous errors
     setPartialPaymentError('')
     
     // Validate all fields are filled
-    if (!customerName.trim() || !customerCnic.trim() || !customerPhone.trim()) {
-      setPartialPaymentError('All fields are required. Please fill in customer name, CNIC, and phone number.')
-      return
-    }
-
-    // Validate CNIC format (basic validation)
-    if (customerCnic.length < 13) {
-      setPartialPaymentError('Please enter a valid CNIC (minimum 13 digits)')
+    if (!customerName.trim() || !customerPhone.trim()) {
+      setPartialPaymentError('All fields are required. Please fill in customer name and phone number.')
       return
     }
 
@@ -374,9 +457,8 @@ export default function POSPage() {
 
     processSaleTransaction({
       customer_name: customerName.trim(),
-      customer_cnic: customerCnic.trim(),
       customer_phone: customerPhone.trim(),
-    })
+    }, 0)
   }
 
   const handlePrintReceipt = () => {
@@ -438,14 +520,10 @@ export default function POSPage() {
                     <p className="font-medium text-white">{lastSale.partial_payment_customers[0].customer_name}</p>
                   </div>
                   <div>
-                    <p className="text-red-100">CNIC</p>
-                    <p className="font-medium text-white">{lastSale.partial_payment_customers[0].customer_cnic}</p>
-                  </div>
-                  <div>
                     <p className="text-red-100">Phone</p>
                     <p className="font-medium text-white">{lastSale.partial_payment_customers[0].customer_phone}</p>
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <p className="text-red-100">Amount Remaining</p>
                     <p className="font-bold text-white text-lg">
                       ${lastSale.partial_payment_customers[0].amount_remaining.toFixed(2)}
@@ -596,7 +674,7 @@ export default function POSPage() {
                           {product.sku} • Stock: {product.stock_quantity}
                         </p>
                       </div>
-                      <p className="font-bold">${product.price.toFixed(2)}</p>
+                      <p className="font-bold">${(product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)}</p>
                     </div>
                   </button>
                 ))}
@@ -634,48 +712,78 @@ export default function POSPage() {
                   {cart.map((item) => (
                     <div
                       key={item.product.id}
-                      className="flex items-center justify-between p-3 border-2 border-black rounded"
+                      className="p-3 border-2 border-black rounded"
                     >
-                      <div className="flex-1">
-                        <p className="font-medium">{item.product.name}</p>
-                        <p className="text-sm text-text-secondary">
-                          ${item.product.price.toFixed(2)} each
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 border-2 border-black rounded">
-                          <button
-                            onClick={() =>
-                              updateQuantity(item.product.id, item.quantity - 1)
-                            }
-                            className="p-2 hover:bg-gray-200 transition-colors"
-                          >
-                            <Minus size={16} />
-                          </button>
-                          <span className="font-bold w-8 text-center">
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={() =>
-                              updateQuantity(item.product.id, item.quantity + 1)
-                            }
-                            className="p-2 hover:bg-gray-200 transition-colors"
-                          >
-                            <Plus size={16} />
-                          </button>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium">{item.product.name}</p>
+                          <p className="text-sm text-text-secondary">
+                            ${(item.product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)} each
+                          </p>
+                          {item.product.is_phone && (
+                            <div className="mt-1">
+                              {item.imei_numbers && item.imei_numbers.length > 0 ? (
+                                <div className="text-xs">
+                                  <span className="text-green-600 font-medium">✓ IMEI selected ({item.imei_numbers.length})</span>
+                                  <button
+                                    onClick={() => {
+                                      setCurrentIMEIProduct(item)
+                                      setShowIMEIModal(true)
+                                    }}
+                                    className="ml-2 text-blue-600 hover:underline"
+                                  >
+                                    Change
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setCurrentIMEIProduct(item)
+                                    setShowIMEIModal(true)
+                                  }}
+                                  className="text-xs text-status-error font-medium hover:underline"
+                                >
+                                  ⚠ Select IMEI numbers
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        <p className="font-bold w-20 text-right">
-                          ${(item.product.price * item.quantity).toFixed(2)}
-                        </p>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 border-2 border-black rounded">
+                            <button
+                              onClick={() =>
+                                updateQuantity(item.product.id, item.quantity - 1)
+                              }
+                              className="p-2 hover:bg-gray-200 transition-colors"
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <span className="font-bold w-8 text-center">
+                              {item.quantity}
+                            </span>
+                            <button
+                              onClick={() =>
+                                updateQuantity(item.product.id, item.quantity + 1)
+                              }
+                              className="p-2 hover:bg-gray-200 transition-colors"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
 
-                        <button
-                          onClick={() => removeFromCart(item.product.id)}
-                          className="p-2 hover:bg-red-100 text-status-error rounded transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                          <p className="font-bold w-20 text-right">
+                            ${((item.product.aggregated_stock?.aggregated_selling_price || 0) * item.quantity).toFixed(2)}
+                          </p>
+
+                          <button
+                            onClick={() => removeFromCart(item.product.id)}
+                            className="p-2 hover:bg-red-100 text-status-error rounded transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -697,20 +805,11 @@ export default function POSPage() {
             )}
 
             <div className="mb-6">
-              <p className="text-sm text-text-secondary mb-2">Subtotal</p>
-              <p className="text-2xl font-bold">${calculateSubtotal().toFixed(2)}</p>
-              
-              {calculateDiscount() > 0 && (
-                <>
-                  <p className="text-sm text-status-success mt-2">Discount ({discountType === 'percentage' ? `${discountValue}%` : 'Amount'})</p>
-                  <p className="text-xl font-bold text-status-success">-${calculateDiscount().toFixed(2)}</p>
-                </>
-              )}
-              
-              <div className="border-t-2 border-black mt-3 pt-3">
-                <p className="text-sm text-text-secondary mb-2">Total Amount</p>
-                <p className="text-4xl font-bold">${total.toFixed(2)}</p>
-              </div>
+              <p className="text-sm text-text-secondary mb-2">Total Amount</p>
+              <p className="text-4xl font-bold">${total.toFixed(2)}</p>
+              <p className="text-sm text-orange-600 mt-2">
+                Min. Acceptable: ${calculateLowestNegotiable().toFixed(2)}
+              </p>
             </div>
 
             <div className="mb-4">
@@ -737,49 +836,6 @@ export default function POSPage() {
                   Digital
                 </button>
               </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="block mb-2 font-medium">Discount</label>
-              <div className="flex gap-2 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setDiscountType('percentage')}
-                  className={`flex-1 px-3 py-2 text-sm rounded border-2 transition-colors ${
-                    discountType === 'percentage'
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white border-black hover:bg-gray-100'
-                  }`}
-                >
-                  Percentage %
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDiscountType('amount')}
-                  className={`flex-1 px-3 py-2 text-sm rounded border-2 transition-colors ${
-                    discountType === 'amount'
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white border-black hover:bg-gray-100'
-                  }`}
-                >
-                  Amount $
-                </button>
-              </div>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max={discountType === 'percentage' ? '100' : calculateSubtotal().toString()}
-                value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value)}
-                className="w-full px-3 py-3 border-2 border-black rounded focus:outline-none text-lg"
-                placeholder={discountType === 'percentage' ? '0 - 100' : '0.00'}
-              />
-              {discountValue && parseFloat(discountValue) > 0 && (
-                <p className="text-xs text-text-secondary mt-1">
-                  Discount: ${calculateDiscount().toFixed(2)}
-                </p>
-              )}
             </div>
 
             <div className="mb-4">
@@ -835,13 +891,13 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* Partial Payment Confirmation Modal */}
+      {/* Discount or Partial Payment Choice Modal */}
       {showPartialPaymentConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border-2 border-black max-w-md w-full p-6">
             <div className="mb-6">
               <h2 className="text-xl font-bold mb-2">Insufficient Payment</h2>
-              <p className="text-text-secondary text-sm">Payment amount is less than total. Would you like to proceed with partial payment?</p>
+              <p className="text-text-secondary text-sm">The entered amount is less than the total. How would you like to proceed?</p>
             </div>
             
             <div className="mb-6 p-4 border-2 border-black rounded">
@@ -851,21 +907,32 @@ export default function POSPage() {
                   <span className="font-bold">${calculateTotal().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-text-secondary">Lowest Negotiable:</span>
+                  <span className="font-medium text-orange-600">${calculateLowestNegotiable().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-text-secondary">Amount Paid:</span>
                   <span className="font-bold">${(parseFloat(amountPaid) || 0).toFixed(2)}</span>
                 </div>
                 <div className="border-t-2 border-black pt-2 mt-2"></div>
                 <div className="flex justify-between">
-                  <span className="font-bold">Amount Due:</span>
-                  <span className="font-bold text-lg">
+                  <span className="font-bold">Remaining Amount:</span>
+                  <span className="font-bold text-lg text-orange-600">
                     ${(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="mb-6 p-3 bg-bg-secondary border-2 border-black rounded text-sm">
-              <p className="text-text-secondary">Customer information (Name, CNIC, Phone) will be required for partial payment.</p>
+            <div className="mb-6 space-y-3">
+              <div className="p-3 bg-green-50 border-2 border-green-600 rounded">
+                <p className="text-sm font-medium mb-1">Apply as Discount</p>
+                <p className="text-xs text-text-secondary">The remaining amount will be applied as a discount and the sale will be completed.</p>
+              </div>
+              <div className="p-3 bg-blue-50 border-2 border-blue-600 rounded">
+                <p className="text-sm font-medium mb-1">Partial Payment</p>
+                <p className="text-xs text-text-secondary">Record customer information and track the remaining amount for future payment.</p>
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -876,10 +943,17 @@ export default function POSPage() {
                 Cancel
               </button>
               <button
-                onClick={handlePartialPaymentConfirm}
-                className="flex-1 px-4 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors font-medium"
+                onClick={handleApplyDiscount}
+                disabled={loading}
+                className="flex-1 px-4 py-3 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium disabled:bg-gray-400"
               >
-                Continue
+                Apply Discount
+              </button>
+              <button
+                onClick={handleGoToPartialPayment}
+                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
+              >
+                Partial Payment
               </button>
             </div>
           </div>
@@ -952,32 +1026,12 @@ export default function POSPage() {
                       >
                         <div className="font-medium text-sm">{customer.customer_name}</div>
                         <div className="text-xs text-text-secondary mt-1">
-                          {customer.customer_cnic} • {customer.customer_phone}
+                          {customer.customer_phone}
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
-
-              <div>
-                <label className="block mb-2 font-medium text-sm">
-                  Customer CNIC <span className="text-status-error">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={partialPaymentData.customerCnic}
-                  onChange={(e) => {
-                    setPartialPaymentData({
-                      ...partialPaymentData,
-                      customerCnic: e.target.value
-                    })
-                    setPartialPaymentError('')
-                  }}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
-                  placeholder="xxxxx-xxxxxxx-x"
-                  maxLength={15}
-                />
               </div>
 
               <div>
@@ -1006,7 +1060,7 @@ export default function POSPage() {
                 onClick={() => {
                   setShowPartialPaymentModal(false)
                   setShowPartialPaymentConfirm(false)
-                  setPartialPaymentData({ customerName: '', customerCnic: '', customerPhone: '' })
+                  setPartialPaymentData({ customerName: '', customerPhone: '' })
                   setPartialPaymentError('')
                   setShowCustomerDropdown(false)
                   setExistingCustomers([])
@@ -1018,7 +1072,7 @@ export default function POSPage() {
               </button>
               <button
                 onClick={handlePartialPaymentSubmit}
-                disabled={loading || !partialPaymentData.customerName.trim() || !partialPaymentData.customerCnic.trim() || !partialPaymentData.customerPhone.trim()}
+                disabled={loading || !partialPaymentData.customerName.trim() || !partialPaymentData.customerPhone.trim()}
                 className="flex-1 px-4 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
               >
                 {loading ? 'Processing...' : 'Confirm Sale'}
@@ -1026,6 +1080,19 @@ export default function POSPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* IMEI Selection Modal */}
+      {showIMEIModal && currentIMEIProduct && (
+        <IMEISelectionModal
+          product={currentIMEIProduct.product}
+          quantity={currentIMEIProduct.quantity}
+          onSelect={handleIMEISelection}
+          onClose={() => {
+            setShowIMEIModal(false)
+            setCurrentIMEIProduct(null)
+          }}
+        />
       )}
     </div>
   )

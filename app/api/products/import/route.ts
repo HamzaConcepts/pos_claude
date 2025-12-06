@@ -132,28 +132,47 @@ export async function POST(request: Request) {
           throw productError
         }
 
-        // Insert initial inventory if stock_quantity > 0
-        if (product.stock_quantity > 0) {
-          const { error: inventoryError } = await supabaseAdmin
-            .from('inventory')
-            .insert([
-              {
-                product_id: newProduct.id,
-                cost_price: product.cost_price,
-                selling_price: product.price,
-                quantity_added: product.stock_quantity,
-                quantity_remaining: product.stock_quantity,
-                low_stock_threshold: product.low_stock_threshold || 10,
-                batch_number: `IMPORT-${Date.now()}`,
-                restock_date: new Date().toISOString(),
-                store_id: store_id,
-                notes: 'Imported from CSV',
-              },
-            ])
+        // Create aggregated_stock record
+        await supabaseAdmin
+          .from('aggregated_stock')
+          .insert({
+            product_id: newProduct.id,
+            store_id: store_id,
+            aggregated_cost_price: 0,
+            aggregated_selling_price: 0,
+            aggregated_lowest_negotiable: 0,
+            total_quantity_purchased: 0,
+            total_quantity_remaining: 0,
+            total_quantity_sold: 0,
+            low_stock_threshold: product.low_stock_threshold || 10
+          })
 
-          if (inventoryError) {
-            console.error('Inventory insert error:', inventoryError)
-            throw inventoryError
+        // Insert initial stock batch if stock_quantity > 0
+        if (product.stock_quantity > 0) {
+          const { data: batchNumber } = await supabaseAdmin
+            .rpc('generate_batch_number', {
+              p_store_id: store_id,
+              p_product_id: newProduct.id
+            })
+
+          const { error: batchError } = await supabaseAdmin
+            .from('stock_batches')
+            .insert({
+              product_id: newProduct.id,
+              store_id: store_id,
+              batch_number: batchNumber || `IMPORT-${Date.now()}`,
+              cost_price: product.cost_price,
+              selling_price: product.price,
+              lowest_negotiable_price: product.price * 0.9, // Default 90% of selling price
+              quantity_purchased: product.stock_quantity,
+              quantity_remaining: product.stock_quantity,
+              is_depleted: false,
+              purchase_date: new Date().toISOString()
+            })
+
+          if (batchError) {
+            console.error('Stock batch insert error:', batchError)
+            throw batchError
           }
         }
 

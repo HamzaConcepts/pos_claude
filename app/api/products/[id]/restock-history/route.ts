@@ -24,23 +24,30 @@ export async function GET(
   try {
     const productId = parseInt(params.id)
 
-    // Fetch all inventory records for this product, ordered by restock date descending
-    const { data: inventory, error } = await supabaseAdmin
-      .from('inventory')
-      .select('*')
+    // Fetch all stock batches for this product, ordered by purchase date descending
+    const { data: batches, error } = await supabaseAdmin
+      .from('stock_batches')
+      .select(`
+        *,
+        suppliers (
+          id,
+          supplier_name,
+          phone_number
+        )
+      `)
       .eq('product_id', productId)
-      .order('restock_date', { ascending: false })
+      .order('purchase_date', { ascending: false })
 
     if (error) {
       console.error('Restock history fetch error:', error)
       throw error
     }
 
-    console.log(`Found ${inventory?.length || 0} inventory records for product ${productId}`)
+    console.log(`Found ${batches?.length || 0} stock batches for product ${productId}`)
 
     return NextResponse.json({
       success: true,
-      data: inventory || [],
+      data: batches || [],
     })
   } catch (error: any) {
     console.error('Restock history error:', error)

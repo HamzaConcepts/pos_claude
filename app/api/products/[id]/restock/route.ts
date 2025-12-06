@@ -23,14 +23,13 @@ export async function POST(
     const {
       cost_price,
       selling_price,
-      quantity_added,
-      low_stock_threshold,
-      batch_number,
-      notes,
+      lowest_negotiable_price,
+      quantity_purchased,
+      supplier_id,
     } = body
 
     // Validation
-    if (!quantity_added || quantity_added <= 0) {
+    if (!quantity_purchased || quantity_purchased <= 0) {
       return NextResponse.json(
         {
           success: false,
@@ -41,10 +40,21 @@ export async function POST(
       )
     }
 
+    if (cost_price === undefined || selling_price === undefined) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Cost price and selling price are required',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
     // Check if product exists and get store_id
     const { data: product, error: productError } = await supabaseAdmin
       .from('products')
-      .select('*, store_id')
+      .select('id, store_id, is_active')
       .eq('id', productId)
       .single()
 
@@ -67,35 +77,48 @@ export async function POST(
         .eq('id', productId)
     }
 
-    // Create new inventory entry with store_id
-    const { data: inventory, error: inventoryError } = await supabaseAdmin
-      .from('inventory')
+    // Generate batch number
+    const { data: batchNumber, error: batchError } = await supabaseAdmin
+      .rpc('generate_batch_number', {
+        p_store_id: product.store_id,
+        p_product_id: productId
+      })
+
+    if (batchError) {
+      console.error('Error generating batch number:', batchError)
+      throw batchError
+    }
+
+    // Create stock batch - trigger will automatically update aggregated_stock
+    const { data: batch, error: batchInsertError } = await supabaseAdmin
+      .from('stock_batches')
       .insert({
         product_id: productId,
         store_id: product.store_id,
-        cost_price: cost_price,
-        selling_price: selling_price,
-        quantity_added: quantity_added,
-        quantity_remaining: quantity_added,
-        low_stock_threshold: low_stock_threshold || 10,
-        batch_number: batch_number || `BATCH-${Date.now()}`,
-        restock_date: new Date().toISOString(),
-        notes: notes || null,
+        supplier_id: supplier_id || null,
+        batch_number: batchNumber,
+        cost_price,
+        selling_price,
+        lowest_negotiable_price: lowest_negotiable_price || selling_price,
+        quantity_purchased,
+        quantity_remaining: quantity_purchased,
+        is_depleted: false,
+        purchase_date: new Date().toISOString()
       })
       .select()
       .single()
 
-    if (inventoryError) {
-      console.error('Inventory insert error:', inventoryError)
-      throw inventoryError
+    if (batchInsertError) {
+      console.error('Stock batch insert error:', batchInsertError)
+      throw batchInsertError
     }
 
-    console.log('Successfully created inventory record:', inventory.id)
+    console.log('Successfully created stock batch:', batch.id)
 
     return NextResponse.json({
       success: true,
-      data: inventory,
-      message: `Successfully restocked ${quantity_added} units`,
+      data: batch,
+      message: `Successfully restocked ${quantity_purchased} units`,
     })
   } catch (error: any) {
     return NextResponse.json(

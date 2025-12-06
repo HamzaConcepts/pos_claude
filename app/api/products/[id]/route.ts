@@ -26,7 +26,15 @@ export async function GET(
       .from('products')
       .select(`
         *,
-        inventory (*)
+        categories (id, name),
+        subcategories (id, name),
+        aggregated_stock (
+          aggregated_cost_price,
+          aggregated_selling_price,
+          aggregated_lowest_negotiable,
+          total_quantity_remaining,
+          low_stock_threshold
+        )
       `)
       .eq('id', params.id)
       .single()
@@ -44,22 +52,20 @@ export async function GET(
       )
     }
 
-    // Transform data
-    const totalStock = product.inventory?.reduce(
-      (sum: number, inv: any) => sum + (inv.quantity_remaining || 0),
-      0
-    ) || 0
-    
-    const latestInventory = product.inventory?.[0] || null
+    // Get aggregated stock data
+    const aggStock = product.aggregated_stock?.[0] || null
 
     return NextResponse.json({
       success: true,
       data: {
         ...product,
-        price: latestInventory?.selling_price || 0,
-        cost_price: latestInventory?.cost_price || 0,
-        stock_quantity: totalStock,
-        low_stock_threshold: latestInventory?.low_stock_threshold || 10,
+        category_id: product.category_id,
+        subcategory_id: product.subcategory_id,
+        category_name: product.categories?.name || null,
+        subcategory_name: product.subcategories?.name || null,
+        stock_quantity: aggStock?.total_quantity_remaining || 0,
+        low_stock_threshold: aggStock?.low_stock_threshold || 10,
+        aggregated_stock: aggStock
       },
     })
   } catch (error: any) {
@@ -80,116 +86,83 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const {
-      name,
-      sku,
-      description,
-      price,
-      cost_price,
-      stock_quantity,
-      low_stock_threshold,
-      category,
-    } = body
+    const { name, description, low_stock_threshold } = body
 
     // Validation
-    if (price !== undefined && price < 0) {
+    if (!name || !name.trim()) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Price must be positive',
+          error: 'Product name is required',
           code: 'VALIDATION_ERROR',
         },
         { status: 400 }
       )
     }
 
-    // Update product info
-    const productUpdateData: any = {}
-    if (name !== undefined) productUpdateData.name = name
-    if (sku !== undefined) productUpdateData.sku = sku
-    if (description !== undefined) productUpdateData.description = description
-    if (category !== undefined) productUpdateData.category = category
-
-    if (Object.keys(productUpdateData).length > 0) {
-      const { error: productError } = await supabaseAdmin
-        .from('products')
-        .update(productUpdateData)
-        .eq('id', params.id)
-
-      if (productError) {
-        if (productError.code === '23505') {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'SKU already exists',
-              code: 'DUPLICATE_SKU',
-            },
-            { status: 400 }
-          )
-        }
-        throw productError
-      }
+    if (low_stock_threshold !== undefined && (low_stock_threshold < 0 || isNaN(low_stock_threshold))) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Low stock threshold must be a positive number',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
     }
 
-    // Update latest inventory if price/stock changes
-    if (price !== undefined || cost_price !== undefined || low_stock_threshold !== undefined || stock_quantity !== undefined) {
-      // Get latest inventory
-      const { data: inventories } = await supabaseAdmin
-        .from('inventory')
-        .select('*')
+    // Update product name and description
+    const { error: productError } = await supabaseAdmin
+      .from('products')
+      .update({
+        name: name.trim(),
+        description: description || null,
+      })
+      .eq('id', params.id)
+
+    if (productError) throw productError
+
+    // Update low_stock_threshold in aggregated_stock table
+    if (low_stock_threshold !== undefined) {
+      const { error: aggStockError } = await supabaseAdmin
+        .from('aggregated_stock')
+        .update({ low_stock_threshold })
         .eq('product_id', params.id)
-        .order('restock_date', { ascending: false })
-        .limit(1)
 
-      if (inventories && inventories.length > 0) {
-        const latestInventory = inventories[0]
-        const inventoryUpdateData: any = {}
-        
-        if (price !== undefined) inventoryUpdateData.selling_price = price
-        if (cost_price !== undefined) inventoryUpdateData.cost_price = cost_price
-        if (low_stock_threshold !== undefined) inventoryUpdateData.low_stock_threshold = low_stock_threshold
-        if (stock_quantity !== undefined) {
-          inventoryUpdateData.quantity_remaining = stock_quantity
-          inventoryUpdateData.quantity_added = latestInventory.quantity_added + (stock_quantity - latestInventory.quantity_remaining)
-        }
-
-        const { error: inventoryError } = await supabaseAdmin
-          .from('inventory')
-          .update(inventoryUpdateData)
-          .eq('id', latestInventory.id)
-
-        if (inventoryError) throw inventoryError
-      }
+      if (aggStockError) throw aggStockError
     }
 
-    // Fetch updated product
+    // Fetch updated product with aggregated_stock
     const { data, error } = await supabaseAdmin
       .from('products')
       .select(`
         *,
-        inventory (*)
+        categories (id, name),
+        subcategories (id, name),
+        aggregated_stock (
+          aggregated_cost_price,
+          aggregated_selling_price,
+          aggregated_lowest_negotiable,
+          total_quantity_remaining,
+          low_stock_threshold
+        ),
+        stock_batches (
+          id,
+          cost_price,
+          selling_price,
+          lowest_negotiable_price,
+          quantity_remaining,
+          is_depleted
+        )
       `)
       .eq('id', params.id)
       .single()
 
     if (error) throw error
 
-    const totalStock = data.inventory?.reduce(
-      (sum: number, inv: any) => sum + (inv.quantity_remaining || 0),
-      0
-    ) || 0
-    
-    const latestInventory = data.inventory?.[0] || null
-
     return NextResponse.json({
       success: true,
-      data: {
-        ...data,
-        price: latestInventory?.selling_price || 0,
-        cost_price: latestInventory?.cost_price || 0,
-        stock_quantity: totalStock,
-        low_stock_threshold: latestInventory?.low_stock_threshold || 10,
-      },
+      data: data,
       message: 'Product updated successfully',
     })
   } catch (error: any) {

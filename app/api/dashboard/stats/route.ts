@@ -57,17 +57,41 @@ export async function GET(request: Request) {
     // Low stock products
     const { data: allProducts } = await supabaseAdmin
       .from('products')
-      .select('id, name, price, stock_quantity, low_stock_threshold, is_active')
+      .select(`
+        id,
+        name,
+        is_active,
+        aggregated_stock (
+          aggregated_selling_price,
+          total_quantity_remaining,
+          low_stock_threshold
+        )
+      `)
       .eq('store_id', parseInt(storeId))
       .eq('is_active', true)
 
-    const lowStockProducts = allProducts?.filter(p => 
-      p.stock_quantity <= (p.low_stock_threshold || 10)
-    ).slice(0, 5) || []
+    const lowStockProducts = allProducts?.filter(p => {
+      const aggStock = (p as any).aggregated_stock?.[0]
+      const stockQty = aggStock?.total_quantity_remaining || 0
+      const threshold = aggStock?.low_stock_threshold || 10
+      return stockQty <= threshold
+    }).map(p => {
+      const aggStock = (p as any).aggregated_stock?.[0]
+      return {
+        id: p.id,
+        name: p.name,
+        price: aggStock?.aggregated_selling_price || 0,
+        stock_quantity: aggStock?.total_quantity_remaining || 0,
+        low_stock_threshold: aggStock?.low_stock_threshold || 10
+      }
+    }).slice(0, 5) || []
     
-    const lowStockCount = allProducts?.filter(p => 
-      p.stock_quantity <= (p.low_stock_threshold || 10)
-    ).length || 0
+    const lowStockCount = allProducts?.filter(p => {
+      const aggStock = (p as any).aggregated_stock?.[0]
+      const stockQty = aggStock?.total_quantity_remaining || 0
+      const threshold = aggStock?.low_stock_threshold || 10
+      return stockQty <= threshold
+    }).length || 0
 
     // Recent sales
     const { data: recentSales } = await supabaseAdmin

@@ -9,21 +9,26 @@ interface RestockHistoryModalProps {
   onClose: () => void
 }
 
-interface InventoryRecord {
+interface StockBatch {
   id: number
+  batch_number: string
   cost_price: number
   selling_price: number
-  quantity_added: number
+  lowest_negotiable_price: number
+  quantity_purchased: number
   quantity_remaining: number
-  low_stock_threshold: number
-  batch_number: string | null
-  restock_date: string
-  notes: string | null
+  is_depleted: boolean
+  purchase_date: string
   created_at: string
+  suppliers?: {
+    id: number
+    supplier_name: string
+    phone_number: string
+  } | null
 }
 
 export default function RestockHistoryModal({ productId, productName, onClose }: RestockHistoryModalProps) {
-  const [history, setHistory] = useState<InventoryRecord[]>([])
+  const [history, setHistory] = useState<StockBatch[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -82,7 +87,7 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
           ) : (
             <div className="space-y-4">
               {history.map((record, index) => {
-                const quantitySold = record.quantity_added - record.quantity_remaining
+                const quantitySold = record.quantity_purchased - record.quantity_remaining
                 const isLatest = index === 0
 
                 return (
@@ -103,7 +108,7 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
                           </div>
                           <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
                             <Clock size={12} />
-                            {new Date(record.restock_date).toLocaleString('en-US', {
+                            {new Date(record.purchase_date).toLocaleString('en-US', {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
@@ -111,6 +116,11 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
                               minute: '2-digit'
                             })}
                           </div>
+                          {record.suppliers && (
+                            <div className="text-xs text-text-secondary mt-1">
+                              Supplier: {record.suppliers.supplier_name}
+                            </div>
+                          )}
                         </div>
                       </div>
                       {isLatest && (
@@ -122,8 +132,8 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                       <div>
-                        <div className="text-xs text-text-secondary mb-1">Quantity Added</div>
-                        <div className="font-bold text-lg">{record.quantity_added}</div>
+                        <div className="text-xs text-text-secondary mb-1">Quantity Purchased</div>
+                        <div className="font-bold text-lg">{record.quantity_purchased}</div>
                       </div>
                       <div>
                         <div className="text-xs text-text-secondary mb-1">Remaining</div>
@@ -140,7 +150,7 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
                       <div>
                         <div className="text-xs text-text-secondary mb-1">Usage</div>
                         <div className="font-bold text-lg">
-                          {((quantitySold / record.quantity_added) * 100).toFixed(0)}%
+                          {((quantitySold / record.quantity_purchased) * 100).toFixed(0)}%
                         </div>
                       </div>
                     </div>
@@ -162,14 +172,7 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
                       </div>
                     </div>
 
-                    {record.notes && (
-                      <div className="mt-3 pt-3 border-t border-gray-300">
-                        <div className="text-xs text-text-secondary mb-1">Notes</div>
-                        <div className="text-sm italic">{record.notes}</div>
-                      </div>
-                    )}
-
-                    {record.quantity_remaining === 0 && (
+                    {record.is_depleted && (
                       <div className="mt-3 pt-3 border-t border-gray-300">
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-status-error text-white text-xs rounded">
                           <span>●</span>
@@ -190,9 +193,9 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
                     <div className="text-2xl font-bold">{history.length}</div>
                   </div>
                   <div>
-                    <div className="text-xs opacity-80 mb-1">Total Added</div>
+                    <div className="text-xs opacity-80 mb-1">Total Purchased</div>
                     <div className="text-2xl font-bold">
-                      {history.reduce((sum, r) => sum + r.quantity_added, 0)}
+                      {history.reduce((sum, r) => sum + r.quantity_purchased, 0)}
                     </div>
                   </div>
                   <div>

@@ -4,7 +4,26 @@ export interface Product {
   name: string
   description: string | null
   category: string | null
+  store_id: number
   is_active: boolean
+  created_at: string
+  updated_at: string
+  category_id: number | null
+  subcategory_id: number | null
+  is_phone: boolean
+}
+
+export interface AggregatedStock {
+  id: number
+  product_id: number
+  store_id: number
+  aggregated_cost_price: number
+  aggregated_selling_price: number
+  aggregated_lowest_negotiable: number
+  total_quantity_purchased: number
+  total_quantity_remaining: number
+  total_quantity_sold: number
+  low_stock_threshold: number
   created_at: string
   updated_at: string
 }
@@ -19,6 +38,7 @@ export interface Inventory {
   low_stock_threshold: number
   batch_number: string | null
   restock_date: string
+  store_id: number
   notes: string | null
   created_at: string
   updated_at: string
@@ -34,25 +54,79 @@ export interface ProductWithInventory extends Product {
 
 // Backward compatible type for API responses
 export interface ProductWithBackwardCompatibility extends Product {
-  price: number
-  cost_price: number
+  // Category info
+  category_name?: string | null
+  subcategory_name?: string | null
+  
+  // Stock info from aggregated_stock
   stock_quantity: number
   low_stock_threshold: number
+  
+  // Relations
   inventory?: Inventory[]
+  batches?: StockBatch[]
+  aggregated_stock?: AggregatedStock
+}
+
+export interface StockBatch {
+  id: number
+  product_id: number
+  store_id: number
+  supplier_id: number | null
+  batch_number: string | null
+  purchase_date: string
+  cost_price: number
+  selling_price: number | null
+  lowest_negotiable_price: number | null
+  quantity_purchased: number
+  quantity_remaining: number
+  is_depleted: boolean
+  depleted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Supplier {
+  id: number
+  store_id: number
+  supplier_name: string
+  phone_number: string
+  email: string | null
+  address: string | null
+  notes: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductIMEI {
+  id: number
+  product_id: number
+  batch_id: number | null
+  store_id: number
+  imei_number: string
+  status: 'in_stock' | 'sold' | 'returned' | 'defective'
+  sold_at: string | null
+  sale_id: number | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Sale {
   id: number
   sale_number: string
   sale_description: string | null
-  cashier_id: number
+  cashier_id: string | null
   total_amount: number
   payment_method: 'Cash' | 'Digital'
   payment_status: 'Paid' | 'Partial' | 'Pending'
   amount_paid: number
   amount_due: number
   sale_date: string
+  store_id: number
   notes: string | null
+  discount_type: 'percentage' | 'amount' | 'none'
+  discount_value: number
 }
 
 export interface PartialPaymentCustomer {
@@ -64,6 +138,7 @@ export interface PartialPaymentCustomer {
   total_amount: number
   amount_paid: number
   amount_remaining: number
+  store_id: number
   created_at: string
   updated_at: string
 }
@@ -88,17 +163,20 @@ export interface Expense {
   amount: number
   category: string | null
   expense_date: string
-  recorded_by: number
+  recorded_by: string | null
+  store_id: number
   created_at: string
 }
 
 export interface Payment {
   id: number
-  sale_id: number
+  sale_id: number | null
   amount: number
-  payment_method: string
+  payment_method: string | null
   payment_date: string
-  recorded_by: number
+  manager_id: string | null
+  cashier_id: number | null
+  store_id: number
 }
 
 export interface DashboardStats {
