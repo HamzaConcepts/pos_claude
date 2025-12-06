@@ -116,7 +116,7 @@ export default function RestockModal({ onClose }: RestockModalProps) {
   const selectSupplier = (supplier: Supplier) => {
     setFormData({
       ...formData,
-      supplier_id: supplier.id,
+      supplier_id: supplier.id.toString(),
       supplier_name: supplier.supplier_name,
       supplier_phone: supplier.phone_number,
     })

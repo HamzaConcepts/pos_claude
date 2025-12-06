@@ -201,7 +201,7 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
                   <div>
                     <div className="text-xs opacity-80 mb-1">Total Sold</div>
                     <div className="text-2xl font-bold">
-                      {history.reduce((sum, r) => sum + (r.quantity_added - r.quantity_remaining), 0)}
+                      {history.reduce((sum, r) => sum + (r.quantity_purchased - r.quantity_remaining), 0)}
                     </div>
                   </div>
                   <div>

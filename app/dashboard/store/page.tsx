@@ -310,7 +310,7 @@ export default function StorePage() {
               </div>
 
               <div className="p-3">
-                {joinRequests.map((request) => (
+                {joinRequests.map((request: JoinRequest) => (
                   <div
                     key={request.id}
                     className="flex items-center justify-between p-3 mb-2.5 bg-bg-secondary rounded border-2 border-gray-300 last:mb-0"
@@ -489,16 +489,16 @@ export default function StorePage() {
             setEditingCategory(null)
             setShowCategoryModal(true)
           }}
-          onEditCategory={(category) => {
+          onEditCategory={(category: Category) => {
             setEditingCategory(category)
             setShowCategoryModal(true)
           }}
-          onAddSubcategory={(categoryId) => {
+          onAddSubcategory={(categoryId: number) => {
             setSelectedCategoryForSub(categoryId)
             setEditingSubcategory(null)
             setShowSubcategoryModal(true)
           }}
-          onEditSubcategory={(subcategory) => {
+          onEditSubcategory={(subcategory: Subcategory) => {
             setEditingSubcategory(subcategory)
             setSelectedCategoryForSub(subcategory.category_id)
             setShowSubcategoryModal(true)
@@ -516,7 +516,7 @@ export default function StorePage() {
       {showCategoryModal && (
         <CategoryModal
           category={editingCategory}
-          onClose={(refresh) => {
+          onClose={(refresh?: boolean) => {
             setShowCategoryModal(false)
             setEditingCategory(null)
             if (refresh) fetchCategories()
@@ -529,7 +529,7 @@ export default function StorePage() {
         <SubcategoryModal
           subcategory={editingSubcategory}
           categoryId={selectedCategoryForSub!}
-          onClose={(refresh) => {
+          onClose={(refresh?: boolean) => {
             setShowSubcategoryModal(false)
             setEditingSubcategory(null)
             setSelectedCategoryForSub(null)
@@ -608,7 +608,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
         </div>
       ) : (
         <div className="space-y-3">
-          {categories.map((category) => (
+          {categories.map((category: Category) => (
             <div key={category.id} className="bg-white rounded border-2 border-black overflow-hidden">
               <div className="p-3 bg-gray-100 flex justify-between items-center">
                 <div className="flex items-center gap-2">
@@ -647,7 +647,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
               {category.subcategories && category.subcategories.length > 0 && (
                 <div className="p-3">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {category.subcategories.map((sub) => (
+                    {category.subcategories.map((sub: Subcategory) => (
                       <div
                         key={sub.id}
                         className="flex items-center justify-between p-2 bg-bg-secondary rounded border border-gray-300"
