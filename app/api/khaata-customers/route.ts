@@ -17,10 +17,27 @@ export async function GET(request: Request) {
     console.log('[KHAATA API] GET request received')
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
+    const storeId = searchParams.get('store_id')
+
+    if (!storeId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Store ID is required',
+        },
+        { status: 400 }
+      )
+    }
 
     let query = supabaseAdmin
       .from('partial_payment_customers')
-      .select('*')
+      .select(`
+        *,
+        sales (
+          sale_description
+        )
+      `)
+      .eq('store_id', parseInt(storeId))
       .order('created_at', { ascending: false })
 
     if (search) {

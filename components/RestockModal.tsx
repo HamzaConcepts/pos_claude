@@ -7,9 +7,10 @@ import { getStoreId } from '@/lib/supabase'
 
 interface RestockModalProps {
   onClose: (refresh: boolean) => void
+  isInitialStock?: boolean // Flag to mark stock as initial (not counted as expense)
 }
 
-export default function RestockModal({ onClose }: RestockModalProps) {
+export default function RestockModal({ onClose, isInitialStock = false }: RestockModalProps) {
   const [allProducts, setAllProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [filteredSuppliers, setFilteredSuppliers] = useState<Supplier[]>([])
@@ -24,6 +25,7 @@ export default function RestockModal({ onClose }: RestockModalProps) {
     supplier_id: '',
     supplier_name: '',
     supplier_phone: '',
+    amount_paid: '', // Payment to supplier
     // IMEI fields for phone products
     imei_numbers: [''],
   })
@@ -234,6 +236,21 @@ export default function RestockModal({ onClose }: RestockModalProps) {
         return
       }
 
+      // Validate payment amount
+      const amountPaid = parseFloat(formData.amount_paid || '0')
+      if (isNaN(amountPaid) || amountPaid < 0) {
+        setError('Amount paid must be a positive number')
+        setLoading(false)
+        return
+      }
+
+      const totalAmount = costPrice * quantity
+      if (amountPaid > totalAmount) {
+        setError('Amount paid cannot exceed total amount')
+        setLoading(false)
+        return
+      }
+
       // Validate IMEI count for phones
       if (selectedProduct?.is_phone) {
         const validIMEIs = formData.imei_numbers.filter(imei => imei.trim() !== '')
@@ -289,6 +306,12 @@ export default function RestockModal({ onClose }: RestockModalProps) {
         quantity_purchased: quantity,
         selling_price: sellingPrice,
         lowest_negotiable_price: lowestNegotiable,
+        is_initial_stock: isInitialStock, // Mark as initial stock if adding from Store tab
+        
+        // Payment tracking for supplier khaata
+        amount_paid: parseFloat(formData.amount_paid || '0'),
+        supplier_name: formData.supplier_name || 'Unknown',
+        supplier_phone: formData.supplier_phone || '',
       }
 
       const batchResponse = await fetch('/api/stock-batches', {
@@ -346,7 +369,16 @@ export default function RestockModal({ onClose }: RestockModalProps) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded border-2 border-black w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center p-6 border-b-2 border-black">
-          <h2 className="text-2xl font-bold">Restock Product</h2>
+          <div>
+            <h2 className="text-2xl font-bold">
+              {isInitialStock ? 'Add Initial Stock' : 'Restock Product'}
+            </h2>
+            {isInitialStock && (
+              <p className="text-sm text-blue-600 mt-1">
+                ⚠️ This stock will NOT be recorded as an expense
+              </p>
+            )}
+          </div>
           <button
             onClick={() => onClose(false)}
             className="p-1 hover:bg-gray-200 rounded transition-colors"
@@ -531,7 +563,60 @@ export default function RestockModal({ onClose }: RestockModalProps) {
                       required
                     />
                   </div>
+
+                  {/* Amount Paid to Supplier */}
+                  <div>
+                    <label htmlFor="amount_paid" className="block mb-2 font-medium">
+                      Amount Paid to Supplier *
+                    </label>
+                    <input
+                      id="amount_paid"
+                      name="amount_paid"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.amount_paid}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black"
+                      required
+                    />
+                    {formData.cost_price && formData.quantity_added && (
+                      <p className="mt-1 text-xs text-text-secondary">
+                        Total: Rs. {(parseFloat(formData.cost_price) * parseInt(formData.quantity_added)).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
                 </div>
+
+                {/* Payment Status Indicator */}
+                {formData.amount_paid && formData.cost_price && formData.quantity_added && (
+                  <div className="mt-4">
+                    {parseFloat(formData.amount_paid) < (parseFloat(formData.cost_price) * parseInt(formData.quantity_added)) ? (
+                      <div className="p-3 bg-yellow-50 rounded border border-yellow-300">
+                        <p className="text-sm text-yellow-800">
+                          <strong>Remaining:</strong> Rs. {(
+                            (parseFloat(formData.cost_price) * parseInt(formData.quantity_added)) - parseFloat(formData.amount_paid)
+                          ).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-yellow-700 mt-1">
+                          This will be tracked in Supplier Khaata
+                        </p>
+                      </div>
+                    ) : parseFloat(formData.amount_paid) === (parseFloat(formData.cost_price) * parseInt(formData.quantity_added)) ? (
+                      <div className="p-3 bg-green-50 rounded border border-green-300">
+                        <p className="text-sm text-green-800">
+                          ✓ Full payment made
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-red-50 rounded border border-red-300">
+                        <p className="text-sm text-red-800">
+                          ⚠ Amount paid exceeds total amount
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Supplier Section */}
                 <div className="mt-4">

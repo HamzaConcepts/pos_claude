@@ -1,0 +1,3 @@
+-- Add ID for sales. current sales ID is used between all the stores, that makes it imposibble to identify sales from different stores. Each store should have its own sales ID sequence.
+-- Make supplier info compulsory if amount paid < total stock value
+-- Replcae batch number by product description in expenses

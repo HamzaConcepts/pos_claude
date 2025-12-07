@@ -25,9 +25,10 @@ interface Supplier {
 
 interface AddStockModalProps {
   onClose: (refresh: boolean) => void
+  isInitialStock?: boolean // Flag to mark stock as initial (not counted as expense)
 }
 
-export default function AddStockModal({ onClose }: AddStockModalProps) {
+export default function AddStockModal({ onClose, isInitialStock = false }: AddStockModalProps) {
   const [step, setStep] = useState(1) // Multi-step form
   const [formData, setFormData] = useState({
     // Step 1: Product Info
@@ -47,6 +48,9 @@ export default function AddStockModal({ onClose }: AddStockModalProps) {
     supplier_id: '',
     supplier_name: '',
     supplier_phone: '',
+    
+    // Payment to supplier
+    amount_paid: '',
     
     // Step 4: IMEI (conditional)
     imei_numbers: [''],
@@ -242,6 +246,15 @@ export default function AddStockModal({ onClose }: AddStockModalProps) {
           setError('Please enter supplier phone number')
           return false
         }
+        if (!formData.amount_paid || parseFloat(formData.amount_paid) < 0) {
+          setError('Please enter amount paid to supplier')
+          return false
+        }
+        const totalAmount = parseFloat(formData.cost_price) * parseInt(formData.quantity)
+        if (parseFloat(formData.amount_paid) > totalAmount) {
+          setError('Amount paid cannot exceed total amount')
+          return false
+        }
         return true
         
       case 4:
@@ -349,7 +362,10 @@ export default function AddStockModal({ onClose }: AddStockModalProps) {
 
       const productId = productResult.data.id
 
-      // Step 3: Create stock batch
+      // Step 3: Create stock batch with payment info
+      const totalAmount = parseFloat(formData.cost_price) * parseInt(formData.quantity)
+      const amountPaid = formData.amount_paid ? parseFloat(formData.amount_paid) : 0
+      
       const batchPayload = {
         product_id: productId,
         store_id: storeId,
@@ -358,6 +374,12 @@ export default function AddStockModal({ onClose }: AddStockModalProps) {
         quantity_purchased: parseInt(formData.quantity),
         selling_price: parseFloat(formData.selling_price),
         lowest_negotiable_price: parseFloat(formData.lowest_negotiable_price),
+        is_initial_stock: isInitialStock, // Mark as initial stock if adding from Store tab
+        
+        // Payment tracking for supplier khaata
+        amount_paid: amountPaid,
+        supplier_name: formData.supplier_name || 'Unknown',
+        supplier_phone: formData.supplier_phone || '',
       }
 
       const batchResponse = await fetch('/api/stock-batches', {
@@ -702,6 +724,67 @@ export default function AddStockModal({ onClose }: AddStockModalProps) {
                   </p>
                 </div>
               )}
+
+              {/* Payment Information */}
+              <div className="border-t-2 border-gray-200 pt-4 mt-4">
+                <h4 className="font-bold mb-3">Payment to Supplier</h4>
+                
+                <div className="p-3 bg-blue-50 rounded border border-blue-300 mb-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Total Amount:</strong> Rs. {formData.cost_price && formData.quantity ? 
+                      (parseFloat(formData.cost_price) * parseInt(formData.quantity)).toLocaleString() : '0'}
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="amount_paid" className="block mb-2 font-medium">
+                    Amount Paid to Supplier *
+                  </label>
+                  <input
+                    id="amount_paid"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.amount_paid}
+                    onChange={(e) => setFormData({ ...formData, amount_paid: e.target.value })}
+                    className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                    disabled={loading}
+                    placeholder="Enter amount paid"
+                  />
+                  <p className="text-xs text-text-secondary mt-1">
+                    If amount paid is less than total, it will be added to Supplier Khaata
+                  </p>
+                </div>
+
+                {formData.amount_paid && formData.cost_price && formData.quantity && (
+                  <div className="mt-3">
+                    {parseFloat(formData.amount_paid) < (parseFloat(formData.cost_price) * parseInt(formData.quantity)) ? (
+                      <div className="p-3 bg-yellow-50 rounded border border-yellow-300">
+                        <p className="text-sm text-yellow-800">
+                          <strong>Remaining:</strong> Rs. {(
+                            (parseFloat(formData.cost_price) * parseInt(formData.quantity)) - parseFloat(formData.amount_paid)
+                          ).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-yellow-700 mt-1">
+                          This will be tracked in Supplier Khaata
+                        </p>
+                      </div>
+                    ) : parseFloat(formData.amount_paid) === (parseFloat(formData.cost_price) * parseInt(formData.quantity)) ? (
+                      <div className="p-3 bg-green-50 rounded border border-green-300">
+                        <p className="text-sm text-green-800">
+                          ✓ Full payment received
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-red-50 rounded border border-red-300">
+                        <p className="text-sm text-red-800">
+                          ⚠ Amount paid exceeds total amount
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

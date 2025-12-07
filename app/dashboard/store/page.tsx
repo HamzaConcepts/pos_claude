@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Users, Shield, User, Clock, CheckCircle, XCircle, Store, Tag, Grid, Plus, Edit2, Trash2, X } from 'lucide-react'
 import { getStoreId } from '@/lib/supabase'
+import AddStockModal from '@/components/AddStockModal'
 
 interface UserData {
   id: string
@@ -63,7 +64,7 @@ export default function StorePage() {
   const [selectedCategoryForSub, setSelectedCategoryForSub] = useState<number | null>(null)
   
   // Active tab
-  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'info'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'info' | 'initial-stock'>('users')
 
   useEffect(() => {
     fetchAllData()
@@ -293,6 +294,17 @@ export default function StorePage() {
             <Store size={17} />
             Store Info
           </button>
+          <button
+            onClick={() => setActiveTab('initial-stock')}
+            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
+              activeTab === 'initial-stock'
+                ? 'border-black bg-black text-white'
+                : 'border-transparent hover:bg-gray-100'
+            }`}
+          >
+            <Plus size={17} />
+            Initial Stock
+          </button>
         </div>
       </div>
 
@@ -510,6 +522,11 @@ export default function StorePage() {
       {/* Store Info Tab */}
       {activeTab === 'info' && (
         <StoreInfoTab storeInfo={storeInfo} onRefresh={fetchStoreInfo} />
+      )}
+
+      {/* Initial Stock Tab */}
+      {activeTab === 'initial-stock' && (
+        <InitialStockTab />
       )}
 
       {/* Category Modal */}
@@ -997,6 +1014,83 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+// Initial Stock Tab Component
+function InitialStockTab() {
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [showRestockModal, setShowRestockModal] = useState(false)
+
+  return (
+    <div>
+      <div className="bg-blue-50 border-2 border-blue-600 rounded p-4 mb-6">
+        <h3 className="font-bold text-blue-900 mb-2">📦 Initial Stock Setup</h3>
+        <p className="text-sm text-blue-800 mb-2">
+          Use this section to add your existing inventory when first migrating to this POS system.
+        </p>
+        <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
+          <li><strong>Initial stock added here will NOT be counted as expenses</strong></li>
+          <li>This is for one-time migration of existing inventory</li>
+          <li>Future restocking through the Inventory tab WILL be tracked as expenses</li>
+          <li>Stock value will be calculated using the cost prices you enter</li>
+        </ul>
+      </div>
+
+      {message && (
+        <div className={`mb-4 p-4 rounded border-2 ${
+          message.type === 'success' 
+            ? 'bg-green-50 border-green-600 text-green-900' 
+            : 'bg-red-50 border-red-600 text-red-900'
+        }`}>
+          {message.text}
+        </div>
+      )}
+
+      <div className="bg-white border-2 border-black rounded p-6">
+        <div className="text-center">
+          <div className="mb-4">
+            <Plus size={48} className="mx-auto text-gray-400 mb-2" />
+            <h3 className="text-lg font-bold mb-2">Add Initial Stock</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Click below to add products and their initial quantities to your inventory
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowRestockModal(true)}
+            className="px-6 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors font-medium"
+          >
+            Add Initial Stock Items
+          </button>
+
+          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-300 rounded text-left">
+            <p className="text-sm text-yellow-800">
+              <strong>⚠️ Important:</strong> Once you've added your initial stock, future restocking should be done through the 
+              <strong> Inventory → Restock</strong> page. This ensures proper expense tracking and financial reporting.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Restock Modal (marked as initial stock) */}
+      {showRestockModal && (
+        <AddStockModal
+          isInitialStock={true}
+          onClose={(refreshed) => {
+            setShowRestockModal(false)
+            if (refreshed) {
+              setMessage({ 
+                type: 'success', 
+                text: 'Initial stock added successfully! This stock will not affect your expenses.' 
+              })
+              setTimeout(() => setMessage(null), 5000)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -82,7 +82,11 @@ export async function POST(request: NextRequest) {
       cost_price,
       quantity_purchased,
       selling_price,
-      lowest_negotiable_price
+      lowest_negotiable_price,
+      is_initial_stock = false, // Default to false (regular restock = expense)
+      amount_paid = 0, // Payment made to supplier
+      supplier_name = '',
+      supplier_phone = '',
     } = body
 
     // Validation
@@ -133,6 +137,7 @@ export async function POST(request: NextRequest) {
         quantity_purchased,
         quantity_remaining: quantity_purchased,
         is_depleted: false,
+        is_initial_stock, // Mark as initial stock (won't create expense via trigger)
         purchase_date: new Date().toISOString()
       })
       .select()
@@ -141,6 +146,32 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Error creating batch:', error)
       throw error
+    }
+
+    // Handle supplier payment tracking
+    const totalAmount = cost_price * quantity_purchased
+    const paidAmount = parseFloat(amount_paid.toString()) || 0
+    const remaining = totalAmount - paidAmount
+
+    // If payment is partial, create supplier_khaata record
+    if (remaining > 0 && supplier_id) {
+      const { error: khaataError } = await supabaseAdmin
+        .from('supplier_khaata')
+        .insert({
+          stock_batch_id: batch.id,
+          supplier_id: supplier_id,
+          supplier_name: supplier_name,
+          supplier_phone: supplier_phone,
+          total_amount: totalAmount,
+          amount_paid: paidAmount,
+          amount_remaining: remaining,
+          store_id: store_id,
+        })
+
+      if (khaataError) {
+        console.error('Error creating supplier khaata record:', khaataError)
+        // Don't fail the whole operation, just log the error
+      }
     }
 
     // Fetch updated aggregated_stock (calculated by trigger)
