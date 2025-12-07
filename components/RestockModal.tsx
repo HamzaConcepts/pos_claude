@@ -148,6 +148,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
       supplier_id: '',
       supplier_name: '',
       supplier_phone: '',
+      amount_paid: '',
       imei_numbers: initialIMEIs,
     })
     setSearchTerm('')
