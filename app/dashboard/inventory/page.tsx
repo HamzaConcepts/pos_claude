@@ -179,8 +179,8 @@ export default function InventoryPage() {
 
   // Calculate stock value
   const calculateStockValue = (product: ProductWithBackwardCompatibility) => {
-    const price = product.aggregated_stock?.aggregated_selling_price || 0
-    return product.stock_quantity * price
+    const costPrice = product.aggregated_stock?.aggregated_cost_price || 0
+    return product.stock_quantity * costPrice
   }
 
   // Handle CSV import

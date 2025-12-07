@@ -189,7 +189,8 @@ export async function POST(request: Request) {
       category_id,
       subcategory_id,
       store_id,
-      is_phone
+      is_phone,
+      low_stock_threshold
     } = body
 
     // Validation
@@ -244,7 +245,7 @@ export async function POST(request: Request) {
         total_quantity_purchased: 0,
         total_quantity_remaining: 0,
         total_quantity_sold: 0,
-        low_stock_threshold: 10
+        low_stock_threshold: low_stock_threshold ? parseInt(low_stock_threshold as string) : 10
       })
 
     if (aggStockError) {
