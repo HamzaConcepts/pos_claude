@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { UserRole } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
+import MobileBottomNav from '@/components/MobileBottomNav'
+import { useSwipeable } from 'react-swipeable'
 
 export default function DashboardLayout({
   children,
@@ -12,10 +14,59 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [user, setUser] = useState<{ role: UserRole; name: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false)
   const hasChecked = useRef(false)
+
+  // Define navigation order
+  const navOrder = [
+    '/dashboard',
+    '/dashboard/pos',
+    '/dashboard/inventory',
+    '/dashboard/sales',
+    '/dashboard/expenses',
+    '/dashboard/khaata',
+    '/dashboard/supplier-khaata',
+    '/dashboard/cashiers',
+    '/dashboard/store'
+  ]
+
+  // Swipe handlers for mobile navigation
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      const currentIndex = navOrder.indexOf(pathname)
+      if (currentIndex < navOrder.length - 1) {
+        router.push(navOrder[currentIndex + 1])
+      }
+    },
+    onSwipedRight: () => {
+      const currentIndex = navOrder.indexOf(pathname)
+      if (currentIndex > 0) {
+        router.push(navOrder[currentIndex - 1])
+      }
+    },
+    trackMouse: false,
+    trackTouch: true
+  })
+
+  // Listen for dark mode changes
+  useEffect(() => {
+    const handleDarkModeChange = (e: any) => {
+      setIsDarkMode(e.detail.isDarkMode)
+    }
+
+    // Check initial dark mode state
+    const savedDarkMode = localStorage.getItem('dark_mode')
+    if (savedDarkMode) {
+      setIsDarkMode(savedDarkMode === 'true')
+    }
+
+    window.addEventListener('darkModeChange', handleDarkModeChange)
+    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
+  }, [])
 
   useEffect(() => {
     // Prevent double execution in React Strict Mode
@@ -150,11 +201,15 @@ export default function DashboardLayout({
   // User is authenticated, show dashboard
   console.log('[DASHBOARD] Rendering: Dashboard with user:', user.name)
   return (
-    <div className="flex min-h-screen">
+    <div className={`flex flex-row min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-[#F5F5F5]'}`}>
       <Sidebar userRole={user.role} userName={user.name} />
-      <main className="flex-1 lg:ml-56 p-5 md:p-6 bg-bg-secondary">
+      <main 
+        {...swipeHandlers}
+        className={`flex-1 lg:ml-56 p-5 md:p-6 pb-20 lg:pb-6 transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-[#F5F5F5]'}`}
+      >
         {children}
       </main>
+      <MobileBottomNav userRole={user.role} />
     </div>
   )
 }

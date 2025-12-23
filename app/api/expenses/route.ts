@@ -162,3 +162,76 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json()
+    const { id, description, amount, category, expense_date } = body
+
+    // Validation
+    if (!id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Expense ID is required',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
+    if (!description || !amount || !category || !expense_date) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Missing required fields',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
+    if (amount <= 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Amount must be greater than 0',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('expenses')
+      .update({
+        description,
+        amount: parseFloat(amount),
+        category,
+        expense_date,
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating expense:', error)
+      throw error
+    }
+
+    return NextResponse.json({
+      success: true,
+      data,
+    })
+  } catch (error: any) {
+    console.error('Update expense error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || 'Failed to update expense',
+        code: 'UPDATE_EXPENSE_ERROR',
+      },
+      { status: 500 }
+    )
+  }
+}

@@ -64,40 +64,67 @@ export async function GET(request: Request) {
 
     // Fetch cashier names separately if needed
     if (sales && sales.length > 0) {
-      const allCashierIds = [...new Set(sales.map(s => s.cashier_id).filter(Boolean))]
+      // Get cashier_ref_id values (from cashiers table) - this is the MAIN cashier reference
+      const cashierRefIds = [...new Set(sales.map(s => s.cashier_ref_id).filter(Boolean))]
+      const cashierRefNameMap = new Map()
       
-      // Separate UUIDs (managers) from integers (cashiers)
-      const managerCashierIds = allCashierIds.filter(id => typeof id === 'string' && id.includes('-'))
-      const cashierAccountIds = allCashierIds.filter(id => typeof id === 'number' || (typeof id === 'string' && !id.includes('-')))
-      
-      const cashierNameMap = new Map()
-      
-      // Fetch manager names
-      if (managerCashierIds.length > 0) {
-        const { data: managers } = await supabaseAdmin
-          .from('managers')
+      if (cashierRefIds.length > 0) {
+        const { data: cashierRefs } = await supabaseAdmin
+          .from('cashiers')
           .select('id, full_name')
-          .in('id', managerCashierIds)
+          .in('id', cashierRefIds)
         
-        managers?.forEach(m => cashierNameMap.set(m.id, m.full_name))
+        if (cashierRefs) {
+          cashierRefs.forEach(c => cashierRefNameMap.set(c.id, c.full_name))
+        }
       }
       
-      // Fetch cashier names
-      if (cashierAccountIds.length > 0) {
-        const { data: cashiers } = await supabaseAdmin
-          .from('cashier_accounts')
-          .select('id, full_name')
-          .in('id', cashierAccountIds)
-        
-        cashiers?.forEach(c => cashierNameMap.set(c.id, c.full_name))
-      }
-      
-      // Add cashier names to sales
+      // Add cashier names to sales - prioritize cashier_ref_id
       sales.forEach(sale => {
-        if (sale.cashier_id) {
-          sale.cashier_name = cashierNameMap.get(sale.cashier_id) || 'Unknown'
+        if (sale.cashier_ref_id) {
+          sale.cashier_name = cashierRefNameMap.get(sale.cashier_ref_id) || 'Unknown'
+        } else {
+          sale.cashier_name = 'Unknown'
         }
       })
+      
+      // Legacy support: also fetch from cashier_id field (for old records)
+      const allCashierIds = [...new Set(sales.map(s => s.cashier_id).filter(Boolean))]
+      
+      if (allCashierIds.length > 0) {
+        // Separate UUIDs (managers) from integers (cashiers)
+        const managerCashierIds = allCashierIds.filter(id => typeof id === 'string' && id.includes('-'))
+        const cashierAccountIds = allCashierIds.filter(id => typeof id === 'number' || (typeof id === 'string' && !id.includes('-')))
+        
+        const cashierNameMap = new Map()
+        
+        // Fetch manager names
+        if (managerCashierIds.length > 0) {
+          const { data: managers } = await supabaseAdmin
+            .from('managers')
+            .select('id, full_name')
+            .in('id', managerCashierIds)
+          
+          managers?.forEach(m => cashierNameMap.set(m.id, m.full_name))
+        }
+        
+        // Fetch cashier account names
+        if (cashierAccountIds.length > 0) {
+          const { data: cashiers } = await supabaseAdmin
+            .from('cashier_accounts')
+            .select('id, full_name')
+            .in('id', cashierAccountIds)
+          
+          cashiers?.forEach(c => cashierNameMap.set(c.id, c.full_name))
+        }
+        
+        // Add cashier names to sales (only if cashier_name not already set from cashier_ref_id)
+        sales.forEach(sale => {
+          if (!sale.cashier_name && sale.cashier_id) {
+            sale.cashier_name = cashierNameMap.get(sale.cashier_id) || 'Unknown'
+          }
+        })
+      }
       
       // Fetch payment recorder names (can be manager UUID or cashier ID)
       const allPayments = sales.flatMap(s => s.payments || [])
@@ -168,6 +195,7 @@ export async function POST(request: Request) {
       amount_paid, 
       notes, 
       cashier_id,
+      cashier_ref_id, // Reference to cashier from cashiers table
       partial_payment_customer, // New field for partial payment customer info
       store_id,
       discount_type,
@@ -412,6 +440,11 @@ export async function POST(request: Request) {
     // Generate sale number
     const saleNumber = `SALE-${Date.now()}`
 
+    // Determine if cashier_id is a UUID (manager) or integer (cashier account)
+    // Only store UUID in cashier_id field, set to null for cashier accounts
+    const isManagerUUID = cashier_id && typeof cashier_id === 'string' && cashier_id.includes('-')
+    const cashierIdForSale = isManagerUUID ? cashier_id : null
+
     // Create sale
     const { data: sale, error: saleError } = await supabaseAdmin
       .from('sales')
@@ -419,7 +452,8 @@ export async function POST(request: Request) {
         {
           sale_number: saleNumber,
           sale_description: sale_description || null,
-          cashier_id: cashier_id,
+          cashier_id: cashierIdForSale, // Only UUID (managers), null for cashier accounts
+          cashier_ref_id: cashier_ref_id || null, // Reference to selected cashier
           total_amount: totalAmount,
           payment_method,
           payment_status: paymentStatus,
@@ -552,9 +586,21 @@ export async function POST(request: Request) {
       .eq('id', sale.id)
       .single()
     
-    // Fetch cashier name separately
-    if (completeSale && completeSale.cashier_id) {
-      // Check if cashier_id is UUID (manager) or integer (cashier)
+    // Fetch cashier name from cashiers table using cashier_ref_id
+    if (completeSale && completeSale.cashier_ref_id) {
+      const { data: cashier } = await supabaseAdmin
+        .from('cashiers')
+        .select('full_name')
+        .eq('id', completeSale.cashier_ref_id)
+        .single()
+      
+      if (cashier) {
+        completeSale.cashier_name = cashier.full_name
+      } else {
+        completeSale.cashier_name = 'Unknown'
+      }
+    } else if (completeSale && completeSale.cashier_id) {
+      // Legacy support: Check if cashier_id is UUID (manager) or integer (cashier)
       const isUUID = typeof completeSale.cashier_id === 'string' && completeSale.cashier_id.includes('-')
       
       if (isUUID) {
@@ -580,6 +626,8 @@ export async function POST(request: Request) {
           completeSale.cashier_name = cashier.full_name
         }
       }
+    } else {
+      completeSale.cashier_name = 'Unknown'
     }
 
     if (fetchError) throw fetchError

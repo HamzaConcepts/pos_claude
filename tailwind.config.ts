@@ -26,28 +26,28 @@ const config: Config = {
         'status-info': '#999999',
       },
       fontSize: {
-        'xs': '0.68rem',      // ~11px (was 12px)
-        'sm': '0.765rem',     // ~12px (was 14px)
-        'base': '0.85rem',    // ~14px (was 16px)
-        'lg': '0.935rem',     // ~15px (was 18px)
-        'xl': '1.02rem',      // ~16px (was 20px)
-        '2xl': '1.19rem',     // ~19px (was 24px)
-        '3xl': '1.53rem',     // ~24px (was 30px)
-        '4xl': '1.87rem',     // ~30px (was 36px)
+        'xs': '0.75rem',      // 12px (increased from ~11px)
+        'sm': '0.875rem',     // 14px (increased from ~12px)
+        'base': '1rem',       // 16px (increased from ~14px)
+        'lg': '1.125rem',     // 18px (increased from ~15px)
+        'xl': '1.25rem',      // 20px (increased from ~16px)
+        '2xl': '1.5rem',      // 24px (increased from ~19px)
+        '3xl': '1.875rem',    // 30px (increased from ~24px)
+        '4xl': '2.25rem',     // 36px (increased from ~30px)
       },
       spacing: {
-        '1': '0.212rem',   // ~3.4px (was 4px)
-        '2': '0.425rem',   // ~6.8px (was 8px)
-        '3': '0.638rem',   // ~10.2px (was 12px)
-        '4': '0.85rem',    // ~13.6px (was 16px)
-        '5': '1.063rem',   // ~17px (was 20px)
-        '6': '1.275rem',   // ~20.4px (was 24px)
-        '8': '1.7rem',     // ~27px (was 32px)
-        '10': '2.125rem',  // ~34px (was 40px)
-        '12': '2.55rem',   // ~41px (was 48px)
-        '16': '3.4rem',    // ~54px (was 64px)
-        '20': '4.25rem',   // ~68px (was 80px)
-        '24': '5.1rem',    // ~82px (was 96px)
+        '1': '0.25rem',    // 4px (increased from ~3.4px)
+        '2': '0.5rem',     // 8px (increased from ~6.8px)
+        '3': '0.75rem',    // 12px (increased from ~10.2px)
+        '4': '1rem',       // 16px (increased from ~13.6px)
+        '5': '1.25rem',    // 20px (increased from ~17px)
+        '6': '1.5rem',     // 24px (increased from ~20.4px)
+        '8': '2rem',       // 32px (increased from ~27px)
+        '10': '2.5rem',    // 40px (increased from ~34px)
+        '12': '3rem',      // 48px (increased from ~41px)
+        '16': '4rem',      // 64px (increased from ~54px)
+        '20': '5rem',      // 80px (increased from ~68px)
+        '24': '6rem',      // 96px (increased from ~82px)
       },
     },
   },

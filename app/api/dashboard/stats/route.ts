@@ -96,10 +96,50 @@ export async function GET(request: Request) {
     // Recent sales
     const { data: recentSales } = await supabaseAdmin
       .from('sales')
-      .select('id, total_amount, sale_date, payment_method, cashier_id')
+      .select('id, sale_number, total_amount, sale_date, payment_method, payment_status, cashier_id')
       .eq('store_id', parseInt(storeId))
       .order('sale_date', { ascending: false })
       .limit(10)
+
+    // Fetch cashier names for recent sales
+    if (recentSales && recentSales.length > 0) {
+      const cashierIds = [...new Set(recentSales.map(s => s.cashier_id).filter(Boolean))]
+      
+      if (cashierIds.length > 0) {
+        // Separate UUIDs (managers) from integers (cashiers)
+        const managerIds = cashierIds.filter(id => typeof id === 'string' && id.includes('-'))
+        const cashierAccountIds = cashierIds.filter(id => typeof id === 'number' || (typeof id === 'string' && !id.includes('-')))
+        
+        const nameMap = new Map()
+        
+        // Fetch managers
+        if (managerIds.length > 0) {
+          const { data: managers } = await supabaseAdmin
+            .from('managers')
+            .select('id, full_name')
+            .in('id', managerIds)
+          
+          managers?.forEach(m => nameMap.set(m.id, m.full_name))
+        }
+        
+        // Fetch cashiers
+        if (cashierAccountIds.length > 0) {
+          const { data: cashiers } = await supabaseAdmin
+            .from('cashier_accounts')
+            .select('id, full_name')
+            .in('id', cashierAccountIds)
+          
+          cashiers?.forEach(c => nameMap.set(c.id, c.full_name))
+        }
+        
+        // Add cashier names to sales
+        recentSales.forEach(sale => {
+          if (sale.cashier_id) {
+            sale.cashier_name = nameMap.get(sale.cashier_id) || 'Unknown'
+          }
+        })
+      }
+    }
 
     // Monthly expenses
     const { data: expenses } = await supabaseAdmin
@@ -155,12 +195,13 @@ export async function GET(request: Request) {
       .from('sale_items')
       .select('product_name, subtotal, quantity, sale_id')
 
-    // Get sale dates for filtering
+    // Get sale dates for filtering by store and month
     const saleIds = saleItems?.map(item => item.sale_id) || []
     const { data: salesDates } = await supabaseAdmin
       .from('sales')
-      .select('id, sale_date')
+      .select('id, sale_date, store_id')
       .in('id', saleIds)
+      .eq('store_id', parseInt(storeId))
       .gte('sale_date', startOfMonth.toISOString())
 
     const monthlySaleIds = new Set(salesDates?.map(s => s.id) || [])

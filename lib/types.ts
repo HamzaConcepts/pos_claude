@@ -168,6 +168,18 @@ export interface Expense {
   created_at: string
 }
 
+export interface Cashier {
+  id: number
+  store_id: number
+  full_name: string
+  phone_number: string
+  commission_rate: number
+  salary: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Payment {
   id: number
   sale_id: number | null

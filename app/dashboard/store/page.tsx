@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Shield, User, Clock, CheckCircle, XCircle, Store, Tag, Grid, Plus, Edit2, Trash2, X } from 'lucide-react'
+import { Users, Shield, User, Clock, CheckCircle, XCircle, Store, Tag, Grid, Plus, Edit2, Trash2, X, DollarSign } from 'lucide-react'
 import { getStoreId } from '@/lib/supabase'
 import AddStockModal from '@/components/AddStockModal'
+import PredefinedExpensesManager from '@/components/PredefinedExpensesManager'
 
 interface UserData {
   id: string
@@ -47,11 +48,25 @@ interface StoreInfo {
   store_name: string
 }
 
+interface Cashier {
+  id: number
+  store_id: number
+  full_name: string
+  phone_number: string
+  commission_rate: number
+  salary?: number
+  is_active: boolean
+  created_at: string
+}
+
 export default function StorePage() {
+  const isDarkMode = useDarkMode()
   const [users, setUsers] = useState<UserData[]>([])
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null)
+  const [cashiers, setCashiers] = useState<Cashier[]>([])
+  const [cashiersForUserTab, setCashiersForUserTab] = useState<Cashier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [processing, setProcessing] = useState<number | null>(null)
@@ -59,12 +74,14 @@ export default function StorePage() {
   // Modal states
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showSubcategoryModal, setShowSubcategoryModal] = useState(false)
+  const [showCashierModal, setShowCashierModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null)
+  const [editingCashier, setEditingCashier] = useState<Cashier | null>(null)
   const [selectedCategoryForSub, setSelectedCategoryForSub] = useState<number | null>(null)
   
   // Active tab
-  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'info' | 'initial-stock'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'info' | 'cashiers' | 'initial-stock' | 'expenses'>('users')
 
   useEffect(() => {
     fetchAllData()
@@ -75,7 +92,9 @@ export default function StorePage() {
       fetchUsers(),
       fetchJoinRequests(),
       fetchCategories(),
-      fetchStoreInfo()
+      fetchStoreInfo(),
+      fetchCashiers(),
+      fetchCashiersForUserTab()
     ])
   }
 
@@ -172,6 +191,42 @@ export default function StorePage() {
     }
   }
 
+  const fetchCashiers = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/cashiers?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setCashiers(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching cashiers:', err)
+    }
+  }
+
+  const fetchCashiersForUserTab = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/cashiers?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setCashiersForUserTab(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching cashiers for user tab:', err)
+    }
+  }
+
   const handleJoinRequest = async (requestId: number, action: 'approve' | 'reject') => {
     try {
       setProcessing(requestId)
@@ -216,11 +271,11 @@ export default function StorePage() {
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'Manager':
-        return 'bg-black text-white'
+        return 'bg-cyan-600 text-white'
       case 'Cashier':
-        return 'bg-gray-400 text-white'
+        return 'bg-gray-500 text-white'
       default:
-        return 'bg-gray-200 text-black'
+        return 'bg-gray-200 text-gray-900'
     }
   }
 
@@ -244,7 +299,7 @@ export default function StorePage() {
   }
 
   return (
-    <div>
+    <>
       <div className="flex justify-between items-center mb-5">
         <div>
           <h1 className="text-2xl font-bold mb-1.5">Store Management</h1>
@@ -259,51 +314,73 @@ export default function StorePage() {
       )}
 
       {/* Tab Navigation */}
-      <div className="mb-5 border-b-2 border-black">
+      <div className="mb-5 border-b border-gray-200">
         <div className="flex gap-1">
           <button
             onClick={() => setActiveTab('users')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'users'
-                ? 'border-black bg-black text-white'
-                : 'border-transparent hover:bg-gray-100'
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
+                : 'border-transparent hover:bg-gray-50 text-gray-600'
             }`}
           >
-            <Users size={17} />
+            <Users size={16} />
             Users
           </button>
           <button
             onClick={() => setActiveTab('categories')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'categories'
-                ? 'border-black bg-black text-white'
-                : 'border-transparent hover:bg-gray-100'
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
+                : 'border-transparent hover:bg-gray-50 text-gray-600'
             }`}
           >
-            <Grid size={17} />
+            <Grid size={16} />
             Categories
           </button>
           <button
             onClick={() => setActiveTab('info')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'info'
-                ? 'border-black bg-black text-white'
-                : 'border-transparent hover:bg-gray-100'
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
+                : 'border-transparent hover:bg-gray-50 text-gray-600'
             }`}
           >
-            <Store size={17} />
+            <Store size={16} />
             Store Info
+          </button>
+          <button
+            onClick={() => setActiveTab('cashiers')}
+            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
+              activeTab === 'cashiers'
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
+                : 'border-transparent hover:bg-gray-50 text-gray-600'
+            }`}
+          >
+            <User size={16} />
+            Cashiers
           </button>
           <button
             onClick={() => setActiveTab('initial-stock')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'initial-stock'
-                ? 'border-black bg-black text-white'
-                : 'border-transparent hover:bg-gray-100'
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
+                : 'border-transparent hover:bg-gray-50 text-gray-600'
             }`}
           >
-            <Plus size={17} />
+            <Plus size={16} />
             Initial Stock
+          </button>
+          <button
+            onClick={() => setActiveTab('expenses')}
+            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
+              activeTab === 'expenses'
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
+                : 'border-transparent hover:bg-gray-50 text-gray-600'
+            }`}
+          >
+            <DollarSign size={16} />
+            Expenses
           </button>
         </div>
       </div>
@@ -313,11 +390,11 @@ export default function StorePage() {
         <div>
           {/* Pending Join Requests */}
           {joinRequests.length > 0 && (
-            <div className="mb-5 bg-white rounded border-2 border-black overflow-hidden">
-              <div className="p-3 bg-yellow-100 border-b-2 border-black">
+            <div className="mb-5 bg-white rounded border border-gray-200 overflow-hidden">
+              <div className="p-3 bg-yellow-50 border-b border-yellow-200">
                 <div className="flex items-center gap-2">
-                  <Clock size={17} />
-                  <h2 className="text-base font-bold">Pending Join Requests ({joinRequests.length})</h2>
+                  <Clock className="text-yellow-600" size={16} />
+                  <h2 className="text-base font-semibold text-gray-900">Pending Join Requests ({joinRequests.length})</h2>
                 </div>
               </div>
 
@@ -325,26 +402,26 @@ export default function StorePage() {
                 {joinRequests.map((request: JoinRequest) => (
                   <div
                     key={request.id}
-                    className="flex items-center justify-between p-3 mb-2.5 bg-bg-secondary rounded border-2 border-gray-300 last:mb-0"
+                    className="flex items-center justify-between p-3 mb-2.5 bg-gray-50 rounded border border-gray-200 last:mb-0"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 bg-gray-400 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                        <div className="w-9 h-9 bg-gray-400 text-white rounded-full flex items-center justify-center font-semibold text-sm">
                           {request.user_name?.charAt(0).toUpperCase() || '?'}
                         </div>
                         <div>
-                          <p className="font-bold text-sm">{request.user_name}</p>
-                          <p className="text-xs text-text-secondary">
+                          <p className="font-semibold text-sm text-gray-900">{request.user_name}</p>
+                          <p className="text-xs text-gray-600">
                             {request.user_email || request.user_phone}
                           </p>
                           <div className="flex items-center gap-2.5 mt-0.5">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                              request.user_type === 'Manager' ? 'bg-black text-white' : 'bg-gray-400 text-white'
+                              request.user_type === 'Manager' ? 'bg-cyan-600 text-white' : 'bg-gray-500 text-white'
                             }`}>
                               {request.user_type === 'Manager' ? <Shield size={10} /> : <User size={10} />}
                               {request.user_type}
                             </span>
-                            <span className="text-xs text-text-secondary">
+                            <span className="text-xs text-gray-600">
                               {new Date(request.requested_at).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -383,75 +460,100 @@ export default function StorePage() {
 
           {/* User Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-            <div className="bg-white p-3 rounded border-2 border-black">
+            <div className="bg-white p-4 rounded border border-gray-200">
               <div className="flex items-center gap-2 mb-1.5">
-                <Shield size={17} />
-                <span className="text-sm text-text-secondary">Managers</span>
+                <Shield className="text-cyan-600" size={18} />
+                <span className="text-sm font-medium text-gray-700">Managers</span>
               </div>
-              <p className="text-xl font-bold">
+              <p className="text-2xl font-bold text-gray-900">
                 {users.filter(u => u.role === 'Manager').length}
               </p>
             </div>
 
-            <div className="bg-white p-3 rounded border-2 border-black">
+            <div className="bg-white p-4 rounded border border-gray-200">
               <div className="flex items-center gap-2 mb-1.5">
-                <User size={17} />
-                <span className="text-sm text-text-secondary">Cashiers</span>
+                <User className="text-cyan-600" size={18} />
+                <span className="text-sm font-medium text-gray-700">Cashiers</span>
               </div>
-              <p className="text-xl font-bold">
-                {users.filter(u => u.role === 'Cashier').length}
+              <p className="text-2xl font-bold text-gray-900">
+                {cashiersForUserTab.length}
               </p>
             </div>
           </div>
 
           {/* Users Table */}
-          <div className="bg-white rounded border-2 border-black overflow-hidden">
-            <div className="p-3 bg-black text-white">
-              <h2 className="text-base font-bold">All Users ({users.length})</h2>
+          <div className="bg-white rounded border border-gray-200 overflow-hidden">
+            <div className="p-3 bg-gray-50 border-b border-gray-200">
+              <h2 className="text-base font-semibold text-gray-900">All Users ({users.filter(u => u.role === 'Manager').length + cashiersForUserTab.length})</h2>
             </div>
 
-            {users.length === 0 ? (
-              <div className="p-6 text-center text-text-secondary text-sm">
+            {users.filter(u => u.role === 'Manager').length === 0 && cashiersForUserTab.length === 0 ? (
+              <div className="p-6 text-center text-gray-600 text-sm">
                 No users found
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-3 py-2.5 text-left text-xs font-bold">Name</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-bold">Email</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-bold">Role</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-bold">Created Date</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700">Name</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700">Contact</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700">Role</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700">Details</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map((user, index) => (
+                    {users.filter(u => u.role === 'Manager').map((user, index) => (
                       <tr
-                        key={user.id}
-                        className={index % 2 === 0 ? 'bg-white' : 'bg-bg-secondary'}
+                        key={`manager-${user.id}`}
+                        className="border-b border-gray-100 hover:bg-gray-50"
                       >
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 bg-black text-white rounded-full flex items-center justify-center font-bold text-xs">
+                            <div className="w-7 h-7 bg-cyan-600 text-white rounded-full flex items-center justify-center font-semibold text-xs">
                               {user.full_name.charAt(0).toUpperCase()}
                             </div>
-                            <span className="font-medium text-sm">{user.full_name}</span>
+                            <span className="font-medium text-sm text-gray-900">{user.full_name}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-xs">{user.email}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-600">{user.email}</td>
                         <td className="px-3 py-2.5">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium ${getRoleColor(user.role)}`}>
-                            {getRoleIcon(user.role)}
-                            {user.role}
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium ${getRoleColor('Manager')}`}>
+                            {getRoleIcon('Manager')}
+                            Manager
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 text-xs text-text-secondary">
+                        <td className="px-3 py-2.5 text-xs text-gray-600">
                           {new Date(user.created_at).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
                           })}
+                        </td>
+                      </tr>
+                    ))}
+                    {cashiersForUserTab.map((cashier, index) => (
+                      <tr
+                        key={`cashier-${cashier.id}`}
+                        className="border-b border-gray-100 hover:bg-gray-50"
+                      >
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 bg-gray-500 text-white rounded-full flex items-center justify-center font-semibold text-xs">
+                              {cashier.full_name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-medium text-sm text-gray-900">{cashier.full_name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-gray-600">{cashier.phone_number}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium ${getRoleColor('Cashier')}`}>
+                            {getRoleIcon('Cashier')}
+                            Cashier
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-gray-600">
+                          Commission: {cashier.commission_rate}%
                         </td>
                       </tr>
                     ))}
@@ -462,8 +564,8 @@ export default function StorePage() {
           </div>
 
           {/* Role Permissions Info */}
-          <div className="mt-5 bg-bg-secondary p-3 rounded border-2 border-black">
-            <h3 className="font-bold mb-2.5 text-sm">Role Permissions</h3>
+          <div className="mt-5 bg-gray-50 p-4 rounded border border-gray-200">
+            <h3 className="font-semibold mb-2.5 text-sm text-gray-900">Role Permissions</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
@@ -524,9 +626,32 @@ export default function StorePage() {
         <StoreInfoTab storeInfo={storeInfo} onRefresh={fetchStoreInfo} />
       )}
 
+      {/* Cashiers Tab */}
+      {activeTab === 'cashiers' && (
+        <CashiersTab 
+          cashiers={cashiers} 
+          onAddCashier={() => {
+            setEditingCashier(null)
+            setShowCashierModal(true)
+          }}
+          onEditCashier={(cashier: Cashier) => {
+            setEditingCashier(cashier)
+            setShowCashierModal(true)
+          }}
+          onRefresh={fetchCashiers}
+        />
+      )}
+
       {/* Initial Stock Tab */}
       {activeTab === 'initial-stock' && (
         <InitialStockTab />
+      )}
+
+      {/* Expenses Tab */}
+      {activeTab === 'expenses' && (
+        <div className="bg-white rounded border border-gray-200 p-6">
+          <PredefinedExpensesManager />
+        </div>
       )}
 
       {/* Category Modal */}
@@ -554,7 +679,19 @@ export default function StorePage() {
           }}
         />
       )}
-    </div>
+
+      {/* Cashier Modal */}
+      {showCashierModal && (
+        <CashierModal
+          cashier={editingCashier}
+          onClose={(refresh?: boolean) => {
+            setShowCashierModal(false)
+            setEditingCashier(null)
+            if (refresh) fetchCashiers()
+          }}
+        />
+      )}
+    </>
   )
 }
 
@@ -605,7 +742,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
         <p className="text-sm text-text-secondary">Manage product categories and subcategories</p>
         <button
           onClick={onAddCategory}
-          className="flex items-center gap-1.5 px-3 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors text-sm font-medium"
+          className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors text-sm font-medium"
         >
           <Plus size={16} />
           Add Category
@@ -613,12 +750,12 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
       </div>
 
       {categories.length === 0 ? (
-        <div className="bg-white rounded border-2 border-black p-8 text-center">
+        <div className="bg-white rounded border border-gray-200 p-8 text-center">
           <Tag size={40} className="mx-auto mb-3 text-gray-400" />
           <p className="text-text-secondary text-sm mb-3">No categories yet</p>
           <button
             onClick={onAddCategory}
-            className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors text-sm"
+            className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors text-sm"
           >
             Create First Category
           </button>
@@ -626,7 +763,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
       ) : (
         <div className="space-y-3">
           {categories.map((category: Category) => (
-            <div key={category.id} className="bg-white rounded border-2 border-black overflow-hidden">
+            <div key={category.id} className="bg-white rounded border border-gray-200 overflow-hidden">
               <div className="p-3 bg-gray-100 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <Tag size={17} />
@@ -709,6 +846,33 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
   const [editing, setEditing] = useState(false)
   const [storeCode, setStoreCode] = useState(storeInfo?.store_code || '')
   const [saving, setSaving] = useState(false)
+  const [cashiers, setCashiers] = useState<any[]>([])
+  const [loadingCashiers, setLoadingCashiers] = useState(true)
+
+  useEffect(() => {
+    fetchCashiers()
+  }, [])
+
+  const fetchCashiers = async () => {
+    try {
+      setLoadingCashiers(true)
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/cashiers?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setCashiers(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching cashiers:', err)
+    } finally {
+      setLoadingCashiers(false)
+    }
+  }
 
   const handleSave = async () => {
     try {
@@ -738,7 +902,7 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
 
   return (
     <div>
-      <div className="bg-white rounded border-2 border-black p-4">
+      <div className="bg-white rounded border border-gray-200 p-4">
         <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
           <Store size={20} />
           Store Information
@@ -755,7 +919,7 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
           <div>
             <label className="block text-sm font-medium mb-2">Auto-Generated Store Code (3-Digit)</label>
             <div className="p-3 bg-gray-100 rounded border border-gray-300">
-              <span className="text-sm font-mono font-bold text-lg">{storeInfo?.store_code || 'Not set'}</span>
+              <span className="font-mono font-bold text-lg">{storeInfo?.store_code || 'Not set'}</span>
             </div>
             <p className="text-xs text-text-secondary mt-1">This code is automatically generated and cannot be changed</p>
           </div>
@@ -768,14 +932,14 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                   type="text"
                   value={storeCode}
                   onChange={(e) => setStoreCode(e.target.value)}
-                  className="flex-1 px-3 py-2 border-2 border-black rounded text-sm"
+                  className="flex-1 px-3 py-2 border border-gray-200 rounded text-sm"
                   placeholder="Enter custom store code"
                   maxLength={20}
                 />
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50 text-sm"
+                  className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-sm"
                 >
                   {saving ? 'Saving...' : 'Save'}
                 </button>
@@ -784,7 +948,7 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                     setEditing(false)
                     setStoreCode(storeInfo?.store_code || '')
                   }}
-                  className="px-4 py-2 border-2 border-black rounded hover:bg-gray-100 text-sm"
+                  className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
                 >
                   Cancel
                 </button>
@@ -803,6 +967,62 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
             )}
             <p className="text-xs text-text-secondary mt-1">An additional custom identifier for your store</p>
           </div>
+        </div>
+      </div>
+
+      {/* Cashiers Information Card */}
+      <div className="bg-white rounded border border-gray-200 p-4 mt-4">
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <User size={20} />
+          Cashiers Information
+        </h2>
+
+        <div className="space-y-4">
+          <div className="p-4 bg-gray-50 rounded border border-gray-300">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm text-gray-600">Total Cashiers</p>
+                <p className="text-2xl font-bold">{cashiers.length}</p>
+              </div>
+              <div className="w-12 h-12 bg-cyan-600 text-white rounded-full flex items-center justify-center">
+                <User size={24} />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">Active cashier accounts in this store</p>
+          </div>
+
+          {loadingCashiers ? (
+            <div className="text-center py-4 text-gray-500">Loading cashiers...</div>
+          ) : cashiers.length > 0 ? (
+            <div>
+              <p className="text-sm font-medium mb-2 text-gray-700">Cashier List:</p>
+              <div className="space-y-2">
+                {cashiers.map((cashier: any) => (
+                  <div key={cashier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gray-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                        {cashier.full_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{cashier.full_name}</p>
+                        <p className="text-xs text-gray-500">{cashier.phone_number}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">Commission</p>
+                      <p className="text-sm font-medium">{cashier.commission_rate}%</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <User size={40} className="mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No cashiers added yet</p>
+              <p className="text-xs mt-1">Go to Cashiers tab to add cashiers</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -854,8 +1074,8 @@ function CategoryModal({ category, onClose }: any) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border-2 border-black w-full max-w-md">
-        <div className="p-4 bg-black text-white flex justify-between items-center">
+      <div className="bg-white rounded border border-gray-200 w-full max-w-md">
+        <div className="p-3 bg-gray-50 border-b border-gray-200 text-gray-900 flex justify-between items-center">
           <h2 className="text-lg font-bold">{category ? 'Edit Category' : 'Add Category'}</h2>
           <button onClick={() => onClose(false)} className="hover:bg-gray-800 p-1 rounded">
             <X size={20} />
@@ -875,7 +1095,7 @@ function CategoryModal({ category, onClose }: any) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded text-sm"
+              className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
               placeholder="e.g., Electronics, Clothing"
               required
             />
@@ -886,7 +1106,7 @@ function CategoryModal({ category, onClose }: any) {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded text-sm"
+              className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
               rows={3}
               placeholder="Optional description"
             />
@@ -896,14 +1116,14 @@ function CategoryModal({ category, onClose }: any) {
             <button
               type="button"
               onClick={() => onClose(false)}
-              className="px-4 py-2 border-2 border-black rounded hover:bg-gray-100 text-sm"
+              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50 text-sm"
+              className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-sm"
             >
               {saving ? 'Saving...' : category ? 'Update' : 'Create'}
             </button>
@@ -958,8 +1178,8 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border-2 border-black w-full max-w-md">
-        <div className="p-4 bg-black text-white flex justify-between items-center">
+      <div className="bg-white rounded border border-gray-200 w-full max-w-md">
+        <div className="p-3 bg-gray-50 border-b border-gray-200 text-gray-900 flex justify-between items-center">
           <h2 className="text-lg font-bold">{subcategory ? 'Edit Subcategory' : 'Add Subcategory'}</h2>
           <button onClick={() => onClose(false)} className="hover:bg-gray-800 p-1 rounded">
             <X size={20} />
@@ -979,7 +1199,7 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded text-sm"
+              className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
               placeholder="e.g., Smartphones, T-Shirts"
               required
             />
@@ -990,7 +1210,7 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border-2 border-black rounded text-sm"
+              className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
               rows={3}
               placeholder="Optional description"
             />
@@ -1000,14 +1220,14 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
             <button
               type="button"
               onClick={() => onClose(false)}
-              className="px-4 py-2 border-2 border-black rounded hover:bg-gray-100 text-sm"
+              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50 text-sm"
+              className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-sm"
             >
               {saving ? 'Saving...' : subcategory ? 'Update' : 'Create'}
             </button>
@@ -1049,7 +1269,7 @@ function InitialStockTab() {
         </div>
       )}
 
-      <div className="bg-white border-2 border-black rounded p-6">
+      <div className="bg-white border border-gray-200 rounded p-6">
         <div className="text-center">
           <div className="mb-4">
             <Plus size={48} className="mx-auto text-gray-400 mb-2" />
@@ -1061,7 +1281,7 @@ function InitialStockTab() {
 
           <button
             onClick={() => setShowRestockModal(true)}
-            className="px-6 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors font-medium"
+            className="px-6 py-3 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors font-medium"
           >
             Add Initial Stock Items
           </button>
@@ -1091,6 +1311,249 @@ function InitialStockTab() {
           }}
         />
       )}
+    </div>
+  )
+}
+
+// Cashiers Tab Component
+function CashiersTab({ cashiers, onAddCashier, onEditCashier, onRefresh }: any) {
+  const [deleting, setDeleting] = useState<number | null>(null)
+
+  const handleDeleteCashier = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this cashier?')) return
+
+    try {
+      setDeleting(id)
+      const response = await fetch(`/api/cashiers?id=${id}`, { method: 'DELETE' })
+      const result = await response.json()
+
+      if (result.success) {
+        onRefresh()
+      } else {
+        alert(result.error || 'Failed to delete cashier')
+      }
+    } catch (err) {
+      alert('Failed to delete cashier')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded border border-gray-200 overflow-hidden">
+      <div className="p-4 bg-gray-50 border-b-2 border-black flex justify-between items-center">
+        <div>
+          <h2 className="text-lg font-bold">Cashiers</h2>
+          <p className="text-sm text-gray-600">Manage store cashiers and their commission rates</p>
+        </div>
+        <button
+          onClick={onAddCashier}
+          className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-sm"
+        >
+          <Plus size={16} />
+          Add Cashier
+        </button>
+      </div>
+
+      <div className="p-4">
+        {cashiers.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <User size={48} className="mx-auto mb-3 opacity-50" />
+            <p className="text-sm">No cashiers added yet</p>
+            <p className="text-xs mt-1">Click "Add Cashier" to add your first cashier</p>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {cashiers.map((cashier: Cashier) => (
+              <div
+                key={cashier.id}
+                className="p-4 border-2 border-gray-300 rounded flex justify-between items-center hover:border-black transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center font-bold">
+                      {cashier.full_name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-bold">{cashier.full_name}</p>
+                      <p className="text-sm text-gray-600">{cashier.phone_number}</p>
+                      <div className="flex gap-3 mt-1">
+                        <p className="text-xs text-gray-500">Salary: ${cashier.salary?.toLocaleString() || 0}</p>
+                        <p className="text-xs text-gray-500">Commission: {cashier.commission_rate}%</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onEditCashier(cashier)}
+                    className="p-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded transition-colors"
+                    title="Edit Cashier"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCashier(cashier.id)}
+                    disabled={deleting === cashier.id}
+                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                    title="Delete Cashier"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Cashier Modal Component
+function CashierModal({ cashier, onClose }: { cashier: Cashier | null, onClose: (refresh?: boolean) => void }) {
+  const [formData, setFormData] = useState({
+    full_name: cashier?.full_name || '',
+    phone_number: cashier?.phone_number || '',
+    commission_rate: cashier?.commission_rate || 0,
+    salary: cashier?.salary || 0,
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (!formData.full_name.trim()) {
+      setError('Cashier name is required')
+      return
+    }
+    if (!formData.phone_number.trim()) {
+      setError('Phone number is required')
+      return
+    }
+
+    try {
+      setSaving(true)
+      const storeId = getStoreId()
+      
+      const response = await fetch('/api/cashiers', {
+        method: cashier ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          store_id: storeId,
+          ...(cashier && { id: cashier.id })
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        onClose(true)
+      } else {
+        setError(result.error || 'Failed to save cashier')
+      }
+    } catch (err) {
+      setError('Failed to save cashier')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded border border-gray-200 w-full max-w-md">
+        <div className="p-4 border-b-2 border-black flex justify-between items-center">
+          <h2 className="text-lg font-bold">{cashier ? 'Edit Cashier' : 'Add Cashier'}</h2>
+          <button onClick={() => onClose()} className="text-gray-500 hover:text-black">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4">
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="mb-4">
+            <label className="block text-sm font-bold mb-2">
+              Full Name <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.full_name}
+              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="Enter cashier name"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-bold mb-2">
+              Phone Number <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="tel"
+              value={formData.phone_number}
+              onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="Enter phone number"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-bold mb-2">
+              Monthly Salary
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.salary}
+              onChange={(e) => setFormData({ ...formData, salary: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="Enter monthly salary (e.g., 25000)"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-bold mb-2">
+              Commission Rate (%)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={formData.commission_rate}
+              onChange={(e) => setFormData({ ...formData, commission_rate: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="Enter commission rate (e.g., 5.5 for 5.5%)"
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end">
+            <button
+              type="button"
+              onClick={() => onClose()}
+              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-sm"
+            >
+              {saving ? 'Saving...' : cashier ? 'Update' : 'Create'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

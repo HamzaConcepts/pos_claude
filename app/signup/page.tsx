@@ -228,17 +228,17 @@ export default function SignupPage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-bg-secondary">
-        <div className="text-xl">Checking session...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
+        <div className="text-lg">Checking session...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-secondary py-8">
-      <div className="bg-white p-8 rounded border-2 border-gray w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-3 text-center">POS System</h1>
-        <p className="text-center text-text-secondary mb-6">Create a new account</p>
+    <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] py-8">
+      <div className="bg-white p-8 rounded border border-gray-200 w-full max-w-md">
+        <h1 className="text-2xl font-bold mb-3 text-center">POS System</h1>
+        <p className="text-center text-gray-600 mb-6">Create a new account</p>
 
         {/* Account Type Toggle */}
         <div className="flex gap-2 mb-6">
@@ -247,7 +247,7 @@ export default function SignupPage() {
             onClick={() => setAccountType('Manager')}
             className={`flex-1 py-2 rounded font-medium transition-colors ${
               accountType === 'Manager'
-                ? 'bg-black text-white'
+                ? 'bg-cyan-600 text-white'
                 : 'bg-gray-200 text-black hover:bg-gray-300'
             }`}
           >
@@ -258,7 +258,7 @@ export default function SignupPage() {
             onClick={() => setAccountType('Cashier')}
             className={`flex-1 py-2 rounded font-medium transition-colors ${
               accountType === 'Cashier'
-                ? 'bg-black text-white'
+                ? 'bg-cyan-600 text-white'
                 : 'bg-gray-200 text-black hover:bg-gray-300'
             }`}
           >
@@ -267,7 +267,7 @@ export default function SignupPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-status-error text-white rounded">
+          <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-200 rounded">
             {error}
           </div>
         )}
@@ -276,7 +276,7 @@ export default function SignupPage() {
           {accountType === 'Manager' && (
             <>
               {/* Store Option Selection */}
-              <div className="mb-6 border-2 border-gray rounded p-4">
+              <div className="mb-6 border border-gray-200 rounded p-4">
                 <label className="block mb-3 font-medium">Store Option</label>
                 <div className="flex gap-3">
                   <button
@@ -284,8 +284,8 @@ export default function SignupPage() {
                     onClick={() => setStoreOption('create')}
                     className={`flex-1 p-3 rounded border-2 transition-all ${
                       storeOption === 'create'
-                        ? 'border-black bg-black text-white'
-                        : 'border-gray bg-white hover:border-gray-400'
+                        ? 'border-cyan-600 bg-cyan-600 text-white'
+                        : 'border-gray bg-white hover:border-gray-300'
                     }`}
                   >
                     <Store className="mx-auto mb-1" size={20} />
@@ -296,8 +296,8 @@ export default function SignupPage() {
                     onClick={() => setStoreOption('join')}
                     className={`flex-1 p-3 rounded border-2 transition-all ${
                       storeOption === 'join'
-                        ? 'border-black bg-black text-white'
-                        : 'border-gray bg-white hover:border-gray-400'
+                        ? 'border-cyan-600 bg-cyan-600 text-white'
+                        : 'border-gray bg-white hover:border-gray-300'
                     }`}
                   >
                     <UserPlus className="mx-auto mb-1" size={20} />
@@ -308,7 +308,7 @@ export default function SignupPage() {
 
               {storeOption === 'create' && (
                 <div className="mb-4">
-                  <label htmlFor="storeName" className="block mb-2 font-medium">
+                  <label htmlFor="storeName" className="block mb-1 font-medium text-sm text-gray-700">
                     Store Name
                   </label>
                   <input
@@ -317,7 +317,7 @@ export default function SignupPage() {
                     type="text"
                     value={formData.storeName}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+                    className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600"
                     required
                     disabled={loading}
                   />
@@ -326,8 +326,8 @@ export default function SignupPage() {
 
               {storeOption === 'join' && (
                 <div className="mb-4">
-                  <label htmlFor="storeCode" className="block mb-2 font-medium">
-                    Store Code <span className="text-sm text-text-secondary">(3 characters)</span>
+                  <label htmlFor="storeCode" className="block mb-1 font-medium text-sm text-gray-700">
+                    Store Code <span className="text-sm text-gray-600">(3 characters)</span>
                   </label>
                   <input
                     id="storeCode"
@@ -335,13 +335,13 @@ export default function SignupPage() {
                     type="text"
                     value={formData.storeCode}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black uppercase"
+                    className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600 uppercase"
                     placeholder="A1B"
                     maxLength={3}
                     required
                     disabled={loading}
                   />
-                  <p className="text-xs text-text-secondary mt-1">
+                  <p className="text-xs text-gray-600 mt-1">
                     Ask your store manager for the store code
                   </p>
                 </div>
@@ -351,8 +351,8 @@ export default function SignupPage() {
 
           {accountType === 'Cashier' && (
             <div className="mb-4">
-              <label htmlFor="storeCode" className="block mb-2 font-medium">
-                Store Code <span className="text-sm text-text-secondary">(3 characters)</span>
+              <label htmlFor="storeCode" className="block mb-1 font-medium text-sm text-gray-700">
+                Store Code <span className="text-sm text-gray-600">(3 characters)</span>
               </label>
               <input
                 id="storeCode"
@@ -360,20 +360,20 @@ export default function SignupPage() {
                 type="text"
                 value={formData.storeCode}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black uppercase"
+                className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600 uppercase"
                 placeholder="A1B"
                 maxLength={3}
                 required
                 disabled={loading}
               />
-              <p className="text-xs text-text-secondary mt-1">
+              <p className="text-xs text-gray-600 mt-1">
                 Ask your manager for the store code
               </p>
             </div>
           )}
 
           <div className="mb-4">
-            <label htmlFor="fullName" className="block mb-2 font-medium">
+            <label htmlFor="fullName" className="block mb-1 font-medium text-sm text-gray-700">
               {accountType === 'Manager' ? 'Manager Name' : 'Name'}
             </label>
             <input
@@ -382,15 +382,15 @@ export default function SignupPage() {
               type="text"
               value={formData.fullName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600"
               required
               disabled={loading}
             />
           </div>
 
           <div className="mb-4">
-            <label htmlFor="phoneNumber" className="block mb-2 font-medium">
-              Phone Number <span className="text-sm text-text-secondary">(11 digits)</span>
+            <label htmlFor="phoneNumber" className="block mb-1 font-medium text-sm text-gray-700">
+              Phone Number <span className="text-sm text-gray-600">(11 digits)</span>
             </label>
             <input
               id="phoneNumber"
@@ -398,7 +398,7 @@ export default function SignupPage() {
               type="tel"
               value={formData.phoneNumber}
               onChange={handleChange}
-              className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+              className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600"
               placeholder="03001234567"
               maxLength={11}
               required
@@ -408,7 +408,7 @@ export default function SignupPage() {
 
           {accountType === 'Manager' && (
             <div className="mb-4">
-              <label htmlFor="email" className="block mb-2 font-medium">
+              <label htmlFor="email" className="block mb-1 font-medium text-sm text-gray-700">
                 Email
               </label>
               <input
@@ -417,7 +417,7 @@ export default function SignupPage() {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black"
+                className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600"
                 required
                 disabled={loading}
               />
@@ -425,7 +425,7 @@ export default function SignupPage() {
           )}
 
           <div className="mb-4">
-            <label htmlFor="password" className="block mb-2 font-medium">
+            <label htmlFor="password" className="block mb-1 font-medium text-sm text-gray-700">
               Password
             </label>
             <div className="relative">
@@ -435,7 +435,7 @@ export default function SignupPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black pr-10"
+                className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600 pr-10"
                 required
                 disabled={loading}
               />
@@ -450,7 +450,7 @@ export default function SignupPage() {
           </div>
 
           <div className="mb-6">
-            <label htmlFor="confirmPassword" className="block mb-2 font-medium">
+            <label htmlFor="confirmPassword" className="block mb-1 font-medium text-sm text-gray-700">
               Repeat Password
             </label>
             <div className="relative">
@@ -460,7 +460,7 @@ export default function SignupPage() {
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border-2 border-gray rounded focus:outline-none focus:border-black pr-10"
+                className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600 pr-10"
                 required
                 disabled={loading}
               />
@@ -477,13 +477,13 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-black text-white py-2 rounded hover:bg-gray-800 disabled:bg-gray-400 transition-colors"
+            className="w-full bg-cyan-600 text-white py-2 rounded hover:bg-cyan-700 disabled:bg-gray-400 transition-colors"
           >
             {loading ? 'Signing up...' : 'Sign Up'}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-text-secondary">
+        <p className="mt-4 text-center text-gray-600">
           Already have an account?{' '}
           <Link href="/login" className="text-black underline font-medium">
             Login
@@ -493,3 +493,6 @@ export default function SignupPage() {
     </div>
   )
 }
+
+
+

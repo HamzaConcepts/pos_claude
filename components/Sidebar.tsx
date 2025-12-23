@@ -12,29 +12,93 @@ import {
   LogOut,
   Menu,
   X,
-  BookOpen
+  BookOpen,
+  User,
+  ChevronDown,
+  Moon,
+  Sun
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { supabase, hasPermission, type UserRole } from '@/lib/supabase'
+import { supabase, hasPermission, type UserRole, getStoreId } from '@/lib/supabase'
 
 interface SidebarProps {
   userRole: UserRole
   userName: string
 }
 
+interface Cashier {
+  id: number
+  full_name: string
+  phone_number: string
+  commission_rate: number
+}
+
 export default function Sidebar({ userRole, userName }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [cashiers, setCashiers] = useState<Cashier[]>([])
+  const [selectedCashier, setSelectedCashier] = useState<Cashier | null>(null)
+  const [showCashierDropdown, setShowCashierDropdown] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Load dark mode preference from localStorage
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('dark_mode')
+    if (savedDarkMode) {
+      setIsDarkMode(savedDarkMode === 'true')
+    }
+  }, [])
+
+  // Load selected cashier from localStorage on mount
+  useEffect(() => {
+    const savedCashier = localStorage.getItem('selected_cashier')
+    if (savedCashier) {
+      setSelectedCashier(JSON.parse(savedCashier))
+    }
+    fetchCashiers()
+  }, [])
+
+  const fetchCashiers = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/cashiers?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setCashiers(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching cashiers:', err)
+    }
+  }
+
+  const handleCashierSelect = (cashier: Cashier) => {
+    setSelectedCashier(cashier)
+    localStorage.setItem('selected_cashier', JSON.stringify(cashier))
+    setShowCashierDropdown(false)
+  }
+
+  const toggleDarkMode = () => {
+    const newDarkMode = !isDarkMode
+    setIsDarkMode(newDarkMode)
+    localStorage.setItem('dark_mode', newDarkMode.toString())
+    // Dispatch custom event to notify dashboard page
+    window.dispatchEvent(new CustomEvent('darkModeChange', { detail: { isDarkMode: newDarkMode } }))
+  }
 
   const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
-    { href: '/dashboard/pos', label: 'POS', icon: ShoppingCart, permission: 'process_sale' },
-    { href: '/dashboard/inventory', label: 'Inventory', icon: Package, permission: 'create_product' },
-    { href: '/dashboard/sales', label: 'Sales', icon: DollarSign, permission: 'view_sales' },
-    { href: '/dashboard/expenses', label: 'Expenses', icon: FileText, permission: 'add_expense' },
-    { href: '/dashboard/khaata', label: 'Khaata System', icon: BookOpen, permission: 'create_user' },
-    { href: '/dashboard/store', label: 'Store', icon: Users, permission: 'create_user' },
+    { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, permission: 'view_dashboard' },
+    { href: '/dashboard/pos', label: 'Point of Sale', icon: ShoppingCart, permission: 'process_sale' },
+    { href: '/dashboard/inventory', label: 'Products', icon: Package, permission: 'create_product' },
+    { href: '/dashboard/sales', label: 'Sales History', icon: DollarSign, permission: 'view_sales' },
+    { href: '/dashboard/expenses', label: 'Expense Tracker', icon: FileText, permission: 'add_expense' },
+    { href: '/dashboard/khaata', label: 'Customer Ledger', icon: BookOpen, permission: 'create_user' },
+    { href: '/dashboard/cashiers', label: 'Staff Performance', icon: Users, permission: 'create_user', managerOnly: true },
+    { href: '/dashboard/store', label: 'Settings', icon: Users, permission: 'create_user' },
   ]
 
   const handleLogout = async () => {
@@ -45,44 +109,100 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     router.push('/login')
   }
 
-  const filteredNavItems = navItems.filter(item => hasPermission(userRole, item.permission))
-
-  const closeMobileMenu = () => setIsMobileMenuOpen(false)
+  const filteredNavItems = navItems.filter(item => {
+    // Check if user has permission
+    if (!hasPermission(userRole, item.permission)) return false
+    
+    // If item is managerOnly, only show for Manager role
+    if (item.managerOnly && userRole !== 'Manager') return false
+    
+    return true
+  })
 
   return (
     <>
-      {/* Mobile menu button */}
-      <button
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-black text-white rounded"
-      >
-        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
-      {/* Overlay */}
-      {isMobileMenuOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
-          onClick={closeMobileMenu}
-        />
-      )}
 
       {/* Sidebar */}
       <aside
         className={`
+          hidden lg:flex
           fixed inset-y-0 left-0 z-40
-          w-56 bg-black text-white flex flex-col
-          transform transition-transform duration-300 ease-in-out
-          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          w-52 flex-col
+          ${isDarkMode ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r border-gray-200'}
         `}
       >
         {/* Logo */}
-        <div className="p-5 border-b border-gray-700">
-          <h1 className="text-xl font-bold">POS System</h1>
+        <div className={`p-4 border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+          <h1 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>POS System</h1>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-3 overflow-y-auto">
+          {/* Cashier Selector - Only show for cashier accounts */}
+          {userRole === 'Cashier' && cashiers.length > 0 && (
+            <div className="mb-3">
+              <label className={`text-xs mb-1.5 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Active Cashier</label>
+              <div className="relative">
+                <button
+                  onClick={() => setShowCashierDropdown(!showCashierDropdown)}
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 border rounded text-sm transition-colors ${
+                    isDarkMode 
+                      ? 'bg-gray-800 hover:bg-gray-700 border-gray-700' 
+                      : 'bg-gray-50 hover:bg-gray-100 border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <User size={14} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
+                    <span className={`truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {selectedCashier ? selectedCashier.full_name : 'Select Cashier'}
+                    </span>
+                  </div>
+                  <ChevronDown size={14} className={`transition-transform ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} ${showCashierDropdown ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showCashierDropdown && (
+                  <div className={`absolute top-full left-0 right-0 mt-1 border rounded z-50 max-h-64 overflow-y-auto ${
+                    isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  }`}>
+                    <div
+                      onClick={() => {
+                        setSelectedCashier(null)
+                        localStorage.removeItem('selected_cashier')
+                        setShowCashierDropdown(false)
+                      }}
+                      className={`px-3 py-2 cursor-pointer text-sm border-b ${
+                        isDarkMode 
+                          ? 'hover:bg-gray-700 text-gray-400 border-gray-700' 
+                          : 'hover:bg-gray-50 text-gray-500 border-gray-100'
+                      }`}
+                    >
+                      No Cashier Selected
+                    </div>
+                    {cashiers.map((cashier) => (
+                      <div
+                        key={cashier.id}
+                        onClick={() => handleCashierSelect(cashier)}
+                        className={`px-3 py-2 cursor-pointer transition-colors ${
+                          selectedCashier?.id === cashier.id 
+                            ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-50')
+                            : (isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50')
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <User size={14} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{cashier.full_name}</p>
+                            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{cashier.phone_number}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <ul className="space-y-1.5">
             {filteredNavItems.map((item) => {
               const Icon = item.icon
@@ -92,17 +212,23 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    onClick={closeMobileMenu}
                     className={`
-                      flex items-center gap-2.5 px-3 py-2.5 rounded transition-colors
+                      flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-colors
                       ${isActive 
-                        ? 'bg-white text-black' 
-                        : 'text-white hover:bg-gray-800'
+                        ? (isDarkMode 
+                            ? 'bg-cyan-900/30 text-cyan-400 border border-cyan-800' 
+                            : 'bg-cyan-50 text-cyan-700 border border-cyan-200')
+                        : (isDarkMode 
+                            ? 'text-gray-300 hover:bg-gray-800 hover:text-white' 
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900')
                       }
                     `}
                   >
-                    <Icon size={17} />
-                    <span className="text-sm">{item.label}</span>
+                    <Icon size={18} className={isActive 
+                      ? (isDarkMode ? 'text-cyan-400' : 'text-cyan-600')
+                      : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
+                    } />
+                    <span>{item.label}</span>
                   </Link>
                 </li>
               )
@@ -111,16 +237,33 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
         </nav>
 
         {/* User section */}
-        <div className="p-3 border-t border-gray-700">
-          <div className="mb-2.5">
-            <p className="font-medium text-sm">{userName}</p>
-            <p className="text-xs text-gray-400">{userRole}</p>
+        <div className={`p-3 border-t ${isDarkMode ? 'border-gray-800 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={toggleDarkMode}
+            className={`flex items-center gap-2 w-full px-3 py-2 mb-2 border rounded transition-colors text-sm font-medium ${
+              isDarkMode 
+                ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 text-gray-200' 
+                : 'bg-white hover:bg-gray-100 border-gray-200 text-gray-700'
+            }`}
+          >
+            {isDarkMode ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-blue-500" />}
+            <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
+
+          <div className="mb-2">
+            <p className={`font-medium text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{userName}</p>
+            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{userRole}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 w-full px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded transition-colors text-sm"
+            className={`flex items-center gap-2 w-full px-3 py-2 border rounded transition-colors text-sm font-medium ${
+              isDarkMode 
+                ? 'bg-gray-700 hover:bg-red-900/20 border-gray-600 hover:border-red-800 text-gray-200 hover:text-red-400' 
+                : 'bg-white hover:bg-red-50 border-gray-200 hover:border-red-200 text-gray-700 hover:text-red-600'
+            }`}
           >
-            <LogOut size={17} />
+            <LogOut size={16} />
             <span>Logout</span>
           </button>
         </div>

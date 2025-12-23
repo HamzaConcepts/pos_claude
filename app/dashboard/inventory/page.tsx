@@ -10,9 +10,11 @@ import RestockHistoryModal from '@/components/RestockHistoryModal'
 import BatchEditModal from '@/components/BatchEditModal'
 import { getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { useDarkMode } from '@/hooks/useDarkMode'
 
 export default function InventoryPage() {
   const router = useRouter()
+  const isDarkMode = useDarkMode()
   
   // State
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
@@ -279,14 +281,16 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="p-6">
+    <>
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-3xl font-bold">Inventory Management</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-3">
+        <h1 className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Inventory Management</h1>
         
-        <div className="flex flex-wrap gap-3">
-          <label className="flex items-center gap-2 bg-white border-2 border-black px-4 py-2 rounded hover:bg-gray-100 transition-colors cursor-pointer">
-            <Package size={20} />
+        <div className="flex flex-wrap gap-2">
+          <label className={`flex items-center gap-2 border px-3 py-2 rounded text-sm transition-colors cursor-pointer ${
+            isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-gray-300 hover:bg-gray-50'
+          }`}>
+            <Package size={16} />
             {importing ? 'Importing...' : 'Import CSV'}
             <input
               type="file"
@@ -299,17 +303,17 @@ export default function InventoryPage() {
           
           <button
             onClick={() => setIsRestockModalOpen(true)}
-            className="flex items-center gap-2 bg-white border-2 border-black px-4 py-2 rounded hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-2 bg-white border border-gray-300 px-3 py-2 rounded text-sm hover:bg-gray-50 transition-colors"
           >
-            <Package size={20} />
+            <Package size={16} />
             Restock
           </button>
           
           <button
             onClick={() => setIsAddStockModalOpen(true)}
-            className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition-colors"
+            className="flex items-center gap-2 bg-cyan-600 text-white px-3 py-2 rounded text-sm hover:bg-cyan-700 transition-colors"
           >
-            <Plus size={20} />
+            <Plus size={16} />
             Add Product
           </button>
         </div>
@@ -317,28 +321,28 @@ export default function InventoryPage() {
 
       {/* Import Feedback */}
       {importFeedback && (
-        <div className={`mb-4 p-4 rounded flex items-center justify-between ${
-          importFeedback.type === 'error' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'
+        <div className={`mb-4 p-3 rounded text-sm flex items-center justify-between border ${
+          importFeedback.type === 'error' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-green-50 text-green-600 border-green-200'
         }`}>
           <span>{importFeedback.message}</span>
-          <button onClick={() => setImportFeedback(null)} className="text-white hover:text-gray-200">
+          <button onClick={() => setImportFeedback(null)} className="hover:opacity-70">
             ✕
           </button>
         </div>
       )}
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded border-2 border-black mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="bg-white p-3 rounded border border-gray-200 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
               placeholder="Search by name or SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black"
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
             />
           </div>
 
@@ -346,7 +350,7 @@ export default function InventoryPage() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black"
+            className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
@@ -355,7 +359,7 @@ export default function InventoryPage() {
           </select>
 
           {/* Low Stock Filter */}
-          <label className="flex items-center gap-2 px-3 py-2 border-2 border-black rounded cursor-pointer hover:bg-gray-50">
+          <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded text-sm cursor-pointer hover:bg-gray-50">
             <input
               type="checkbox"
               checked={showLowStock}
@@ -366,32 +370,32 @@ export default function InventoryPage() {
           </label>
 
           {/* Count */}
-          <div className="flex items-center justify-end text-sm text-gray-600">
+          <div className="flex items-center justify-end text-xs text-gray-600">
             Showing {filteredProducts.length} of {products.length} products
           </div>
         </div>
       </div>
 
       {/* Products Table */}
-      <div className="bg-white rounded border-2 border-black overflow-hidden">
+      <div className="bg-white rounded border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-black text-white">
+            <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left">SKU</th>
-                <th className="px-4 py-3 text-left">Name</th>
-                <th className="px-4 py-3 text-left hidden md:table-cell">Category</th>
-                <th className="px-4 py-3 text-right hidden lg:table-cell">Min Price</th>
-                <th className="px-4 py-3 text-right hidden lg:table-cell">Selling Price</th>
-                <th className="px-4 py-3 text-right">Stock</th>
-                <th className="px-4 py-3 text-center hidden md:table-cell">Status</th>
-                <th className="px-4 py-3 text-center">Actions</th>
+                <th className="px-3 py-2.5 text-left text-sm font-semibold">SKU</th>
+                <th className="px-3 py-2.5 text-left text-sm font-semibold">Name</th>
+                <th className="px-3 py-2.5 text-left text-sm font-semibold hidden md:table-cell">Category</th>
+                <th className="px-3 py-2.5 text-right text-sm font-semibold hidden lg:table-cell">Min Price</th>
+                <th className="px-3 py-2.5 text-right text-sm font-semibold hidden lg:table-cell">Selling Price</th>
+                <th className="px-3 py-2.5 text-right text-sm font-semibold">Stock</th>
+                <th className="px-3 py-2.5 text-center text-sm font-semibold hidden md:table-cell">Status</th>
+                <th className="px-3 py-2.5 text-center text-sm font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500 text-sm">
                     No products found
                   </td>
                 </tr>
@@ -406,83 +410,82 @@ export default function InventoryPage() {
                       {/* Main Row */}
                       <tr
                         className={`
-                          transition-all duration-200
-                          ${isExpanded ? 'border-l-4 border-l-black bg-gray-50' : ''}
-                          ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
-                          hover:bg-gray-100
+                          transition-all duration-200 border-b border-gray-100
+                          ${isExpanded ? 'border-l-4 border-l-cyan-600 bg-cyan-50' : ''}
+                          ${!isExpanded && 'hover:bg-gray-50'}
                         `}
                       >
-                        <td className="px-4 py-3 font-mono text-sm">{product.sku}</td>
-                        <td className="px-4 py-3 font-medium">{product.name}</td>
-                        <td className="px-4 py-3 hidden md:table-cell">
+                        <td className="px-3 py-3 font-mono text-xs text-gray-700">{product.sku}</td>
+                        <td className="px-3 py-3 font-medium text-sm text-gray-900">{product.name}</td>
+                        <td className="px-3 py-3 hidden md:table-cell">
                           {(product as any).category_name ? (
                             <div>
-                              <div className="font-medium text-sm">{(product as any).category_name}</div>
+                              <div className="font-medium text-xs text-gray-900">{(product as any).category_name}</div>
                               {(product as any).subcategory_name && (
-                                <div className="text-xs text-gray-500">{(product as any).subcategory_name}</div>
+                                <div className="text-xs text-gray-600">{(product as any).subcategory_name}</div>
                               )}
                             </div>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="text-gray-400 text-xs">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right hidden lg:table-cell">
-                          <span className="font-medium">
+                        <td className="px-3 py-3 text-right hidden lg:table-cell">
+                          <span className="font-medium text-sm text-gray-900">
                             ${(product.aggregated_stock?.aggregated_lowest_negotiable || 0).toFixed(2)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right hidden lg:table-cell">
+                        <td className="px-3 py-3 text-right hidden lg:table-cell">
                           {product.aggregated_stock?.aggregated_selling_price ? (
-                            <span className="font-medium text-green-600">
+                            <span className="font-medium text-green-600 text-sm">
                               ${product.aggregated_stock.aggregated_selling_price.toFixed(2)}
                             </span>
                           ) : (
-                            <span className="text-gray-400">-</span>
+                            <span className="text-gray-400 text-xs">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={`font-medium ${isLowStock(product) ? 'text-red-600' : ''}`}>
+                        <td className="px-3 py-3 text-right">
+                          <span className={`font-medium text-sm ${isLowStock(product) ? 'text-red-600' : 'text-gray-900'}`}>
                             {product.stock_quantity}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center hidden md:table-cell">
+                        <td className="px-3 py-3 text-center hidden md:table-cell">
                           {isLowStock(product) ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-600 text-white text-xs rounded">
-                              <AlertTriangle size={14} />
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded font-medium">
+                              <AlertTriangle size={12} />
                               Low Stock
                             </span>
                           ) : (
-                            <span className="text-green-600 text-sm font-medium">In Stock</span>
+                            <span className="text-green-600 text-xs font-medium">In Stock</span>
                           )}
                         </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-center gap-2">
+                        <td className="px-3 py-3">
+                          <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => toggleExpanded(product.id)}
-                              className="p-1 hover:bg-gray-200 rounded"
+                              className="p-1 hover:bg-gray-200 rounded transition-colors"
                               title={isExpanded ? 'Collapse' : 'Expand'}
                             >
-                              {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleEdit(product)
                               }}
-                              className="p-1 hover:bg-gray-200 rounded"
+                              className="p-1 hover:bg-gray-200 rounded transition-colors"
                               title="Edit"
                             >
-                              <Edit size={18} />
+                              <Edit size={16} />
                             </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleDelete(product.id)
                               }}
-                              className="p-1 hover:bg-red-100 rounded text-red-600"
+                              className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
                               title="Delete"
                             >
-                              <Trash2 size={18} />
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         </td>
@@ -490,52 +493,52 @@ export default function InventoryPage() {
 
                       {/* Expanded Row */}
                       {isExpanded && (
-                        <tr className="bg-gray-50 border-l-4 border-l-black">
+                        <tr className="bg-cyan-50 border-l-4 border-l-cyan-600 border-b border-gray-100">
                           <td colSpan={8} className="px-4 py-4">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                               {/* Left Column - Details */}
                               <div>
-                                <h4 className="font-bold text-lg mb-3">Product Details</h4>
+                                <h4 className="font-bold text-base text-gray-900 mb-3">Product Details</h4>
                                 
                                 <div className="space-y-2 text-sm">
                                   <div>
-                                    <span className="text-gray-600">Description:</span>
-                                    <p className="mt-1">{product.description || 'No description available'}</p>
+                                    <span className="text-gray-600 text-xs">Description:</span>
+                                    <p className="mt-1 text-gray-900">{product.description || 'No description available'}</p>
                                   </div>
                                   
-                                  <div className="grid grid-cols-2 gap-4 mt-4">
+                                  <div className="grid grid-cols-2 gap-3 mt-4">
                                     <div>
-                                      <span className="text-gray-600">Cost Price:</span>
-                                      <p className="font-medium">${(product.aggregated_stock?.aggregated_cost_price || 0).toFixed(2)}</p>
+                                      <span className="text-gray-600 text-xs">Cost Price:</span>
+                                      <p className="font-medium text-sm text-gray-900">${(product.aggregated_stock?.aggregated_cost_price || 0).toFixed(2)}</p>
                                     </div>
                                     
                                     {profitMargin && (
                                       <div>
-                                        <span className="text-gray-600">Profit Margin:</span>
-                                        <p className="font-medium text-green-600">
+                                        <span className="text-gray-600 text-xs">Profit Margin:</span>
+                                        <p className="font-medium text-green-600 text-sm">
                                           ${profitMargin.profit.toFixed(2)} ({profitMargin.margin.toFixed(1)}%)
                                         </p>
                                       </div>
                                     )}
                                     
                                     <div>
-                                      <span className="text-gray-600">Stock Value:</span>
-                                      <p className="font-medium">${stockValue.toFixed(2)}</p>
+                                      <span className="text-gray-600 text-xs">Stock Value:</span>
+                                      <p className="font-medium text-sm text-gray-900">${stockValue.toFixed(2)}</p>
                                     </div>
                                     
                                     <div>
-                                      <span className="text-gray-600">Low Stock Alert:</span>
-                                      <p className="font-medium">{product.low_stock_threshold} units</p>
+                                      <span className="text-gray-600 text-xs">Low Stock Alert:</span>
+                                      <p className="font-medium text-sm text-gray-900">{product.low_stock_threshold} units</p>
                                     </div>
                                     
                                     <div>
-                                      <span className="text-gray-600">Created:</span>
-                                      <p>{new Date(product.created_at).toLocaleDateString()}</p>
+                                      <span className="text-gray-600 text-xs">Created:</span>
+                                      <p className="text-sm text-gray-900">{new Date(product.created_at).toLocaleDateString()}</p>
                                     </div>
                                     
                                     <div>
-                                      <span className="text-gray-600">Updated:</span>
-                                      <p>{new Date(product.updated_at).toLocaleDateString()}</p>
+                                      <span className="text-gray-600 text-xs">Updated:</span>
+                                      <p className="text-sm text-gray-900">{new Date(product.updated_at).toLocaleDateString()}</p>
                                     </div>
                                   </div>
                                 </div>
@@ -546,7 +549,7 @@ export default function InventoryPage() {
                                 {/* Restock History */}
                                 {(product as any).batches && (product as any).batches.length > 0 && (
                                   <div className="mb-4">
-                                    <h5 className="font-bold mb-2">Restock History ({(product as any).batches.length})</h5>
+                                    <h5 className="font-bold text-sm text-gray-900 mb-2">Restock History ({(product as any).batches.length})</h5>
                                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                                       {(product as any).batches
                                         .sort((a: any, b: any) => new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime())
@@ -554,7 +557,7 @@ export default function InventoryPage() {
                                           <div key={batch.id} className="p-3 bg-white rounded border border-gray-200 text-sm">
                                             <div className="flex justify-between items-start mb-2">
                                               <div>
-                                                <div className="font-medium">
+                                                <div className="font-medium text-sm text-gray-900">
                                                   {index === 0 ? 'Initial Stock' : `Restock #${index}`}
                                                 </div>
                                                 <div className="text-xs text-gray-500 font-mono">
@@ -569,37 +572,37 @@ export default function InventoryPage() {
                                                 className="p-1 hover:bg-gray-200 rounded transition-colors"
                                                 title="Edit prices"
                                               >
-                                                <Edit size={16} />
+                                                <Edit size={14} />
                                               </button>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                               <div>
                                                 <span className="text-gray-600">Date:</span>
-                                                <div className="font-medium">
+                                                <div className="font-medium text-gray-900">
                                                   {new Date(batch.purchase_date).toLocaleDateString()}
                                                 </div>
                                               </div>
                                               <div>
                                                 <span className="text-gray-600">Quantity:</span>
-                                                <div className="font-medium">
+                                                <div className="font-medium text-gray-900">
                                                   {batch.quantity_remaining} / {batch.quantity_purchased}
                                                 </div>
                                               </div>
                                               <div>
                                                 <span className="text-gray-600">Cost Price:</span>
-                                                <div className="font-medium">
+                                                <div className="font-medium text-gray-900">
                                                   ${batch.cost_price.toFixed(2)}
                                                 </div>
                                               </div>
                                               <div>
                                                 <span className="text-gray-600">Target Price:</span>
-                                                <div className="font-medium">
+                                                <div className="font-medium text-gray-900">
                                                   ${(batch.selling_price || 0).toFixed(2)}
                                                 </div>
                                               </div>
                                             </div>
                                             {batch.is_depleted && (
-                                              <div className="mt-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                                              <div className="mt-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded border border-gray-200">
                                                 Depleted
                                               </div>
                                             )}
@@ -613,16 +616,16 @@ export default function InventoryPage() {
                                 <div className="flex flex-col gap-2">
                                   <button
                                     onClick={() => handleViewHistory(product)}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white border-2 border-black rounded hover:bg-gray-100 transition-colors"
+                                    className="flex items-center justify-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors text-sm"
                                   >
-                                    <History size={18} />
+                                    <History size={16} />
                                     <span>View History</span>
                                   </button>
                                   <button
                                     onClick={() => handleEdit(product)}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                                    className="flex items-center justify-center gap-2 px-3 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors text-sm"
                                   >
-                                    <Edit size={18} />
+                                    <Edit size={16} />
                                     <span>Edit Product</span>
                                   </button>
                                 </div>
@@ -691,6 +694,6 @@ export default function InventoryPage() {
           }}
         />
       )}
-    </div>
+    </>
   )
 }

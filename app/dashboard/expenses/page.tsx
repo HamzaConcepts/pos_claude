@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { DollarSign, TrendingUp, Calendar, Plus, X } from 'lucide-react'
+import { DollarSign, TrendingUp, Calendar, Plus, X, Edit } from 'lucide-react'
 import { supabase, getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { useDarkMode } from '@/hooks/useDarkMode'
 
 interface Expense {
   id: number
@@ -12,10 +13,20 @@ interface Expense {
   category: string
   expense_date: string
   recorded_by: string
+  recorded_by_name?: string
   managers?: {
     full_name: string
   }
   created_at: string
+}
+
+interface PredefinedExpense {
+  id: number
+  name: string
+  category: string
+  default_amount: number
+  description: string | null
+  is_active: boolean
 }
 
 const EXPENSE_CATEGORIES = [
@@ -33,13 +44,18 @@ const EXPENSE_CATEGORIES = [
 
 export default function ExpensesPage() {
   const router = useRouter()
+  const isDarkMode = useDarkMode()
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [predefinedExpenses, setPredefinedExpenses] = useState<PredefinedExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [userId, setUserId] = useState<string>('')
   
   // Form states
+  const [selectedPredefined, setSelectedPredefined] = useState<number | null>(null)
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0])
@@ -49,6 +65,7 @@ export default function ExpensesPage() {
   useEffect(() => {
     fetchCurrentUser()
     fetchExpenses()
+    fetchPredefinedExpenses()
   }, [])
 
   const fetchCurrentUser = async () => {
@@ -90,6 +107,23 @@ export default function ExpensesPage() {
       setError('Failed to fetch expenses')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchPredefinedExpenses = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/predefined-expenses?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        // Only show active predefined expenses
+        setPredefinedExpenses(result.data.filter((e: PredefinedExpense) => e.is_active))
+      }
+    } catch (err) {
+      console.error('Failed to fetch predefined expenses:', err)
     }
   }
 
@@ -152,6 +186,7 @@ export default function ExpensesPage() {
 
       if (result.success) {
         setShowAddModal(false)
+        setSelectedPredefined(null)
         setDescription('')
         setAmount('')
         setCategory(EXPENSE_CATEGORIES[0])
@@ -162,6 +197,60 @@ export default function ExpensesPage() {
       }
     } catch (err) {
       setError('Failed to add expense')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleEdit = (expense: Expense) => {
+    setEditingExpense(expense)
+    setDescription(expense.description)
+    setAmount(expense.amount.toString())
+    setCategory(expense.category)
+    setExpenseDate(expense.expense_date)
+    setShowEditModal(true)
+    setError('')
+  }
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!editingExpense || !description.trim() || !amount || parseFloat(amount) <= 0) {
+      setError('Please fill all required fields with valid values')
+      return
+    }
+
+    setSubmitting(true)
+    setError('')
+
+    try {
+      const response = await fetch('/api/expenses', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingExpense.id,
+          description: description.trim(),
+          amount: parseFloat(amount),
+          category,
+          expense_date: expenseDate
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setShowEditModal(false)
+        setEditingExpense(null)
+        setDescription('')
+        setAmount('')
+        setCategory(EXPENSE_CATEGORIES[0])
+        setExpenseDate(new Date().toISOString().split('T')[0])
+        fetchExpenses()
+      } else {
+        setError(result.error || 'Failed to update expense')
+      }
+    } catch (err) {
+      setError('Failed to update expense')
     } finally {
       setSubmitting(false)
     }
@@ -178,113 +267,124 @@ export default function ExpensesPage() {
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Expenses</h1>
+    <>
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Expenses</h1>
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors flex items-center gap-2"
+          className="px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors flex items-center gap-2"
         >
-          <Plus size={20} />
+          <Plus size={16} />
           Add Expense
         </button>
       </div>
 
       {error && !showAddModal && (
-        <div className="mb-4 p-4 bg-status-error text-white rounded">
+        <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-200 rounded text-sm">
           {error}
         </div>
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-6 rounded border-2 border-black">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className="bg-white p-4 rounded border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-text-secondary">Today's Expenses</span>
-            <DollarSign className="text-status-error" size={20} />
+            <span className="text-xs text-gray-600">Today's Expenses</span>
+            <DollarSign className="text-red-600" size={16} />
           </div>
-          <div className="text-2xl font-bold text-status-error">
+          <div className="text-lg font-semibold text-red-600">
             ${stats.today.toFixed(2)}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded border-2 border-black">
+        <div className="bg-white p-4 rounded border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-text-secondary">This Month</span>
-            <Calendar className="text-status-error" size={20} />
+            <span className="text-xs text-gray-600">This Month</span>
+            <Calendar className="text-red-600" size={16} />
           </div>
-          <div className="text-2xl font-bold text-status-error">
+          <div className="text-lg font-semibold text-red-600">
             ${stats.month.toFixed(2)}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded border-2 border-black">
+        <div className="bg-white p-4 rounded border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-text-secondary">This Year</span>
-            <TrendingUp className="text-status-error" size={20} />
+            <span className="text-xs text-gray-600">This Year</span>
+            <TrendingUp className="text-red-600" size={16} />
           </div>
-          <div className="text-2xl font-bold text-status-error">
+          <div className="text-lg font-semibold text-red-600">
             ${stats.year.toFixed(2)}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded border-2 border-black">
+        <div className="bg-white p-4 rounded border border-gray-200">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-text-secondary">Total Expenses</span>
-            <DollarSign className="text-status-error" size={20} />
+            <span className="text-xs text-gray-600">Total Expenses</span>
+            <DollarSign className="text-red-600" size={16} />
           </div>
-          <div className="text-2xl font-bold text-status-error">
+          <div className="text-lg font-semibold text-red-600">
             ${stats.total.toFixed(2)}
           </div>
         </div>
       </div>
 
       {/* Expenses List */}
-      <div className="bg-white rounded border-2 border-black overflow-hidden">
-        <div className="p-4 bg-black text-white">
-          <h2 className="text-lg font-bold">Recent Expenses</h2>
+      <div className="bg-white rounded border border-gray-200 overflow-hidden">
+        <div className="p-4 bg-gray-50 border-b border-gray-200">
+          <h2 className="text-base font-semibold text-gray-900">Recent Expenses</h2>
         </div>
         
         {expenses.length === 0 ? (
-          <div className="p-8 text-center text-text-secondary">
+          <div className="p-6 text-center text-gray-500 text-sm">
             No expenses recorded yet. Click "Add Expense" to get started.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-100">
+              <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-bold">Date</th>
-                  <th className="px-4 py-3 text-left text-sm font-bold">Description</th>
-                  <th className="px-4 py-3 text-left text-sm font-bold">Category</th>
-                  <th className="px-4 py-3 text-left text-sm font-bold">Recorded By</th>
-                  <th className="px-4 py-3 text-right text-sm font-bold">Amount</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Date</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Description</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Category</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Recorded By</th>
+                  <th className="px-3 py-2.5 text-right text-sm font-semibold">Amount</th>
+                  <th className="px-3 py-2.5 text-center text-sm font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {expenses.map((expense, index) => (
                   <tr
                     key={expense.id}
-                    className={index % 2 === 0 ? 'bg-white' : 'bg-bg-secondary'}
+                    className="border-b border-gray-100 bg-white hover:bg-gray-50"
                   >
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 py-2.5 text-sm text-gray-900">
                       {new Date(expense.expense_date).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
                       })}
                     </td>
-                    <td className="px-4 py-3 text-sm">{expense.description}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className="inline-block px-2 py-1 bg-bg-secondary border border-black rounded text-xs">
+                    <td className="px-3 py-2.5 text-sm text-gray-900">{expense.description}</td>
+                    <td className="px-3 py-2.5 text-sm">
+                      <span className="inline-block px-2 py-1 bg-gray-100 border border-gray-200 rounded text-xs text-gray-700">
                         {expense.category}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm">
-                      {expense.managers?.full_name || 'Cashier'}
+                    <td className="px-3 py-2.5 text-sm text-gray-900">
+                      {expense.recorded_by_name || expense.managers?.full_name || 'Cashier'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-right font-bold text-status-error">
+                    <td className="px-3 py-2.5 text-sm text-right font-semibold text-red-600">
                       ${expense.amount.toFixed(2)}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <button
+                        onClick={() => handleEdit(expense)}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors"
+                        title="Edit Expense"
+                      >
+                        <Edit size={14} />
+                        Edit
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -297,49 +397,86 @@ export default function ExpensesPage() {
       {/* Add Expense Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border-2 border-black max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Add New Expense</h2>
+          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-lg font-semibold text-gray-900">Add New Expense</h2>
               <button
                 onClick={() => {
                   setShowAddModal(false)
+                  setSelectedPredefined(null)
                   setError('')
                 }}
-                className="text-text-secondary hover:text-black"
+                className="text-gray-500 hover:text-gray-700"
               >
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border-2 border-status-error rounded text-sm">
-                <p className="text-status-error font-medium">{error}</p>
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
+                <p className="text-red-600 font-medium">{error}</p>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Predefined Expenses Selection */}
+              {predefinedExpenses.length > 0 && (
+                <div>
+                  <label className="block mb-1 font-medium text-xs text-gray-700">
+                    Quick Select (Optional)
+                  </label>
+                  <select
+                    value={selectedPredefined || ''}
+                    onChange={(e) => {
+                      const id = e.target.value ? parseInt(e.target.value) : null
+                      setSelectedPredefined(id)
+                      
+                      if (id) {
+                        const selected = predefinedExpenses.find(pe => pe.id === id)
+                        if (selected) {
+                          setDescription(selected.name)
+                          setCategory(selected.category)
+                          setAmount(selected.default_amount.toString())
+                        }
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600 bg-gray-50"
+                  >
+                    <option value="">-- Select a predefined expense --</option>
+                    {predefinedExpenses.map((pe) => (
+                      <option key={pe.id} value={pe.id}>
+                        {pe.name} ({pe.category}) - Rs. {pe.default_amount.toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Select a predefined expense to auto-fill the fields below
+                  </p>
+                </div>
+              )}
+
               <div>
-                <label className="block mb-2 font-medium text-sm">
-                  Description <span className="text-status-error">*</span>
+                <label className="block mb-1 font-medium text-xs text-gray-700">
+                  Description <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none font-sans"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                   placeholder="Enter expense description"
                   maxLength={255}
                 />
               </div>
 
               <div>
-                <label className="block mb-2 font-medium text-sm">
-                  Category <span className="text-status-error">*</span>
+                <label className="block mb-1 font-medium text-xs text-gray-700">
+                  Category <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none font-sans"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -350,8 +487,8 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block mb-2 font-medium text-sm">
-                  Amount <span className="text-status-error">*</span>
+                <label className="block mb-1 font-medium text-xs text-gray-700">
+                  Amount <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="number"
@@ -359,32 +496,32 @@ export default function ExpensesPage() {
                   min="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none font-sans"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                   placeholder="0.00"
                 />
               </div>
 
               <div>
-                <label className="block mb-2 font-medium text-sm">
-                  Expense Date <span className="text-status-error">*</span>
+                <label className="block mb-1 font-medium text-xs text-gray-700">
+                  Expense Date <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="date"
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
                   max={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none font-sans"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddModal(false)
                     setError('')
                   }}
-                  className="flex-1 px-4 py-3 border-2 border-black rounded hover:bg-bg-secondary transition-colors font-medium"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
                   disabled={submitting}
                 >
                   Cancel
@@ -392,7 +529,7 @@ export default function ExpensesPage() {
                 <button
                   type="submit"
                   disabled={submitting || !description.trim() || !amount}
-                  className="flex-1 px-4 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                  className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {submitting ? 'Adding...' : 'Add Expense'}
                 </button>
@@ -401,6 +538,116 @@ export default function ExpensesPage() {
           </div>
         </div>
       )}
-    </div>
+
+      {/* Edit Expense Modal */}
+      {showEditModal && editingExpense && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-lg font-semibold text-gray-900">Edit Expense</h2>
+              <button
+                onClick={() => {
+                  setShowEditModal(false)
+                  setEditingExpense(null)
+                  setError('')
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
+                <p className="text-red-600 font-medium">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">
+                  Description <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  placeholder="Enter expense description"
+                  maxLength={255}
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">
+                  Category <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                >
+                  {EXPENSE_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">
+                  Amount <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">
+                  Expense Date <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={expenseDate}
+                  onChange={(e) => setExpenseDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false)
+                    setEditingExpense(null)
+                    setError('')
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting || !description.trim() || !amount}
+                  className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Updating...' : 'Update Expense'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

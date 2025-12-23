@@ -20,18 +20,23 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const searchQuery = searchParams.get('search')
+    const storeId = searchParams.get('store_id')
 
     let query = supabaseAdmin
       .from('partial_payment_customers')
-      .select('customer_name, customer_phone')
+      .select('*')
       .order('created_at', { ascending: false })
+
+    if (storeId) {
+      query = query.eq('store_id', parseInt(storeId))
+    }
 
     if (searchQuery) {
       query = query.ilike('customer_name', `%${searchQuery}%`)
     }
 
     // Get unique customers (in case same customer has multiple partial payments)
-    const { data, error } = await query.limit(20)
+    const { data, error } = await query.limit(100)
 
     if (error) throw error
 

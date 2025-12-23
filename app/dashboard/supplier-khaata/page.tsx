@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Search, Edit, Trash2, ChevronDown, ChevronRight, Package } from 'lucide-react'
 import { getStoreId } from '@/lib/supabase'
+import { useDarkMode } from '@/hooks/useDarkMode'
 
 interface SupplierKhaata {
   id: number
@@ -48,6 +49,7 @@ interface AggregatedSupplier {
 }
 
 export default function SupplierKhaataPage() {
+  const isDarkMode = useDarkMode()
   const [suppliers, setSuppliers] = useState<SupplierKhaata[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -214,62 +216,61 @@ export default function SupplierKhaataPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Supplier Khaata (Accounts)</h1>
-          <p className="text-text-secondary">
+    <>
+      {/* Header */}
+      <div className="mb-6">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Supplier Khaata (Accounts)</h1>
+          <p className="text-sm text-gray-600">
             Track pending payments to suppliers
           </p>
         </div>
 
         {/* Search Bar */}
-        <div className="mb-6">
+        <div className="mb-5">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={20} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
               placeholder="Search by supplier name or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
             />
           </div>
         </div>
 
         {/* Error Message */}
         {error && !showEditModal && !showDeleteModal && (
-          <div className="mb-6 p-4 bg-red-50 border-2 border-red-500 rounded">
-            <p className="text-red-800">{error}</p>
+          <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded">
+            <p className="text-red-600 text-sm">{error}</p>
           </div>
         )}
 
         {/* Loading State */}
         {loading ? (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-black border-t-transparent"></div>
-            <p className="mt-4 text-text-secondary">Loading supplier accounts...</p>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-cyan-600 border-t-transparent"></div>
+            <p className="mt-4 text-sm text-gray-600">Loading supplier accounts...</p>
           </div>
         ) : filteredSuppliers.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded">
-            <Package className="mx-auto mb-4 text-text-secondary" size={48} />
-            <p className="text-text-secondary">
+          <div className="text-center py-12 border border-dashed border-gray-300 rounded">
+            <Package className="mx-auto mb-4 text-gray-400" size={48} />
+            <p className="text-sm text-gray-600">
               {searchTerm ? 'No suppliers found matching your search' : 'No pending payments to suppliers'}
             </p>
           </div>
         ) : (
-          <div className="bg-white border-2 border-black rounded overflow-hidden">
+          <div className="bg-white border border-gray-200 rounded overflow-hidden">
             <table className="w-full">
-              <thead className="bg-black text-white">
+              <thead className="bg-gray-50 text-gray-700">
                 <tr>
-                  <th className="px-6 py-4 text-left font-bold">Supplier</th>
-                  <th className="px-6 py-4 text-left font-bold">Contact</th>
-                  <th className="px-6 py-4 text-right font-bold">Total Amount</th>
-                  <th className="px-6 py-4 text-right font-bold">Amount Paid</th>
-                  <th className="px-6 py-4 text-right font-bold">Remaining</th>
-                  <th className="px-6 py-4 text-center font-bold">Transactions</th>
-                  <th className="px-6 py-4 text-center font-bold"></th>
+                  <th className="px-4 py-3 text-left font-semibold text-sm">Supplier</th>
+                  <th className="px-4 py-3 text-left font-semibold text-sm">Contact</th>
+                  <th className="px-4 py-3 text-right font-semibold text-sm">Total Amount</th>
+                  <th className="px-4 py-3 text-right font-semibold text-sm">Amount Paid</th>
+                  <th className="px-4 py-3 text-right font-semibold text-sm">Remaining</th>
+                  <th className="px-4 py-3 text-center font-semibold text-sm">Transactions</th>
+                  <th className="px-4 py-3 text-center font-semibold text-sm"></th>
                 </tr>
               </thead>
               <tbody>
@@ -281,23 +282,23 @@ export default function SupplierKhaataPage() {
                       {/* Aggregated Row */}
                       <tr 
                         key={`supplier-${supplier.supplier_id}`}
-                        className="border-t-2 border-black hover:bg-gray-50 cursor-pointer"
+                        className="border-b border-gray-100 bg-white hover:bg-gray-50 cursor-pointer"
                         onClick={() => toggleSupplierExpansion(supplier.supplier_id)}
                       >
-                        <td className="px-6 py-4 font-medium">{supplier.supplier_name}</td>
-                        <td className="px-6 py-4 text-text-secondary">{supplier.supplier_phone}</td>
-                        <td className="px-6 py-4 text-right">Rs. {supplier.total_amount.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-right text-green-600">Rs. {supplier.amount_paid.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-right font-bold text-red-600">
+                        <td className="px-4 py-3 font-medium text-sm text-gray-900">{supplier.supplier_name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{supplier.supplier_phone}</td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-900">Rs. {supplier.total_amount.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right text-sm text-green-600">Rs. {supplier.amount_paid.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold text-red-600">
                           Rs. {supplier.amount_remaining.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-block px-2 py-1 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded text-xs font-medium">
                             {supplier.transactions.length}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                        <td className="px-4 py-3 text-center">
+                          {isExpanded ? <ChevronDown className="text-gray-400" size={16} /> : <ChevronRight className="text-gray-400" size={16} />}
                         </td>
                       </tr>
 
@@ -305,54 +306,54 @@ export default function SupplierKhaataPage() {
                       {isExpanded && supplier.transactions.map((record) => (
                         <tr 
                           key={`transaction-${record.id}`}
-                          className="border-t border-gray-200 bg-blue-50"
+                          className="border-b border-gray-100 bg-cyan-50"
                         >
-                          <td className="px-6 py-3 pl-12 text-sm">
-                            <div className="font-medium">
+                          <td className="px-4 py-2 pl-10 text-sm">
+                            <div className="font-medium text-gray-900">
                               {record.stock_batches?.products?.name || 'Unknown Product'}
                             </div>
-                            <div className="text-xs text-text-secondary">
+                            <div className="text-xs text-gray-600">
                               Batch: {record.stock_batches?.batch_number || 'N/A'}
                             </div>
                           </td>
-                          <td className="px-6 py-3 text-sm text-text-secondary">
+                          <td className="px-4 py-2 text-sm text-gray-600">
                             {new Date(record.created_at).toLocaleDateString()}
                           </td>
-                          <td className="px-6 py-3 text-right text-sm">
+                          <td className="px-4 py-2 text-right text-sm text-gray-900">
                             Rs. {record.total_amount.toLocaleString()}
                           </td>
-                          <td className="px-6 py-3 text-right text-sm text-green-600">
+                          <td className="px-4 py-2 text-right text-sm text-green-600">
                             Rs. {record.amount_paid.toLocaleString()}
                           </td>
-                          <td className="px-6 py-3 text-right text-sm font-medium text-red-600">
+                          <td className="px-4 py-2 text-right text-sm font-medium text-red-600">
                             Rs. {record.amount_remaining.toLocaleString()}
                           </td>
-                          <td className="px-6 py-3 text-sm text-text-secondary">
+                          <td className="px-4 py-2 text-sm text-gray-600">
                             {record.notes && (
                               <div className="text-xs italic">{record.notes}</div>
                             )}
                           </td>
-                          <td className="px-6 py-3">
+                          <td className="px-4 py-2">
                             <div className="flex gap-2 justify-center">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleEdit(record)
                                 }}
-                                className="p-2 border-2 border-black rounded hover:bg-gray-100"
+                                className="p-1.5 border border-gray-300 rounded hover:bg-cyan-100 transition-colors"
                                 title="Edit Payment"
                               >
-                                <Edit size={16} />
+                                <Edit className="text-gray-700" size={14} />
                               </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleDelete(record)
                                 }}
-                                className="p-2 border-2 border-red-500 text-red-500 rounded hover:bg-red-50"
+                                className="p-1.5 border border-red-300 text-red-600 rounded hover:bg-red-50 transition-colors"
                                 title="Delete"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </td>
@@ -370,24 +371,24 @@ export default function SupplierKhaataPage() {
       {/* Edit Payment Modal */}
       {showEditModal && selectedRecord && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded border-2 border-black p-6 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-4">Update Payment</h2>
+          <div className="bg-white rounded border border-gray-200 p-5 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Update Payment</h2>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border-2 border-red-500 rounded">
-                <p className="text-red-800 text-sm">{error}</p>
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
 
-            <div className="mb-4 p-3 bg-gray-50 rounded">
-              <p className="text-sm"><strong>Supplier:</strong> {selectedRecord.supplier_name}</p>
-              <p className="text-sm"><strong>Total Amount:</strong> Rs. {selectedRecord.total_amount.toLocaleString()}</p>
-              <p className="text-sm"><strong>Current Remaining:</strong> Rs. {selectedRecord.amount_remaining.toLocaleString()}</p>
+            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+              <p className="text-sm text-gray-900"><strong>Supplier:</strong> {selectedRecord.supplier_name}</p>
+              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> Rs. {selectedRecord.total_amount.toLocaleString()}</p>
+              <p className="text-sm text-gray-900"><strong>Current Remaining:</strong> Rs. {selectedRecord.amount_remaining.toLocaleString()}</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block mb-2 font-medium">Amount Paid *</label>
+                <label className="block mb-1 font-medium text-xs text-gray-700">Amount Paid <span className="text-red-600">*</span></label>
                 <input
                   type="number"
                   step="0.01"
@@ -395,40 +396,40 @@ export default function SupplierKhaataPage() {
                   max={selectedRecord.total_amount}
                   value={formData.amount_paid}
                   onChange={(e) => setFormData({ ...formData, amount_paid: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                 />
                 {formData.amount_paid && (
-                  <p className="text-sm text-text-secondary mt-1">
+                  <p className="text-sm text-gray-600 mt-1">
                     New Remaining: Rs. {(selectedRecord.total_amount - parseFloat(formData.amount_paid || '0')).toLocaleString()}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block mb-2 font-medium">Notes</label>
+                <label className="block mb-1 font-medium text-xs text-gray-700">Notes</label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                   rows={3}
                   placeholder="Add any notes..."
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-5">
               <button
                 onClick={() => {
                   setShowEditModal(false)
                   setError('')
                 }}
-                className="flex-1 px-4 py-2 border-2 border-black rounded hover:bg-gray-100"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleUpdatePayment}
-                className="flex-1 px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+                className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors"
               >
                 Update
               </button>
@@ -440,16 +441,16 @@ export default function SupplierKhaataPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedRecord && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded border-2 border-black p-6 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-4">Delete Record</h2>
+          <div className="bg-white rounded border border-gray-200 p-5 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Delete Record</h2>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border-2 border-red-500 rounded">
-                <p className="text-red-800 text-sm">{error}</p>
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
 
-            <p className="mb-6">
+            <p className="mb-5 text-sm text-gray-900">
               Are you sure you want to delete this payment record for <strong>{selectedRecord.supplier_name}</strong>?
             </p>
 
@@ -459,13 +460,13 @@ export default function SupplierKhaataPage() {
                   setShowDeleteModal(false)
                   setError('')
                 }}
-                className="flex-1 px-4 py-2 border-2 border-black rounded hover:bg-gray-100"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                className="flex-1 px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
               >
                 Delete
               </button>
@@ -473,6 +474,6 @@ export default function SupplierKhaataPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

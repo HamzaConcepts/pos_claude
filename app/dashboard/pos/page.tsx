@@ -27,6 +27,8 @@ export default function POSPage() {
   const [lastSale, setLastSale] = useState<any>(null)
   const [error, setError] = useState('')
   const [cashierId, setCashierId] = useState<string>('')
+  const [selectedCashierFromSidebar, setSelectedCashierFromSidebar] = useState<any>(null)
+  const [isDarkMode, setIsDarkMode] = useState(false)
   
   // IMEI selection states
   const [showIMEIModal, setShowIMEIModal] = useState(false)
@@ -37,7 +39,8 @@ export default function POSPage() {
   const [showPartialPaymentConfirm, setShowPartialPaymentConfirm] = useState(false)
   const [partialPaymentData, setPartialPaymentData] = useState({
     customerName: '',
-    customerPhone: ''
+    customerPhone: '',
+    salePrice: ''
   })
   const [partialPaymentError, setPartialPaymentError] = useState('')
   const [existingCustomers, setExistingCustomers] = useState<any[]>([])
@@ -58,10 +61,37 @@ export default function POSPage() {
     }
   }, [showCustomerDropdown])
 
+  // Listen for dark mode changes
+  useEffect(() => {
+    const handleDarkModeChange = (e: any) => {
+      setIsDarkMode(e.detail.isDarkMode)
+    }
+
+    const savedDarkMode = localStorage.getItem('dark_mode')
+    if (savedDarkMode) {
+      setIsDarkMode(savedDarkMode === 'true')
+    }
+
+    window.addEventListener('darkModeChange', handleDarkModeChange)
+    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
+  }, [])
+
   useEffect(() => {
     fetchProducts()
     fetchCurrentUser()
+    loadSelectedCashier()
   }, [])
+
+  const loadSelectedCashier = () => {
+    const savedCashier = localStorage.getItem('selected_cashier')
+    if (savedCashier) {
+      try {
+        setSelectedCashierFromSidebar(JSON.parse(savedCashier))
+      } catch (err) {
+        console.error('Failed to parse saved cashier:', err)
+      }
+    }
+  }
 
   useEffect(() => {
     if (searchTerm) {
@@ -77,9 +107,25 @@ export default function POSPage() {
   }, [searchTerm, products])
 
   const fetchCurrentUser = async () => {
+    // First check for Supabase Auth user (managers)
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       setCashierId(user.id)
+      return
+    }
+    
+    // If no Supabase user, check for cashier session in localStorage
+    const userSession = localStorage.getItem('user_session')
+    if (userSession) {
+      try {
+        const session = JSON.parse(userSession)
+        // Cashier session stores 'id', not 'user_id'
+        if (session.id) {
+          setCashierId(session.id.toString())
+        }
+      } catch (err) {
+        console.error('Failed to parse user session:', err)
+      }
     }
   }
 
@@ -265,27 +311,29 @@ export default function POSPage() {
     
     console.log('[POS] Payment details:', { total, lowestNegotiable, paid })
 
-    // Check if payment is less than lowest negotiable price
-    if (paid < lowestNegotiable) {
-      setError(`Payment cannot be completed. Amount paid ($${paid.toFixed(2)}) is below the minimum acceptable price ($${lowestNegotiable.toFixed(2)})`)
+    // If entered amount >= total: confirm payment
+    if (paid >= total) {
+      setError('')
+      await processSaleTransaction(null, 0)
       return
     }
 
-    // Check if payment is less than total
-    if (paid < total) {
-      // Show discount/partial payment choice modal
-      setShowPartialPaymentConfirm(true)
+    // If entered amount < total but >= lowest negotiable: directly call appropriate handler
+    if (paid >= lowestNegotiable && paid < total) {
+      // This shouldn't be reached anymore as buttons call handlers directly
       setError('')
       return
     }
 
-    // If full payment, process normally
-    setError('')
-    await processSaleTransaction(null, 0)
+    // If entered amount < lowest negotiable: show Khaata modal
+    if (paid < lowestNegotiable) {
+      setShowPartialPaymentModal(true)
+      setError('')
+      return
+    }
   }
 
   const handleApplyDiscount = async () => {
-    setShowPartialPaymentConfirm(false)
     const total = calculateTotal()
     const paid = parseFloat(amountPaid) || 0
     const discountAmount = total - paid
@@ -295,7 +343,6 @@ export default function POSPage() {
   }
 
   const handleGoToPartialPayment = () => {
-    setShowPartialPaymentConfirm(false)
     setShowPartialPaymentModal(true)
     // Fetch existing customers when modal opens
     fetchExistingCustomers('')
@@ -391,6 +438,7 @@ export default function POSPage() {
         payment_method: paymentMethod,
         amount_paid: paid,
         cashier_id: cashierId,
+        cashier_ref_id: selectedCashierFromSidebar?.id || null, // Include selected cashier from sidebar
         notes: null,
         partial_payment_customer: partialPaymentCustomer,
         store_id: storeId,
@@ -421,7 +469,7 @@ export default function POSPage() {
         setSaleDescription('')
         setShowPartialPaymentConfirm(false)
         setShowPartialPaymentModal(false)
-        setPartialPaymentData({ customerName: '', customerPhone: '' })
+        setPartialPaymentData({ customerName: '', customerPhone: '', salePrice: '' })
         setPartialPaymentError('')
         fetchProducts() // Refresh product stock
       } else {
@@ -438,14 +486,14 @@ export default function POSPage() {
   }
 
   const handlePartialPaymentSubmit = () => {
-    const { customerName, customerPhone } = partialPaymentData
+    const { customerName, customerPhone, salePrice } = partialPaymentData
     
     // Clear previous errors
     setPartialPaymentError('')
     
     // Validate all fields are filled
-    if (!customerName.trim() || !customerPhone.trim()) {
-      setPartialPaymentError('All fields are required. Please fill in customer name and phone number.')
+    if (!customerName.trim() || !customerPhone.trim() || !salePrice.trim()) {
+      setPartialPaymentError('All fields are required. Please fill in customer name, phone number, and sale price.')
       return
     }
 
@@ -454,6 +502,23 @@ export default function POSPage() {
       setPartialPaymentError('Please enter a valid phone number (minimum 10 digits)')
       return
     }
+
+    // Validate sale price
+    const salePriceNum = parseFloat(salePrice)
+    if (isNaN(salePriceNum) || salePriceNum <= 0) {
+      setPartialPaymentError('Please enter a valid sale price')
+      return
+    }
+
+    // Check against lowest negotiable
+    const lowestNegotiable = calculateLowestNegotiable()
+    if (salePriceNum < lowestNegotiable) {
+      setPartialPaymentError(`Sale price ($${salePriceNum.toFixed(2)}) cannot be below the minimum acceptable price ($${lowestNegotiable.toFixed(2)})`)
+      return
+    }
+
+    // Update amountPaid to the sale price for processing
+    setAmountPaid(salePrice)
 
     processSaleTransaction({
       customer_name: customerName.trim(),
@@ -472,36 +537,36 @@ export default function POSPage() {
 
   if (showReceipt && lastSale) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white p-8 rounded border-2 border-black" id="receipt">
-          <div className="text-center mb-6">
-            <h1 className="text-3xl font-bold mb-2">POS System</h1>
-            <h2 className="text-xl">Sales Receipt</h2>
+      <div className="max-w-2xl mx-auto p-4">
+        <div className="bg-white p-6 rounded border border-gray-200" id="receipt">
+          <div className="text-center mb-5">
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">POS System</h1>
+            <h2 className="text-lg text-gray-700">Sales Receipt</h2>
           </div>
 
-          <div className="mb-6 border-t-2 border-b-2 border-black py-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="mb-5 border-t border-b border-gray-200 py-4">
+            <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-sm text-text-secondary">Sale Number</p>
-                <p className="font-mono font-bold">{lastSale.sale_number}</p>
+                <p className="text-xs text-gray-600">Sale Number</p>
+                <p className="font-mono font-semibold text-gray-900">{lastSale.sale_number}</p>
               </div>
               <div>
-                <p className="text-sm text-text-secondary">Date</p>
-                <p className="font-medium">
+                <p className="text-xs text-gray-600">Date</p>
+                <p className="font-medium text-gray-900">
                   {new Date(lastSale.sale_date).toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-text-secondary">Cashier</p>
-                <p className="font-medium">{lastSale.cashier_name || 'Unknown'}</p>
+                <p className="text-xs text-gray-600">Cashier</p>
+                <p className="font-medium text-gray-900">{lastSale.cashier_name || 'Unknown'}</p>
               </div>
               <div>
-                <p className="text-sm text-text-secondary">Payment Method</p>
-                <p className="font-medium">{lastSale.payment_method}</p>
+                <p className="text-xs text-gray-600">Payment Method</p>
+                <p className="font-medium text-gray-900">{lastSale.payment_method}</p>
               </div>
               <div>
-                <p className="text-sm text-text-secondary">Payment Status</p>
-                <p className={`font-medium ${lastSale.payment_status === 'Partial' ? 'text-status-error' : ''}`}>
+                <p className="text-xs text-gray-600">Payment Status</p>
+                <p className={`font-medium ${lastSale.payment_status === 'Partial' ? 'text-red-600' : 'text-gray-900'}`}>
                   {lastSale.payment_status}
                   {lastSale.payment_status === 'Partial' && ' ⚠️'}
                 </p>
@@ -510,22 +575,22 @@ export default function POSPage() {
 
             {/* Show customer info for partial payments */}
             {lastSale.partial_payment_customers && lastSale.partial_payment_customers.length > 0 && (
-              <div className="mt-4 p-4 bg-red-600 border-2 border-red-800 rounded">
-                <p className="font-bold text-white mb-3 flex items-center gap-2">
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                <p className="font-semibold text-red-900 mb-2 flex items-center gap-2 text-sm">
                   <span>⚠️</span> PARTIAL PAYMENT CUSTOMER
                 </p>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>
-                    <p className="text-red-100">Name</p>
-                    <p className="font-medium text-white">{lastSale.partial_payment_customers[0].customer_name}</p>
+                    <p className="text-xs text-red-700">Name</p>
+                    <p className="font-medium text-red-900">{lastSale.partial_payment_customers[0].customer_name}</p>
                   </div>
                   <div>
-                    <p className="text-red-100">Phone</p>
-                    <p className="font-medium text-white">{lastSale.partial_payment_customers[0].customer_phone}</p>
+                    <p className="text-xs text-red-700">Phone</p>
+                    <p className="font-medium text-red-900">{lastSale.partial_payment_customers[0].customer_phone}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-red-100">Amount Remaining</p>
-                    <p className="font-bold text-white text-lg">
+                    <p className="text-xs text-red-700">Amount Remaining</p>
+                    <p className="font-bold text-red-900 text-base">
                       ${lastSale.partial_payment_customers[0].amount_remaining.toFixed(2)}
                     </p>
                   </div>
@@ -534,22 +599,22 @@ export default function POSPage() {
             )}
           </div>
 
-          <table className="w-full mb-6">
-            <thead className="border-b-2 border-black">
-              <tr>
-                <th className="text-left py-2">Item</th>
-                <th className="text-right py-2">Qty</th>
-                <th className="text-right py-2">Price</th>
-                <th className="text-right py-2">Total</th>
+          <table className="w-full mb-5">
+            <thead className="border-b border-gray-300">
+              <tr className="text-sm">
+                <th className="text-left py-2 text-gray-700">Item</th>
+                <th className="text-right py-2 text-gray-700">Qty</th>
+                <th className="text-right py-2 text-gray-700">Price</th>
+                <th className="text-right py-2 text-gray-700">Total</th>
               </tr>
             </thead>
             <tbody>
               {lastSale.sale_items?.map((item: any) => (
-                <tr key={item.id} className="border-b border-gray-300">
-                  <td className="py-2">{item.product_name || item.products?.name || 'Unknown Product'}</td>
-                  <td className="text-right">{item.quantity}</td>
-                  <td className="text-right">${item.unit_price.toFixed(2)}</td>
-                  <td className="text-right font-medium">
+                <tr key={item.id} className="border-b border-gray-200">
+                  <td className="py-2 text-sm text-gray-900">{item.product_name || item.products?.name || 'Unknown Product'}</td>
+                  <td className="text-right text-sm text-gray-900">{item.quantity}</td>
+                  <td className="text-right text-sm text-gray-900">${item.unit_price.toFixed(2)}</td>
+                  <td className="text-right font-medium text-sm text-gray-900">
                     ${item.subtotal.toFixed(2)}
                   </td>
                 </tr>
@@ -557,12 +622,12 @@ export default function POSPage() {
             </tbody>
           </table>
 
-          <div className="border-t-2 border-black pt-4">
+          <div className="border-t border-gray-300 pt-4">
             {lastSale.discount_value > 0 && lastSale.discount_type !== 'none' && (
               <>
-                <div className="flex justify-between mb-2">
-                  <span>Subtotal:</span>
-                  <span>
+                <div className="flex justify-between mb-2 text-sm">
+                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="text-gray-900">
                     ${(
                       lastSale.discount_type === 'percentage'
                         ? lastSale.total_amount / (1 - lastSale.discount_value / 100)
@@ -570,7 +635,7 @@ export default function POSPage() {
                     ).toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between mb-2 text-green-600">
+                <div className="flex justify-between mb-2 text-green-600 text-sm">
                   <span>
                     Discount ({lastSale.discount_type === 'percentage' ? `${lastSale.discount_value}%` : 'Amount'}):
                   </span>
@@ -584,21 +649,21 @@ export default function POSPage() {
                 </div>
               </>
             )}
-            <div className="flex justify-between text-xl font-bold mb-2">
+            <div className="flex justify-between text-lg font-bold mb-2 text-gray-900">
               <span>Total:</span>
               <span>${lastSale.total_amount.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between mb-2">
-              <span>Amount Paid:</span>
-              <span>${lastSale.amount_paid.toFixed(2)}</span>
+            <div className="flex justify-between mb-2 text-sm">
+              <span className="text-gray-600">Amount Paid:</span>
+              <span className="text-gray-900">${lastSale.amount_paid.toFixed(2)}</span>
             </div>
             {lastSale.payment_status === 'Partial' ? (
-              <div className="flex justify-between text-lg font-medium text-status-error">
+              <div className="flex justify-between text-base font-medium text-red-600">
                 <span>Amount Due:</span>
                 <span>${lastSale.amount_due.toFixed(2)}</span>
               </div>
             ) : (
-              <div className="flex justify-between text-lg font-medium">
+              <div className="flex justify-between text-base font-medium text-gray-900">
                 <span>Change:</span>
                 <span>${(lastSale.amount_paid - lastSale.total_amount).toFixed(2)}</span>
               </div>
@@ -606,28 +671,28 @@ export default function POSPage() {
             
             {/* Additional warning for partial payment */}
             {lastSale.payment_status === 'Partial' && (
-              <div className="mt-4 p-3 bg-red-600 text-white rounded font-bold text-center">
+              <div className="mt-4 p-3 bg-red-600 text-white rounded font-semibold text-center text-sm">
                 ⚠️ OUTSTANDING BALANCE DUE ⚠️
               </div>
             )}
           </div>
 
-          <div className="mt-6 text-center text-sm text-text-secondary">
+          <div className="mt-5 text-center text-sm text-gray-600">
             <p>Thank you for your business!</p>
           </div>
         </div>
 
-        <div className="flex gap-4 mt-6 print:hidden">
+        <div className="flex gap-3 mt-5 print:hidden">
           <button
             onClick={handlePrintReceipt}
-            className="flex-1 flex items-center justify-center gap-2 bg-black text-white px-6 py-3 rounded hover:bg-gray-800 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 bg-cyan-600 text-white px-4 py-2.5 rounded text-sm hover:bg-cyan-700 transition-colors"
           >
-            <Printer size={20} />
+            <Printer size={18} />
             Print Receipt
           </button>
           <button
             onClick={handleNewSale}
-            className="flex-1 bg-white border-2 border-black px-6 py-3 rounded hover:bg-gray-100 transition-colors"
+            className="flex-1 bg-white border border-gray-300 px-4 py-2.5 rounded text-sm hover:bg-gray-50 transition-colors"
           >
             New Sale
           </button>
@@ -640,41 +705,41 @@ export default function POSPage() {
   const change = calculateChange()
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Point of Sale</h1>
+    <>
+      <h1 className={`text-xl md:text-2xl font-bold mb-5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Point of Sale</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Product Search and Cart */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-3">
           {/* Search */}
-          <div className="bg-white p-4 rounded border-2 border-black">
+          <div className="bg-white p-3 rounded border border-gray-200">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
                 placeholder="Search products by name or SKU..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-3 py-3 border-2 border-black rounded focus:outline-none text-lg"
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
               />
             </div>
 
             {filteredProducts.length > 0 && (
-              <div className="mt-2 border-2 border-black rounded max-h-64 overflow-y-auto">
+              <div className="mt-2 border border-gray-200 rounded max-h-64 overflow-y-auto">
                 {filteredProducts.map((product) => (
                   <button
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className="w-full p-3 text-left hover:bg-bg-secondary transition-colors border-b border-gray-300 last:border-b-0"
+                    className="w-full p-2 text-left hover:bg-gray-50 transition-colors border-b border-gray-200 last:border-b-0 text-sm"
                   >
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-text-secondary">
+                        <p className="font-medium text-sm text-gray-900">{product.name}</p>
+                        <p className="text-xs text-gray-600">
                           {product.sku} • Stock: {product.stock_quantity}
                         </p>
                       </div>
-                      <p className="font-bold">${(product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)}</p>
+                      <p className="font-medium text-sm">${(product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)}</p>
                     </div>
                   </button>
                 ))}
@@ -683,28 +748,28 @@ export default function POSPage() {
           </div>
 
           {/* Cart */}
-          <div className="bg-white rounded border-2 border-black">
-            <div className="p-4 bg-black text-white flex justify-between items-center">
+          <div className="bg-white rounded border border-gray-200">
+            <div className="p-3 bg-cyan-50 border-b border-gray-200 flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <ShoppingCart size={24} />
-                <h2 className="text-xl font-bold">Cart</h2>
-                <span className="bg-white text-black px-2 py-1 rounded text-sm">
+                <ShoppingCart size={18} className="text-cyan-600" />
+                <h2 className="text-base font-bold text-gray-900">Cart</h2>
+                <span className="bg-cyan-600 text-white px-2 py-0.5 rounded text-xs">
                   {cart.length}
                 </span>
               </div>
               {cart.length > 0 && (
                 <button
                   onClick={clearCart}
-                  className="text-sm hover:bg-gray-800 px-3 py-1 rounded transition-colors"
+                  className="text-xs text-gray-600 hover:bg-cyan-100 px-2 py-1 rounded transition-colors"
                 >
                   Clear All
                 </button>
               )}
             </div>
 
-            <div className="p-4">
+            <div className="p-3">
               {cart.length === 0 ? (
-                <p className="text-center py-8 text-text-secondary">
+                <p className="text-center py-8 text-sm text-gray-500">
                   Cart is empty. Search and add products.
                 </p>
               ) : (
@@ -712,12 +777,12 @@ export default function POSPage() {
                   {cart.map((item) => (
                     <div
                       key={item.product.id}
-                      className="p-3 border-2 border-black rounded"
+                      className="p-2 border border-gray-200 rounded"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="font-medium">{item.product.name}</p>
-                          <p className="text-sm text-text-secondary">
+                          <p className="text-sm font-medium text-gray-900">{item.product.name}</p>
+                          <p className="text-xs text-gray-600">
                             ${(item.product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)} each
                           </p>
                           {item.product.is_phone && (
@@ -750,38 +815,38 @@ export default function POSPage() {
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2 border-2 border-black rounded">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 border border-gray-300 rounded">
                             <button
                               onClick={() =>
                                 updateQuantity(item.product.id, item.quantity - 1)
                               }
-                              className="p-2 hover:bg-gray-200 transition-colors"
+                              className="p-1 hover:bg-gray-100 transition-colors"
                             >
-                              <Minus size={16} />
+                              <Minus size={14} />
                             </button>
-                            <span className="font-bold w-8 text-center">
+                            <span className="font-medium w-8 text-center text-sm">
                               {item.quantity}
                             </span>
                             <button
                               onClick={() =>
                                 updateQuantity(item.product.id, item.quantity + 1)
                               }
-                              className="p-2 hover:bg-gray-200 transition-colors"
+                              className="p-1 hover:bg-gray-100 transition-colors"
                             >
-                              <Plus size={16} />
+                              <Plus size={14} />
                             </button>
                           </div>
 
-                          <p className="font-bold w-20 text-right">
+                          <p className="font-medium w-20 text-right text-sm">
                             ${((item.product.aggregated_stock?.aggregated_selling_price || 0) * item.quantity).toFixed(2)}
                           </p>
 
                           <button
                             onClick={() => removeFromCart(item.product.id)}
-                            className="p-2 hover:bg-red-100 text-status-error rounded transition-colors"
+                            className="p-1 hover:bg-red-50 text-red-600 rounded transition-colors"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
@@ -795,42 +860,42 @@ export default function POSPage() {
 
         {/* Payment Section */}
         <div className="lg:col-span-1">
-          <div className="bg-white p-6 rounded border-2 border-black sticky top-4">
-            <h2 className="text-2xl font-bold mb-6">Payment</h2>
+          <div className="bg-white p-4 rounded border border-gray-200 sticky top-4">
+            <h2 className="text-base font-bold text-gray-900 mb-4">Payment</h2>
 
             {error && (
-              <div className="mb-4 p-3 bg-status-error text-white rounded text-sm">
+              <div className="mb-3 p-2 bg-red-50 text-red-600 rounded text-xs border border-red-200">
                 {error}
               </div>
             )}
 
-            <div className="mb-6">
-              <p className="text-sm text-text-secondary mb-2">Total Amount</p>
-              <p className="text-4xl font-bold">${total.toFixed(2)}</p>
-              <p className="text-sm text-orange-600 mt-2">
+            <div className="mb-4">
+              <p className="text-xs text-gray-600 mb-1">Total Amount</p>
+              <p className="text-2xl font-bold text-gray-900">${total.toFixed(2)}</p>
+              <p className="text-xs text-orange-600 mt-1">
                 Min. Acceptable: ${calculateLowestNegotiable().toFixed(2)}
               </p>
             </div>
 
-            <div className="mb-4">
-              <label className="block mb-2 font-medium">Payment Method</label>
+            <div className="mb-3">
+              <label className="block mb-2 text-xs font-medium text-gray-700">Payment Method</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setPaymentMethod('Cash')}
-                  className={`p-3 rounded border-2 transition-colors ${
+                  className={`px-3 py-2 text-sm rounded border transition-colors ${
                     paymentMethod === 'Cash'
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white border-black hover:bg-gray-100'
+                      ? 'bg-cyan-600 text-white border-cyan-600'
+                      : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
                   }`}
                 >
                   Cash
                 </button>
                 <button
                   onClick={() => setPaymentMethod('Digital')}
-                  className={`p-3 rounded border-2 transition-colors ${
+                  className={`px-3 py-2 text-sm rounded border transition-colors ${
                     paymentMethod === 'Digital'
-                      ? 'bg-black text-white border-black'
-                      : 'bg-white border-black hover:bg-gray-100'
+                      ? 'bg-cyan-600 text-white border-cyan-600'
+                      : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
                   }`}
                 >
                   Digital
@@ -838,8 +903,8 @@ export default function POSPage() {
               </div>
             </div>
 
-            <div className="mb-4">
-              <label htmlFor="amountPaid" className="block mb-2 font-medium">
+            <div className="mb-3">
+              <label htmlFor="amountPaid" className="block mb-2 text-xs font-medium text-gray-700">
                 Amount Paid
               </label>
               <input
@@ -849,44 +914,115 @@ export default function POSPage() {
                 min="0"
                 value={amountPaid}
                 onChange={(e) => setAmountPaid(e.target.value)}
-                className="w-full px-3 py-3 border-2 border-black rounded focus:outline-none text-lg"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                 placeholder="0.00"
               />
             </div>
 
-            <div className="mb-4">
-              <label htmlFor="saleDescription" className="block mb-2 font-medium">
-                Sale Description {cart.length > 1 && <span className="text-status-error">*</span>}
+            <div className="mb-3">
+              <label htmlFor="saleDescription" className="block mb-2 text-xs font-medium text-gray-700">
+                Sale Description {cart.length > 1 && <span className="text-red-600">*</span>}
               </label>
               <input
                 id="saleDescription"
                 type="text"
                 value={saleDescription}
                 onChange={(e) => setSaleDescription(e.target.value)}
-                className="w-full px-3 py-3 border-2 border-black rounded focus:outline-none text-lg"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                 placeholder={cart.length === 1 ? "Optional (will use product name)" : "Required for multiple items"}
               />
               {cart.length === 1 && !saleDescription && (
-                <p className="text-xs text-text-secondary mt-1">
+                <p className="text-xs text-gray-500 mt-1">
                   Will default to: {cart[0].product.name}
                 </p>
               )}
             </div>
 
             {amountPaid && parseFloat(amountPaid) >= total && (
-              <div className="mb-4 p-3 bg-bg-secondary rounded">
-                <p className="text-sm text-text-secondary mb-1">Change</p>
-                <p className="text-2xl font-bold">${change.toFixed(2)}</p>
+              <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded">
+                <p className="text-xs text-gray-600 mb-1">Change</p>
+                <p className="text-xl font-bold text-gray-900">${change.toFixed(2)}</p>
               </div>
             )}
 
-            <button
-              onClick={handleProcessSale}
-              disabled={cart.length === 0 || loading}
-              className="w-full bg-black text-white py-4 rounded text-lg font-bold hover:bg-gray-800 disabled:bg-gray-400 transition-colors"
-            >
-              {loading ? 'Processing...' : 'Complete Sale'}
-            </button>
+            {/* Dynamic buttons based on payment amount */}
+            {(() => {
+              const paid = parseFloat(amountPaid) || 0
+              const lowestNegotiable = calculateLowestNegotiable()
+
+              // If no amount entered or cart is empty, show default button
+              if (!amountPaid || cart.length === 0) {
+                return (
+                  <button
+                    onClick={handleProcessSale}
+                    disabled={cart.length === 0 || loading}
+                    className="w-full bg-cyan-600 text-white px-3 py-3 rounded text-sm font-medium hover:bg-cyan-700 disabled:bg-gray-400 transition-colors"
+                  >
+                    {loading ? 'Processing...' : 'Confirm Payment'}
+                  </button>
+                )
+              }
+
+              // If entered amount >= total: Show confirm button
+              if (paid >= total) {
+                return (
+                  <button
+                    onClick={handleProcessSale}
+                    disabled={loading}
+                    className="w-full bg-cyan-600 text-white px-3 py-3 rounded text-sm font-medium hover:bg-cyan-700 disabled:bg-gray-400 transition-colors"
+                  >
+                    {loading ? 'Processing...' : 'Confirm Payment'}
+                  </button>
+                )
+              }
+
+              // If entered amount < total but >= lowest negotiable: Show both buttons
+              if (paid >= lowestNegotiable && paid < total) {
+                return (
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleApplyDiscount}
+                      disabled={loading}
+                      className="w-full bg-green-600 text-white px-3 py-3 rounded text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span>✓</span> Apply as Discount (Default)
+                    </button>
+                    <button
+                      onClick={handleGoToPartialPayment}
+                      disabled={loading}
+                      className="w-full bg-cyan-600 text-white px-3 py-3 rounded text-sm font-medium hover:bg-cyan-700 disabled:bg-gray-400 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span>📋</span> Khaata (Customer Credit)
+                    </button>
+                  </div>
+                )
+              }
+
+              // If entered amount < lowest negotiable: Only show Khaata button
+              if (paid < lowestNegotiable) {
+                return (
+                  <div>
+                    <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
+                      <p className="text-orange-800 font-medium">
+                        ⚠️ Amount is below minimum price (${lowestNegotiable.toFixed(2)})
+                      </p>
+                      <p className="text-orange-700 text-xs mt-1">
+                        Only Khaata (customer credit) option is available
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleProcessSale}
+                      disabled={loading}
+                      className="w-full bg-cyan-600 text-white px-3 py-3 rounded text-sm font-medium hover:bg-cyan-700 disabled:bg-gray-400 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <span>📋</span> Khaata (Customer Credit)
+                    </button>
+                  </div>
+                )
+              }
+
+              return null
+            })()}
           </div>
         </div>
       </div>
@@ -894,29 +1030,29 @@ export default function POSPage() {
       {/* Discount or Partial Payment Choice Modal */}
       {showPartialPaymentConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border-2 border-black max-w-md w-full p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold mb-2">Insufficient Payment</h2>
-              <p className="text-text-secondary text-sm">The entered amount is less than the total. How would you like to proceed?</p>
+          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5 shadow-xl">
+            <div className="mb-5">
+              <h2 className="text-lg font-bold text-gray-900 mb-2">Insufficient Payment</h2>
+              <p className="text-gray-600 text-sm">The entered amount is less than the total. How would you like to proceed?</p>
             </div>
             
-            <div className="mb-6 p-4 border-2 border-black rounded">
+            <div className="mb-5 p-4 border border-gray-200 rounded bg-gray-50">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Total Amount:</span>
-                  <span className="font-bold">${calculateTotal().toFixed(2)}</span>
+                  <span className="text-gray-600">Total Amount:</span>
+                  <span className="font-semibold text-gray-900">${calculateTotal().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Lowest Negotiable:</span>
+                  <span className="text-gray-600">Lowest Negotiable:</span>
                   <span className="font-medium text-orange-600">${calculateLowestNegotiable().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Amount Paid:</span>
-                  <span className="font-bold">${(parseFloat(amountPaid) || 0).toFixed(2)}</span>
+                  <span className="text-gray-600">Amount Paid:</span>
+                  <span className="font-semibold text-gray-900">${(parseFloat(amountPaid) || 0).toFixed(2)}</span>
                 </div>
-                <div className="border-t-2 border-black pt-2 mt-2"></div>
+                <div className="border-t border-gray-300 pt-2 mt-2"></div>
                 <div className="flex justify-between">
-                  <span className="font-bold">Remaining Amount:</span>
+                  <span className="font-semibold text-gray-900">Remaining Amount:</span>
                   <span className="font-bold text-lg text-orange-600">
                     ${(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
                   </span>
@@ -924,36 +1060,36 @@ export default function POSPage() {
               </div>
             </div>
 
-            <div className="mb-6 space-y-3">
-              <div className="p-3 bg-green-50 border-2 border-green-600 rounded">
-                <p className="text-sm font-medium mb-1">Apply as Discount</p>
-                <p className="text-xs text-text-secondary">The remaining amount will be applied as a discount and the sale will be completed.</p>
+            <div className="mb-5 space-y-3">
+              <div className="p-3 bg-green-50 border border-green-200 rounded">
+                <p className="text-sm font-medium text-green-900 mb-1">✓ Apply as Discount (Default)</p>
+                <p className="text-xs text-green-700">The remaining amount will be applied as a discount and the sale will be completed immediately.</p>
               </div>
-              <div className="p-3 bg-blue-50 border-2 border-blue-600 rounded">
-                <p className="text-sm font-medium mb-1">Partial Payment</p>
-                <p className="text-xs text-text-secondary">Record customer information and track the remaining amount for future payment.</p>
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                <p className="text-sm font-medium text-blue-900 mb-1">📋 Khaata (Customer Credit)</p>
+                <p className="text-xs text-blue-700">Record customer information and track the remaining amount for future payment.</p>
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={handlePartialPaymentCancel}
-                className="flex-1 px-4 py-3 border-2 border-black rounded hover:bg-bg-secondary transition-colors font-medium"
+                className="flex-1 px-3 py-2.5 border border-gray-300 rounded hover:bg-gray-50 transition-colors font-medium text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleApplyDiscount}
                 disabled={loading}
-                className="flex-1 px-4 py-3 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium disabled:bg-gray-400"
+                className="flex-1 px-3 py-2.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors font-medium disabled:bg-gray-400 text-sm"
               >
                 Apply Discount
               </button>
               <button
                 onClick={handleGoToPartialPayment}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium"
+                className="flex-1 px-3 py-2.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors font-medium text-sm"
               >
-                Partial Payment
+                Khaata
               </button>
             </div>
           </div>
@@ -963,43 +1099,43 @@ export default function POSPage() {
       {/* Partial Payment Customer Information Modal */}
       {showPartialPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border-2 border-black max-w-md w-full p-6">
-            <div className="mb-6">
-              <h2 className="text-xl font-bold mb-2">Customer Information</h2>
-              <p className="underline text-red-600 hover:text-red-800 text-sm">Please enter customer details for partial payment tracking.</p>
+          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5 shadow-xl">
+            <div className="mb-5">
+              <h2 className="text-lg font-bold text-gray-900 mb-2">Khaata - Customer Information</h2>
+              <p className="text-red-600 text-sm">Please enter customer details and sale price for credit tracking.</p>
             </div>
 
             {/* Validation Error */}
             {partialPaymentError && (
-              <div className="mb-4 p-3 bg-red-50 border-2 border-status-error rounded text-sm">
-                <p className="text-status-error font-medium">{partialPaymentError}</p>
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
+                <p className="text-red-700 font-medium">{partialPaymentError}</p>
               </div>
             )}
             
-            <div className="mb-6 p-4 border-2 border-black rounded">
+            <div className="mb-5 p-4 border border-gray-200 rounded bg-gray-50">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Total Amount:</span>
-                  <span className="font-bold">${calculateTotal().toFixed(2)}</span>
+                  <span className="text-gray-600">Total Amount:</span>
+                  <span className="font-semibold text-gray-900">${calculateTotal().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Amount Paid:</span>
-                  <span className="font-bold">${(parseFloat(amountPaid) || 0).toFixed(2)}</span>
+                  <span className="text-gray-600">Amount Paid:</span>
+                  <span className="font-semibold text-gray-900">${(parseFloat(amountPaid) || 0).toFixed(2)}</span>
                 </div>
-                <div className="border-t-2 border-black pt-2 mt-2"></div>
+                <div className="border-t border-gray-300 pt-2 mt-2"></div>
                 <div className="flex justify-between">
-                  <span className="font-bold">Amount Due:</span>
-                  <span className="font-bold text-lg">
+                  <span className="font-semibold text-gray-900">Amount Due:</span>
+                  <span className="font-bold text-lg text-gray-900">
                     ${(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4 mb-6">
+            <div className="space-y-4 mb-5">
               <div className="relative" ref={customerNameInputRef}>
-                <label className="block mb-2 font-medium text-sm">
-                  Customer Name <span className="text-status-error">*</span>
+                <label className="block mb-2 font-medium text-sm text-gray-700">
+                  Customer Name <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="text"
@@ -1010,22 +1146,22 @@ export default function POSPage() {
                       setShowCustomerDropdown(true)
                     }
                   }}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none font-sans"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                   placeholder="Enter or search customer name"
                   autoComplete="off"
                 />
                 
                 {/* Customer Search Dropdown */}
                 {showCustomerDropdown && existingCustomers.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border-2 border-black rounded max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded max-h-48 overflow-y-auto shadow-lg">
                     {existingCustomers.map((customer, index) => (
                       <div
                         key={index}
                         onClick={() => handleSelectCustomer(customer)}
-                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                        className="px-3 py-2 hover:bg-gray-50 cursor-pointer border-b border-gray-200 last:border-b-0"
                       >
-                        <div className="font-medium text-sm">{customer.customer_name}</div>
-                        <div className="text-xs text-text-secondary mt-1">
+                        <div className="font-medium text-sm text-gray-900">{customer.customer_name}</div>
+                        <div className="text-xs text-gray-600 mt-1">
                           {customer.customer_phone}
                         </div>
                       </div>
@@ -1035,8 +1171,8 @@ export default function POSPage() {
               </div>
 
               <div>
-                <label className="block mb-2 font-medium text-sm">
-                  Customer Phone <span className="text-status-error">*</span>
+                <label className="block mb-2 font-medium text-sm text-gray-700">
+                  Customer Phone <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="tel"
@@ -1048,32 +1184,56 @@ export default function POSPage() {
                     })
                     setPartialPaymentError('')
                   }}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                   placeholder="03xx-xxxxxxx"
                   maxLength={12}
                 />
               </div>
+
+              <div>
+                <label className="block mb-2 font-medium text-sm text-gray-700">
+                  Sale Price <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={partialPaymentData.salePrice}
+                  onChange={(e) => {
+                    setPartialPaymentData({
+                      ...partialPaymentData,
+                      salePrice: e.target.value
+                    })
+                    setPartialPaymentError('')
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  placeholder="Enter sale price"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimum: ${calculateLowestNegotiable().toFixed(2)} (Lowest Negotiable)
+                </p>
+              </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={() => {
                   setShowPartialPaymentModal(false)
                   setShowPartialPaymentConfirm(false)
-                  setPartialPaymentData({ customerName: '', customerPhone: '' })
+                  setPartialPaymentData({ customerName: '', customerPhone: '', salePrice: '' })
                   setPartialPaymentError('')
                   setShowCustomerDropdown(false)
                   setExistingCustomers([])
                 }}
-                className="flex-1 px-4 py-3 border-2 border-black rounded hover:bg-bg-secondary transition-colors font-medium"
+                className="flex-1 px-3 py-2.5 border border-gray-300 rounded hover:bg-gray-50 transition-colors font-medium text-sm"
                 disabled={loading}
               >
                 Cancel
               </button>
               <button
                 onClick={handlePartialPaymentSubmit}
-                disabled={loading || !partialPaymentData.customerName.trim() || !partialPaymentData.customerPhone.trim()}
-                className="flex-1 px-4 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                disabled={loading || !partialPaymentData.customerName.trim() || !partialPaymentData.customerPhone.trim() || !partialPaymentData.salePrice.trim()}
+                className="flex-1 px-3 py-2.5 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
               >
                 {loading ? 'Processing...' : 'Confirm Sale'}
               </button>
@@ -1094,6 +1254,6 @@ export default function POSPage() {
           }}
         />
       )}
-    </div>
+    </>
   )
 }
