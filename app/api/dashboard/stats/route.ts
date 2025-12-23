@@ -135,7 +135,7 @@ export async function GET(request: Request) {
         // Add cashier names to sales
         recentSales.forEach(sale => {
           if (sale.cashier_id) {
-            sale.cashier_name = nameMap.get(sale.cashier_id) || 'Unknown'
+            (sale as any).cashier_name = nameMap.get(sale.cashier_id) || 'Unknown'
           }
         })
       }

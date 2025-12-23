@@ -384,6 +384,7 @@ export default function POSPage() {
 
   const handleSelectCustomer = (customer: any) => {
     setPartialPaymentData({
+      ...partialPaymentData,
       customerName: customer.customer_name,
       customerPhone: customer.customer_phone || ''
     })

@@ -5,6 +5,7 @@ import { Users, Shield, User, Clock, CheckCircle, XCircle, Store, Tag, Grid, Plu
 import { getStoreId } from '@/lib/supabase'
 import AddStockModal from '@/components/AddStockModal'
 import PredefinedExpensesManager from '@/components/PredefinedExpensesManager'
+import { useDarkMode } from '@/hooks/useDarkMode'
 
 interface UserData {
   id: string

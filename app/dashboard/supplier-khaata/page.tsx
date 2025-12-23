@@ -366,7 +366,6 @@ export default function SupplierKhaataPage() {
             </table>
           </div>
         )}
-      </div>
 
       {/* Edit Payment Modal */}
       {showEditModal && selectedRecord && (

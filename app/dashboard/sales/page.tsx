@@ -846,7 +846,6 @@ export default function SalesPage() {
                   value={pdfPeriod}
                   onChange={(e) => setPdfPeriod(e.target.value as 'day' | 'month' | 'year')}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600">
-                >
                   <option value="day">Daily Report</option>
                   <option value="month">Monthly Report</option>
                   <option value="year">Yearly Report</option>
@@ -911,7 +910,6 @@ export default function SalesPage() {
                     value={pdfCustomerId}
                     onChange={(e) => setPdfCustomerId(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600">
-                  >
                     <option value="">All Customers (No Filter)</option>
                     {customers.map((customer) => (
                       <option key={customer.id} value={customer.id}>
