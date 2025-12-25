@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package, Filter, FileText, Edit, X } from 'lucide-react'
+import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package, Filter, FileText, Edit, X, Printer } from 'lucide-react'
 import { generateSalesPDF } from '@/lib/pdf-generator'
 import { getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -33,6 +33,10 @@ export default function SalesPage() {
   const [pdfCashierId, setPdfCashierId] = useState('')
   const [pdfCustomerId, setPdfCustomerId] = useState('')
   const [generatingPdf, setGeneratingPdf] = useState(false)
+
+  // Receipt modal states
+  const [showReceiptModal, setShowReceiptModal] = useState(false)
+  const [receiptSale, setReceiptSale] = useState<any>(null)
 
   // Edit modal states
   const [showEditModal, setShowEditModal] = useState(false)
@@ -254,6 +258,15 @@ export default function SalesPage() {
     }
   }
 
+  const handleShowReceipt = (sale: any) => {
+    setReceiptSale(sale)
+    setShowReceiptModal(true)
+  }
+
+  const handlePrintReceipt = () => {
+    window.print()
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -473,17 +486,30 @@ export default function SalesPage() {
                           </span>
                         </td>
                         <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleEdit(sale)
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors"
-                            title="Edit Sale"
-                          >
-                            <Edit size={14} />
-                            Edit
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEdit(sale)
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors"
+                              title="Edit Sale"
+                            >
+                              <Edit size={14} />
+                              Edit
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleShowReceipt(sale)
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                              title="Show Receipt"
+                            >
+                              <FileText size={14} />
+                              Receipt
+                            </button>
+                          </div>
                         </td>
                       </tr>
                       {isExpanded && (
@@ -956,6 +982,192 @@ export default function SalesPage() {
                 className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {generatingPdf ? 'Generating...' : 'Generate PDF'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Modal */}
+      {showReceiptModal && receiptSale && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:bg-white">
+          <div className="bg-white rounded border border-gray-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header (print:hidden) */}
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 print:hidden">
+              <h2 className="text-lg font-semibold text-gray-900">Sale Receipt</h2>
+              <button
+                onClick={() => {
+                  setShowReceiptModal(false)
+                  setReceiptSale(null)
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Receipt Content */}
+            <div className="p-6">
+              <div className="text-center mb-5">
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">POS System</h1>
+                <h2 className="text-lg text-gray-700">Sales Receipt</h2>
+              </div>
+
+              <div className="mb-5 border-t border-b border-gray-200 py-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-gray-600">Sale Number</p>
+                    <p className="font-mono font-semibold text-gray-900">{receiptSale.sale_number}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Date</p>
+                    <p className="font-medium text-gray-900">
+                      {new Date(receiptSale.sale_date).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Cashier</p>
+                    <p className="font-medium text-gray-900">{receiptSale.cashier_name || 'Unknown'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Payment Method</p>
+                    <p className="font-medium text-gray-900">{receiptSale.payment_method}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Payment Status</p>
+                    <p className={`font-medium ${receiptSale.payment_status === 'Partial' ? 'text-red-600' : 'text-gray-900'}`}>
+                      {receiptSale.payment_status}
+                      {receiptSale.payment_status === 'Partial' && ' ⚠️'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Show customer info for partial payments */}
+                {receiptSale.payment_status === 'Partial' && receiptSale.partial_payment_customers && receiptSale.partial_payment_customers.length > 0 && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                    <p className="font-semibold text-red-900 mb-2 flex items-center gap-2 text-sm">
+                      <span>⚠️</span> PARTIAL PAYMENT CUSTOMER
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-xs text-red-700">Name</p>
+                        <p className="font-medium text-red-900">{receiptSale.partial_payment_customers[0].customer_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-red-700">Phone</p>
+                        <p className="font-medium text-red-900">{receiptSale.partial_payment_customers[0].customer_phone}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-red-700">Amount Remaining</p>
+                        <p className="font-bold text-red-900 text-base">
+                          ${receiptSale.partial_payment_customers[0].amount_remaining.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <table className="w-full mb-5">
+                <thead className="border-b border-gray-300">
+                  <tr className="text-sm">
+                    <th className="text-left py-2 text-gray-700">Item</th>
+                    <th className="text-right py-2 text-gray-700">Qty</th>
+                    <th className="text-right py-2 text-gray-700">Price</th>
+                    <th className="text-right py-2 text-gray-700">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {receiptSale.sale_items?.map((item: any) => (
+                    <tr key={item.id} className="border-b border-gray-200">
+                      <td className="py-2 text-sm text-gray-900">{item.product_name || item.products?.name || 'Unknown Product'}</td>
+                      <td className="text-right text-sm text-gray-900">{item.quantity}</td>
+                      <td className="text-right text-sm text-gray-900">${item.unit_price.toFixed(2)}</td>
+                      <td className="text-right font-medium text-sm text-gray-900">
+                        ${item.subtotal.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="border-t border-gray-300 pt-4">
+                {receiptSale.discount_value > 0 && receiptSale.discount_type !== 'none' && (
+                  <>
+                    <div className="flex justify-between mb-2 text-sm">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="text-gray-900">
+                        ${(
+                          receiptSale.discount_type === 'percentage'
+                            ? receiptSale.total_amount / (1 - receiptSale.discount_value / 100)
+                            : receiptSale.total_amount + receiptSale.discount_value
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between mb-2 text-green-600 text-sm">
+                      <span>
+                        Discount ({receiptSale.discount_type === 'percentage' ? `${receiptSale.discount_value}%` : 'Amount'}):
+                      </span>
+                      <span>
+                        -${(
+                          receiptSale.discount_type === 'percentage'
+                            ? (receiptSale.total_amount / (1 - receiptSale.discount_value / 100)) * (receiptSale.discount_value / 100)
+                            : receiptSale.discount_value
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                )}
+                <div className="flex justify-between text-lg font-bold mb-2 text-gray-900">
+                  <span>Total:</span>
+                  <span>${receiptSale.total_amount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between mb-2 text-sm">
+                  <span className="text-gray-600">Amount Paid:</span>
+                  <span className="text-gray-900">${receiptSale.amount_paid.toFixed(2)}</span>
+                </div>
+                {receiptSale.payment_status === 'Partial' ? (
+                  <div className="flex justify-between text-base font-medium text-red-600">
+                    <span>Amount Due:</span>
+                    <span>${receiptSale.amount_due.toFixed(2)}</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-base font-medium text-gray-900">
+                    <span>Change:</span>
+                    <span>${(receiptSale.amount_paid - receiptSale.total_amount).toFixed(2)}</span>
+                  </div>
+                )}
+                
+                {/* Additional warning for partial payment */}
+                {receiptSale.payment_status === 'Partial' && (
+                  <div className="mt-4 p-3 bg-red-600 text-white rounded font-semibold text-center text-sm">
+                    ⚠️ OUTSTANDING BALANCE DUE ⚠️
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-5 text-center text-sm text-gray-600">
+                <p>Thank you for your business!</p>
+              </div>
+            </div>
+
+            {/* Modal Actions (print:hidden) */}
+            <div className="flex gap-3 p-4 border-t border-gray-200 print:hidden">
+              <button
+                onClick={handlePrintReceipt}
+                className="flex-1 flex items-center justify-center gap-2 bg-cyan-600 text-white px-4 py-2.5 rounded text-sm hover:bg-cyan-700 transition-colors"
+              >
+                <Printer size={18} />
+                Print Receipt
+              </button>
+              <button
+                onClick={() => {
+                  setShowReceiptModal(false)
+                  setReceiptSale(null)
+                }}
+                className="flex-1 bg-white border border-gray-300 px-4 py-2.5 rounded text-sm hover:bg-gray-50 transition-colors"
+              >
+                Close
               </button>
             </div>
           </div>

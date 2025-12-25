@@ -77,7 +77,8 @@ export async function POST(request: NextRequest) {
       phone_number,
       email,
       address,
-      notes
+      notes,
+      initial_balance
     } = body
 
     // Validation
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create supplier
+    const initialBal = initial_balance ? parseFloat(initial_balance) : 0
     const { data: supplier, error } = await supabaseAdmin
       .from('suppliers')
       .insert({
@@ -113,6 +115,9 @@ export async function POST(request: NextRequest) {
         email: email?.trim() || null,
         address: address?.trim() || null,
         notes: notes?.trim() || null,
+        initial_balance: initialBal,
+        balance_owed: initialBal,
+        total_paid: 0,
         is_active: true
       })
       .select()
@@ -144,6 +149,7 @@ export async function PUT(request: NextRequest) {
       id,
       store_id,
       supplier_name,
+      contact_person,
       phone_number,
       email,
       address,

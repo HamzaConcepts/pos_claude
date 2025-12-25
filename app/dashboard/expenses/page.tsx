@@ -11,6 +11,7 @@ interface Expense {
   description: string
   amount: number
   category: string
+  payment_method?: string
   expense_date: string
   recorded_by: string
   recorded_by_name?: string
@@ -59,6 +60,7 @@ export default function ExpensesPage() {
   const [description, setDescription] = useState('')
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0])
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0])
   const [submitting, setSubmitting] = useState(false)
 
@@ -176,6 +178,7 @@ export default function ExpensesPage() {
           description: description.trim(),
           amount: parseFloat(amount),
           category,
+          payment_method: paymentMethod,
           expense_date: expenseDate,
           recorded_by: userId,
           store_id: storeId
@@ -190,6 +193,7 @@ export default function ExpensesPage() {
         setDescription('')
         setAmount('')
         setCategory(EXPENSE_CATEGORIES[0])
+        setPaymentMethod('Cash')
         setExpenseDate(new Date().toISOString().split('T')[0])
         fetchExpenses()
       } else {
@@ -348,6 +352,7 @@ export default function ExpensesPage() {
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Category</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Recorded By</th>
                   <th className="px-3 py-2.5 text-right text-sm font-semibold">Amount</th>
+                  <th className="px-3 py-2.5 text-center text-sm font-semibold">Payment</th>
                   <th className="px-3 py-2.5 text-center text-sm font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -375,6 +380,15 @@ export default function ExpensesPage() {
                     </td>
                     <td className="px-3 py-2.5 text-sm text-right font-semibold text-red-600">
                       ${expense.amount.toFixed(2)}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        expense.payment_method === 'Cash' ? 'bg-green-100 text-green-700 border border-green-300' : 
+                        expense.payment_method === 'Digital' ? 'bg-blue-100 text-blue-700 border border-blue-300' : 
+                        'bg-gray-100 text-gray-600 border border-gray-300'
+                      }`}>
+                        {expense.payment_method || 'N/A'}
+                      </span>
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <button
@@ -499,6 +513,20 @@ export default function ExpensesPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                   placeholder="0.00"
                 />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">
+                  Payment Method <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'Digital')}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Digital">Digital</option>
+                </select>
               </div>
 
               <div>

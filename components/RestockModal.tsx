@@ -94,7 +94,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
   }
 
   const searchSuppliersByPhone = async (phone: string) => {
-    if (phone.length < 3) {
+    if (phone.length < 1) {
       setFilteredSuppliers([])
       return
     }
@@ -103,7 +103,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
       const storeId = getStoreId()
       if (!storeId) return
 
-      const response = await fetch(`/api/suppliers?store_id=${storeId}&phone=${phone}`)
+      const response = await fetch(`/api/suppliers?store_id=${storeId}&search=${encodeURIComponent(phone)}`)
       const data = await response.json()
 
       if (data.success) {

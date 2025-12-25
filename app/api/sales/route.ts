@@ -84,11 +84,12 @@ export async function GET(request: Request) {
         if (sale.cashier_ref_id) {
           sale.cashier_name = cashierRefNameMap.get(sale.cashier_ref_id) || 'Unknown'
         } else {
-          sale.cashier_name = 'Unknown'
+          // Don't set to 'Unknown' yet - will check cashier_id next
+          sale.cashier_name = null
         }
       })
       
-      // Legacy support: also fetch from cashier_id field (for old records)
+      // Legacy support: also fetch from cashier_id field (for old records and managers)
       const allCashierIds = [...new Set(sales.map(s => s.cashier_id).filter(Boolean))]
       
       if (allCashierIds.length > 0) {
@@ -125,6 +126,13 @@ export async function GET(request: Request) {
           }
         })
       }
+      
+      // Set any remaining null names to 'Unknown'
+      sales.forEach(sale => {
+        if (!sale.cashier_name) {
+          sale.cashier_name = 'Unknown'
+        }
+      })
       
       // Fetch payment recorder names (can be manager UUID or cashier ID)
       const allPayments = sales.flatMap(s => s.payments || [])
@@ -586,7 +594,10 @@ export async function POST(request: Request) {
       .eq('id', sale.id)
       .single()
     
-    // Fetch cashier name from cashiers table using cashier_ref_id
+    // Determine cashier name based on priority:
+    // 1. If cashier_ref_id exists, use that (selected cashier from sidebar or cashier account)
+    // 2. If cashier_id exists (manager UUID), use manager's name
+    // 3. Otherwise, 'Unknown'
     if (completeSale && completeSale.cashier_ref_id) {
       const { data: cashier } = await supabaseAdmin
         .from('cashiers')
@@ -600,31 +611,17 @@ export async function POST(request: Request) {
         completeSale.cashier_name = 'Unknown'
       }
     } else if (completeSale && completeSale.cashier_id) {
-      // Legacy support: Check if cashier_id is UUID (manager) or integer (cashier)
-      const isUUID = typeof completeSale.cashier_id === 'string' && completeSale.cashier_id.includes('-')
+      // Manager UUID - fetch from managers table
+      const { data: manager } = await supabaseAdmin
+        .from('managers')
+        .select('full_name')
+        .eq('id', completeSale.cashier_id)
+        .single()
       
-      if (isUUID) {
-        // Fetch from managers table
-        const { data: manager } = await supabaseAdmin
-          .from('managers')
-          .select('full_name')
-          .eq('id', completeSale.cashier_id)
-          .single()
-        
-        if (manager) {
-          completeSale.cashier_name = manager.full_name
-        }
+      if (manager) {
+        completeSale.cashier_name = manager.full_name
       } else {
-        // Fetch from cashier_accounts table
-        const { data: cashier } = await supabaseAdmin
-          .from('cashier_accounts')
-          .select('full_name')
-          .eq('id', completeSale.cashier_id)
-          .single()
-        
-        if (cashier) {
-          completeSale.cashier_name = cashier.full_name
-        }
+        completeSale.cashier_name = 'Unknown'
       }
     } else {
       completeSale.cashier_name = 'Unknown'

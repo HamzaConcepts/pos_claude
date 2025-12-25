@@ -201,6 +201,20 @@ export async function POST(request: Request) {
       )
     }
 
+    // Check if category requires IMEI
+    let finalIsPhone = is_phone || false
+    if (category_id) {
+      const { data: categoryData } = await supabaseAdmin
+        .from('categories')
+        .select('requires_imei')
+        .eq('id', category_id)
+        .single()
+
+      if (categoryData?.requires_imei) {
+        finalIsPhone = true
+      }
+    }
+
     // Generate SKU
     const generatedSKU = await generateNextSKU(parseInt(store_id))
 
@@ -216,7 +230,7 @@ export async function POST(request: Request) {
         subcategory_id: subcategory_id || null,
         store_id: parseInt(store_id),
         is_active: true,
-        is_phone: is_phone || false
+        is_phone: finalIsPhone
       })
       .select()
       .single()

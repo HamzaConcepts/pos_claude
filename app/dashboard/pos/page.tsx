@@ -110,6 +110,7 @@ export default function POSPage() {
     // First check for Supabase Auth user (managers)
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
+      // Manager is completing the sale - use their UUID
       setCashierId(user.id)
       return
     }
@@ -120,6 +121,7 @@ export default function POSPage() {
       try {
         const session = JSON.parse(userSession)
         // Cashier session stores 'id', not 'user_id'
+        // For cashier accounts, use the cashier account ID
         if (session.id) {
           setCashierId(session.id.toString())
         }
@@ -429,6 +431,10 @@ export default function POSPage() {
         }
       }
 
+      // Determine if this is a manager or cashier
+      const { data: { user } } = await supabase.auth.getUser()
+      const isManager = user !== null
+      
       const saleData = {
         items: cart.map((item) => ({
           product_id: item.product.id,
@@ -438,8 +444,11 @@ export default function POSPage() {
         sale_description: finalDescription,
         payment_method: paymentMethod,
         amount_paid: paid,
-        cashier_id: cashierId,
-        cashier_ref_id: selectedCashierFromSidebar?.id || null, // Include selected cashier from sidebar
+        // If manager is making sale, send their UUID. If cashier, send null and use cashier_ref_id
+        cashier_id: isManager ? cashierId : null,
+        // Manager: don't use sidebar selection, always null so manager's name shows
+        // Cashier: use selected cashier from sidebar OR their own ID
+        cashier_ref_id: isManager ? null : (selectedCashierFromSidebar?.id || cashierId),
         notes: null,
         partial_payment_customer: partialPaymentCustomer,
         store_id: storeId,

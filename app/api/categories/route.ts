@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { store_id, name, description } = body
+    const { store_id, name, description, requires_imei } = body
 
     if (!store_id || !name) {
       return NextResponse.json(
@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
         store_id,
         name: name.trim(),
         description: description?.trim() || null,
+        requires_imei: requires_imei || false,
         is_active: true
       }])
       .select()
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, name, description, is_active } = body
+    const { id, name, description, is_active, requires_imei } = body
 
     if (!id || !name) {
       return NextResponse.json(
@@ -107,6 +108,7 @@ export async function PUT(request: NextRequest) {
       .update({
         name: name.trim(),
         description: description?.trim() || null,
+        requires_imei: requires_imei !== undefined ? requires_imei : false,
         is_active: is_active ?? true
       })
       .eq('id', id)
@@ -114,6 +116,18 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (error) throw error
+
+    // If requires_imei changed, update all products in this category
+    if (requires_imei !== undefined) {
+      const { error: productsError } = await supabaseAdmin
+        .from('products')
+        .update({ is_phone: requires_imei })
+        .eq('category_id', id)
+
+      if (productsError) {
+        console.error('Failed to update products is_phone flag:', productsError)
+      }
+    }
 
     return NextResponse.json({ success: true, data })
   } catch (error: any) {

@@ -32,6 +32,7 @@ interface Category {
   description: string | null
   is_active: boolean
   created_at: string
+  requires_imei?: boolean
   subcategories?: Subcategory[]
 }
 
@@ -60,6 +61,30 @@ interface Cashier {
   created_at: string
 }
 
+interface Supplier {
+  id: number
+  store_id: number
+  name: string
+  contact_person: string | null
+  phone_number: string
+  email: string | null
+  address: string | null
+  balance_owed: number
+  initial_balance: number
+  last_payment_date: string | null
+  total_paid: number
+  created_at: string
+}
+
+interface SupplierPayment {
+  id: number
+  supplier_id: number
+  amount: number
+  payment_method: string
+  payment_date: string
+  notes: string | null
+}
+
 export default function StorePage() {
   const isDarkMode = useDarkMode()
   const [users, setUsers] = useState<UserData[]>([])
@@ -76,13 +101,19 @@ export default function StorePage() {
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showSubcategoryModal, setShowSubcategoryModal] = useState(false)
   const [showCashierModal, setShowCashierModal] = useState(false)
+  const [showSupplierModal, setShowSupplierModal] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [editingSubcategory, setEditingSubcategory] = useState<Subcategory | null>(null)
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
+  const [selectedSupplierForPayment, setSelectedSupplierForPayment] = useState<Supplier | null>(null)
+  const [supplierPayments, setSupplierPayments] = useState<SupplierPayment[]>([])
   const [editingCashier, setEditingCashier] = useState<Cashier | null>(null)
   const [selectedCategoryForSub, setSelectedCategoryForSub] = useState<number | null>(null)
   
   // Active tab
-  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'info' | 'cashiers' | 'initial-stock' | 'expenses'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'info' | 'cashiers' | 'suppliers' | 'initial-stock' | 'expenses'>('users')
 
   useEffect(() => {
     fetchAllData()
@@ -95,7 +126,8 @@ export default function StorePage() {
       fetchCategories(),
       fetchStoreInfo(),
       fetchCashiers(),
-      fetchCashiersForUserTab()
+      fetchCashiersForUserTab(),
+      fetchSuppliers()
     ])
   }
 
@@ -207,6 +239,24 @@ export default function StorePage() {
       }
     } catch (err) {
       console.error('Error fetching cashiers:', err)
+    }
+  }
+
+  const fetchSuppliers = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/suppliers?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setSuppliers(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching suppliers:', err)
     }
   }
 
@@ -360,6 +410,17 @@ export default function StorePage() {
           >
             <User size={16} />
             Cashiers
+          </button>
+          <button
+            onClick={() => setActiveTab('suppliers')}
+            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
+              activeTab === 'suppliers'
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
+                : 'border-transparent hover:bg-gray-50 text-gray-600'
+            }`}
+          >
+            <Users size={16} />
+            Suppliers
           </button>
           <button
             onClick={() => setActiveTab('initial-stock')}
@@ -643,6 +704,26 @@ export default function StorePage() {
         />
       )}
 
+      {/* Suppliers Tab */}
+      {activeTab === 'suppliers' && (
+        <SuppliersTab 
+          suppliers={suppliers} 
+          onAddSupplier={() => {
+            setEditingSupplier(null)
+            setShowSupplierModal(true)
+          }}
+          onEditSupplier={(supplier: Supplier) => {
+            setEditingSupplier(supplier)
+            setShowSupplierModal(true)
+          }}
+          onRecordPayment={(supplier: Supplier) => {
+            setSelectedSupplierForPayment(supplier)
+            setShowPaymentModal(true)
+          }}
+          onRefresh={fetchSuppliers}
+        />
+      )}
+
       {/* Initial Stock Tab */}
       {activeTab === 'initial-stock' && (
         <InitialStockTab />
@@ -689,6 +770,28 @@ export default function StorePage() {
             setShowCashierModal(false)
             setEditingCashier(null)
             if (refresh) fetchCashiers()
+          }}
+        />
+      )}
+
+      {showSupplierModal && (
+        <SupplierModal
+          supplier={editingSupplier}
+          onClose={(refresh?: boolean) => {
+            setShowSupplierModal(false)
+            setEditingSupplier(null)
+            if (refresh) fetchSuppliers()
+          }}
+        />
+      )}
+
+      {showPaymentModal && selectedSupplierForPayment && (
+        <PaymentModal
+          supplier={selectedSupplierForPayment}
+          onClose={(refresh?: boolean) => {
+            setShowPaymentModal(false)
+            setSelectedSupplierForPayment(null)
+            if (refresh) fetchSuppliers()
           }}
         />
       )}
@@ -769,6 +872,11 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
                 <div className="flex items-center gap-2">
                   <Tag size={17} />
                   <h3 className="font-bold text-sm">{category.name}</h3>
+                  {category.requires_imei && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                      📱 IMEI
+                    </span>
+                  )}
                   {category.description && (
                     <span className="text-xs text-text-secondary">- {category.description}</span>
                   )}
@@ -1034,6 +1142,7 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
 function CategoryModal({ category, onClose }: any) {
   const [name, setName] = useState(category?.name || '')
   const [description, setDescription] = useState(category?.description || '')
+  const [requiresImei, setRequiresImei] = useState(category?.requires_imei || false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -1050,8 +1159,8 @@ function CategoryModal({ category, onClose }: any) {
       
       const storeId = getStoreId()
       const payload = category
-        ? { id: category.id, name: name.trim(), description: description.trim() || null }
-        : { store_id: storeId, name: name.trim(), description: description.trim() || null }
+        ? { id: category.id, name: name.trim(), description: description.trim() || null, requires_imei: requiresImei }
+        : { store_id: storeId, name: name.trim(), description: description.trim() || null, requires_imei: requiresImei }
 
       const response = await fetch('/api/categories', {
         method: category ? 'PUT' : 'POST',
@@ -1111,6 +1220,28 @@ function CategoryModal({ category, onClose }: any) {
               rows={3}
               placeholder="Optional description"
             />
+          </div>
+
+          <div className="mb-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={requiresImei}
+                onChange={(e) => setRequiresImei(e.target.checked)}
+                className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+              />
+              <span className="text-sm font-medium">
+                📱 Requires IMEI Tracking
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 mt-1 ml-6">
+              Products in this category will require IMEI numbers (for phones, tablets, etc.)
+            </p>
+            {category && requiresImei !== category.requires_imei && (
+              <p className="text-xs text-orange-600 font-medium mt-1 ml-6">
+                ⚠️ This will update all existing products in this category
+              </p>
+            )}
           </div>
 
           <div className="flex gap-2 justify-end">
@@ -1558,3 +1689,385 @@ function CashierModal({ cashier, onClose }: { cashier: Cashier | null, onClose: 
     </div>
   )
 }
+
+// Suppliers Tab Component  
+function SuppliersTab({ suppliers, onAddSupplier, onEditSupplier, onRecordPayment, onRefresh }: any) {
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PK', {
+      style: 'currency',
+      currency: 'PKR',
+      minimumFractionDigits: 0
+    }).format(amount)
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200">
+      <div className="p-5 border-b border-gray-200">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold">Suppliers</h2>
+            <p className="text-sm text-text-secondary mt-0.5">Manage your suppliers and track payments</p>
+          </div>
+          <button
+            onClick={onAddSupplier}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-sm"
+          >
+            <Plus size={16} />
+            Add Supplier
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Initial Balance</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Balance Owed</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Paid</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Last Payment</th>
+              <th className="px-5 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {suppliers.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-sm text-gray-500">
+                  No suppliers found. Add your first supplier to get started.
+                </td>
+              </tr>
+            ) : (
+              suppliers.map((supplier: any) => (
+                <tr key={supplier.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3 text-sm font-medium">{supplier.supplier_name}</td>
+                  <td className="px-5 py-3 text-sm">{supplier.phone_number}</td>
+                  <td className="px-5 py-3 text-sm">{formatCurrency(supplier.initial_balance || 0)}</td>
+                  <td className="px-5 py-3 text-sm">
+                    <span className={supplier.balance_owed > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>
+                      {formatCurrency(supplier.balance_owed || 0)}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-sm">{formatCurrency(supplier.total_paid || 0)}</td>
+                  <td className="px-5 py-3 text-sm">
+                    {supplier.last_payment_date ? new Date(supplier.last_payment_date).toLocaleDateString() : 'Never'}
+                  </td>
+                  <td className="px-5 py-3 text-sm">
+                    <div className="flex items-center justify-center gap-2">
+                      {supplier.balance_owed > 0 && (
+                        <button
+                          onClick={() => onRecordPayment(supplier)}
+                          className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                          title="Record Payment"
+                        >
+                          <DollarSign size={16} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onEditSupplier(supplier)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                        title="Edit"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// Supplier Modal Component
+function SupplierModal({ supplier, onClose }: { supplier: any, onClose: (refresh?: boolean) => void }) {
+  const [formData, setFormData] = useState({
+    name: supplier?.supplier_name || '',
+    phone_number: supplier?.phone_number || '',
+    initial_balance: supplier?.initial_balance?.toString() || '0'
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+
+    try {
+      const storeId = getStoreId()
+      if (!storeId) throw new Error('Store ID not found')
+
+      const url = supplier 
+        ? `/api/suppliers?id=${supplier.id}`
+        : '/api/suppliers'
+
+      const response = await fetch(url, {
+        method: supplier ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supplier_name: formData.name,
+          phone_number: formData.phone_number,
+          store_id: storeId.toString(),
+          initial_balance: parseFloat(formData.initial_balance) || 0
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        onClose(true)
+      } else {
+        setError(result.error || 'Failed to save supplier')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200">
+          <h3 className="text-lg font-semibold">{supplier ? 'Edit Supplier' : 'Add New Supplier'}</h3>
+          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Supplier Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="Enter supplier name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Phone Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.phone_number}
+              onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+              required
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="Enter phone number"
+            />
+          </div>
+
+          {!supplier && (
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Initial Balance (if migrating existing supplier)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={formData.initial_balance}
+                onChange={(e) => setFormData({ ...formData, initial_balance: e.target.value })}
+                className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+                placeholder="0.00"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Enter any existing balance owed to this supplier (for migration purposes)
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3 justify-end pt-4 border-t">
+            <button
+              type="button"
+              onClick={() => onClose()}
+              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-sm"
+            >
+              {saving ? 'Saving...' : supplier ? 'Update Supplier' : 'Add Supplier'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Payment Recording Modal Component
+function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?: boolean) => void }) {
+  const [amount, setAmount] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-PK', {
+      style: 'currency',
+      currency: 'PKR',
+      minimumFractionDigits: 0
+    }).format(amount)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    const paymentAmount = parseFloat(amount)
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      setError('Please enter a valid payment amount')
+      return
+    }
+
+    if (paymentAmount > supplier.balance_owed) {
+      setError('Payment amount cannot exceed balance owed')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const storeId = getStoreId()
+      if (!storeId) throw new Error('Store ID not found')
+
+      const response = await fetch('/api/supplier-payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supplier_id: supplier.id,
+          store_id: storeId,
+          amount: paymentAmount,
+          payment_method: paymentMethod,
+          notes: notes || null
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        onClose(true)
+      } else {
+        setError(result.error || 'Failed to record payment')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-md">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200">
+          <h3 className="text-lg font-semibold">Record Payment</h3>
+          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="bg-gray-50 p-4 rounded border border-gray-200">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-600">Supplier:</span>
+              <span className="font-semibold">{supplier.supplier_name}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Current Balance Owed:</span>
+              <span className="font-bold text-red-600">{formatCurrency(supplier.balance_owed)}</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Payment Amount <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="0.00"
+              max={supplier.balance_owed}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Payment Method <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'Digital')}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+            >
+              <option value="Cash">Cash</option>
+              <option value="Digital">Digital</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes (Optional)</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="Add any notes about this payment..."
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-4 border-t">
+            <button
+              type="button"
+              onClick={() => onClose()}
+              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+            >
+              {saving ? 'Recording...' : 'Record Payment'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+

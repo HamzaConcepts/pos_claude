@@ -101,7 +101,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { description, amount, category, expense_date, recorded_by, store_id } = body
+    const { description, amount, category, expense_date, recorded_by, store_id, payment_method } = body
 
     // Validation
     if (!description || !amount || !category || !expense_date || !store_id) {
@@ -133,6 +133,7 @@ export async function POST(request: Request) {
           description,
           amount: parseFloat(amount),
           category,
+          payment_method: payment_method || 'Cash',
           expense_date,
           recorded_by: recorded_by || null,
           store_id: parseInt(store_id),
@@ -166,7 +167,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { id, description, amount, category, expense_date } = body
+    const { id, description, amount, category, expense_date, payment_method } = body
 
     // Validation
     if (!id) {
@@ -208,6 +209,7 @@ export async function PUT(request: Request) {
         description,
         amount: parseFloat(amount),
         category,
+        payment_method: payment_method || 'Cash',
         expense_date,
       })
       .eq('id', id)

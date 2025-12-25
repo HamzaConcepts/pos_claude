@@ -94,9 +94,47 @@ export interface Supplier {
   email: string | null
   address: string | null
   notes: string | null
+  balance_owed: number
+  initial_balance: number
+  last_payment_date: string | null
+  total_paid: number
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface SupplierPayment {
+  id: number
+  supplier_id: number
+  store_id: number
+  amount: number
+  payment_method: 'Cash' | 'Digital'
+  payment_date: string
+  recorded_by_manager_id: string | null
+  recorded_by_cashier_id: number | null
+  notes: string | null
+  created_at: string
+}
+
+export interface Category {
+  id: number
+  name: string
+  description: string | null
+  store_id: number
+  requires_imei: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  subcategories?: Subcategory[]
+}
+
+export interface Subcategory {
+  id: number
+  category_id: number
+  name: string
+  description: string | null
+  is_active: boolean
+  created_at: string
 }
 
 export interface ProductIMEI {
@@ -162,6 +200,7 @@ export interface Expense {
   description: string
   amount: number
   category: string | null
+  payment_method: 'Cash' | 'Digital'
   expense_date: string
   recorded_by: string | null
   store_id: number

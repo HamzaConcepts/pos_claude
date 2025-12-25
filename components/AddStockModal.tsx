@@ -127,13 +127,12 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
     const category = categories.find(c => c.id === Number(categoryId))
     setSubcategories(category?.subcategories || [])
     
-    // Check if this category is for phones (case-insensitive check)
-    const categoryName = category?.name.toLowerCase() || ''
-    const isPhone = categoryName.includes('phone') || categoryName.includes('mobile')
-    setIsPhoneCategory(isPhone)
+    // Check if this category requires IMEI tracking based on database flag
+    const requiresImei = (category as any)?.requires_imei || false
+    setIsPhoneCategory(requiresImei)
     
     // Reset IMEI if not a phone category
-    if (!isPhone) {
+    if (!requiresImei) {
       setFormData(prev => ({ ...prev, imei_numbers: [''] }))
     }
   }
