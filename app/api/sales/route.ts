@@ -210,6 +210,57 @@ export async function POST(request: Request) {
       discount_value
     } = body
 
+    console.log('[SALES API] Received cashier_id:', cashier_id, 'Type:', typeof cashier_id)
+    console.log('[SALES API] Received cashier_ref_id:', cashier_ref_id)
+
+    // Determine the authenticated user for payment recording
+    // cashier_id can be:
+    // - UUID string (manager from Supabase Auth)
+    // - Integer or string number (cashier account ID)
+    let paymentRecorderId: string | number
+    let isManagerUser = false
+
+    // Check if we have a valid cashier_id
+    if (!cashier_id && !cashier_ref_id) {
+      console.error('[SALES API] ❌ No user authentication provided')
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'User authentication required',
+          code: 'AUTHENTICATION_ERROR',
+        },
+        { status: 401 }
+      )
+    }
+
+    // Prioritize cashier_id for authentication (who is making the sale)
+    const authId = cashier_id || cashier_ref_id
+    const authIdStr = String(authId)
+
+    // Check if it's a UUID (manager)
+    if (authIdStr.includes('-')) {
+      isManagerUser = true
+      paymentRecorderId = authIdStr // UUID for manager
+    } else {
+      // It's a cashier account ID (could be number or string number)
+      isManagerUser = false
+      const parsedId = parseInt(authIdStr)
+      if (isNaN(parsedId)) {
+        console.error('[SALES API] ❌ Invalid cashier ID:', authIdStr)
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid user authentication',
+            code: 'AUTHENTICATION_ERROR',
+          },
+          { status: 401 }
+        )
+      }
+      paymentRecorderId = parsedId
+    }
+
+    console.log('[SALES API] Payment recorder - isManager:', isManagerUser, 'recorderId:', paymentRecorderId)
+
     // Validation
     if (!items || items.length === 0) {
       return NextResponse.json(
@@ -448,10 +499,9 @@ export async function POST(request: Request) {
     // Generate sale number
     const saleNumber = `SALE-${Date.now()}`
 
-    // Determine if cashier_id is a UUID (manager) or integer (cashier account)
-    // Only store UUID in cashier_id field, set to null for cashier accounts
-    const isManagerUUID = cashier_id && typeof cashier_id === 'string' && cashier_id.includes('-')
-    const cashierIdForSale = isManagerUUID ? cashier_id : null
+    // For the sales table: use cashier_id only for managers (UUID)
+    // For cashier accounts, use null and rely on cashier_ref_id
+    const cashierIdForSale = isManagerUser ? paymentRecorderId : null
 
     // Create sale
     const { data: sale, error: saleError } = await supabaseAdmin
@@ -480,9 +530,6 @@ export async function POST(request: Request) {
 
     // Create payment record (track all payments)
     if (paidAmount > 0) {
-      // Determine if cashier_id is a UUID (manager) or integer (cashier)
-      const isUUID = typeof cashier_id === 'string' && cashier_id.includes('-')
-      
       const paymentData: any = {
         sale_id: sale.id,
         amount: paidAmount,
@@ -491,12 +538,19 @@ export async function POST(request: Request) {
         store_id: parseInt(store_id),
       }
       
-      // Insert into correct column based on ID type
-      if (isUUID) {
-        paymentData.manager_id = cashier_id  // Manager UUID
+      // The constraint requires EXACTLY ONE of manager_id or cashier_id to be set
+      // Set based on the authenticated user type (determined at the start)
+      if (isManagerUser) {
+        // User is a manager - set manager_id (UUID)
+        paymentData.manager_id = paymentRecorderId
+        paymentData.cashier_id = null
       } else {
-        paymentData.cashier_id = cashier_id  // Cashier integer ID
+        // User is a cashier account - set cashier_id (integer)
+        paymentData.manager_id = null
+        paymentData.cashier_id = paymentRecorderId
       }
+      
+      console.log('[SALES API] Payment data:', JSON.stringify(paymentData, null, 2))
       
       const { error: paymentError } = await supabaseAdmin
         .from('payments')

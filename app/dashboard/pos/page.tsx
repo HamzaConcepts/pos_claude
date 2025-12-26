@@ -86,12 +86,33 @@ export default function POSPage() {
     const savedCashier = localStorage.getItem('selected_cashier')
     if (savedCashier) {
       try {
-        setSelectedCashierFromSidebar(JSON.parse(savedCashier))
+        const cashier = JSON.parse(savedCashier)
+        setSelectedCashierFromSidebar(cashier)
+        console.log('[POS] Loaded selected cashier:', cashier)
       } catch (err) {
         console.error('Failed to parse saved cashier:', err)
       }
     }
   }
+
+  // Listen for cashier selection changes from sidebar
+  useEffect(() => {
+    const handleCashierChange = () => {
+      console.log('[POS] Cashier selection changed, reloading...')
+      loadSelectedCashier()
+    }
+
+    // Listen for storage changes (when sidebar updates localStorage)
+    window.addEventListener('storage', handleCashierChange)
+    
+    // Also listen for custom event (more reliable for same-window changes)
+    window.addEventListener('cashierChanged', handleCashierChange)
+
+    return () => {
+      window.removeEventListener('storage', handleCashierChange)
+      window.removeEventListener('cashierChanged', handleCashierChange)
+    }
+  }, [])
 
   useEffect(() => {
     if (searchTerm) {
@@ -716,7 +737,7 @@ export default function POSPage() {
 
   return (
     <>
-      <h1 className={`text-xl md:text-2xl font-bold mb-5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Point of Sale</h1>
+      <h1 className={`text-xl md:text-2xl font-bold mb-5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>New Sale</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Product Search and Cart */}

@@ -80,6 +80,10 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     setSelectedCashier(cashier)
     localStorage.setItem('selected_cashier', JSON.stringify(cashier))
     setShowCashierDropdown(false)
+    
+    // Dispatch custom event to notify POS page and other components
+    console.log('[Sidebar] Cashier selected, dispatching event:', cashier)
+    window.dispatchEvent(new CustomEvent('cashierChanged', { detail: { cashier } }))
   }
 
   const toggleDarkMode = () => {
@@ -92,7 +96,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
 
   const navItems = [
     { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, permission: 'view_dashboard' },
-    { href: '/dashboard/pos', label: 'Point of Sale', icon: ShoppingCart, permission: 'process_sale' },
+    { href: '/dashboard/pos', label: 'New Sale', icon: ShoppingCart, permission: 'process_sale' },
     { href: '/dashboard/inventory', label: 'Products', icon: Package, permission: 'create_product' },
     { href: '/dashboard/sales', label: 'Sales History', icon: DollarSign, permission: 'view_sales' },
     { href: '/dashboard/expenses', label: 'Expense Tracker', icon: FileText, permission: 'add_expense' },
