@@ -67,3 +67,37 @@ export function getStoreId(): number | null {
   
   return null
 }
+
+// Check if current user is a manager
+export const isManager = async (): Promise<boolean> => {
+  const { data: { user } } = await supabase.auth.getUser()
+  return !!user // If user exists from auth, they're a manager
+}
+
+// Get manager ID
+export const getManagerId = async (): Promise<string | null> => {
+  const { data: { user } } = await supabase.auth.getUser()
+  return user?.id || null
+}
+
+// Check if current session is cashier
+export const isCashier = (): boolean => {
+  if (typeof window === 'undefined') return false
+  const session = localStorage.getItem('user_session')
+  return !!session
+}
+
+// Get cashier ID
+export const getCashierId = (): number | null => {
+  if (typeof window === 'undefined') return null
+  const session = localStorage.getItem('user_session')
+  if (session) {
+    try {
+      const parsed = JSON.parse(session)
+      return parsed.id || null
+    } catch {
+      return null
+    }
+  }
+  return null
+}

@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package, Filter, FileText, Edit, X, Printer } from 'lucide-react'
+import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package, Filter, FileText, Edit, X, Printer, Trash2, AlertCircle } from 'lucide-react'
 import { generateSalesPDF } from '@/lib/pdf-generator'
-import { getStoreId } from '@/lib/supabase'
+import { getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useDarkMode } from '@/hooks/useDarkMode'
 
@@ -47,7 +47,27 @@ export default function SalesPage() {
   const [updating, setUpdating] = useState(false)
   const [editError, setEditError] = useState('')
 
+  // Role-based access states
+  const [userIsManager, setUserIsManager] = useState(false)
+  const [userIsCashier, setUserIsCashier] = useState(false)
+
+  // Delete modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletingSale, setDeletingSale] = useState<any>(null)
+
+  // Mark for review modal states
+  const [showReviewModal, setShowReviewModal] = useState(false)
+  const [reviewingSale, setReviewingSale] = useState<any>(null)
+  const [reviewNote, setReviewNote] = useState('')
+
   useEffect(() => {
+    // Check user role
+    const checkRole = async () => {
+      setUserIsManager(await isManager())
+      setUserIsCashier(isCashier())
+    }
+    checkRole()
+    
     fetchSales()
     fetchCashiers()
     fetchProducts()
@@ -267,6 +287,58 @@ export default function SalesPage() {
     window.print()
   }
 
+  const handleDeleteSale = async () => {
+    if (!deletingSale) return
+    
+    try {
+      const response = await fetch(`/api/sales/${deletingSale.id}`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setShowDeleteModal(false)
+        setDeletingSale(null)
+        fetchSales()
+        setError('')
+      } else {
+        setError(result.error || 'Failed to delete sale')
+      }
+    } catch (err) {
+      setError('Failed to delete sale: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    }
+  }
+
+  const handleMarkForReview = async () => {
+    if (!reviewingSale) return
+    
+    try {
+      const response = await fetch(`/api/sales/${reviewingSale.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          marked_for_review: true,
+          review_note: reviewNote
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setShowReviewModal(false)
+        setReviewingSale(null)
+        setReviewNote('')
+        fetchSales()
+        setError('')
+      } else {
+        setError(result.error || 'Failed to mark sale for review')
+      }
+    } catch (err) {
+      setError('Failed to mark sale for review: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -278,7 +350,7 @@ export default function SalesPage() {
   return (
     <>
       <div className="flex justify-between items-center mb-5">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">Sales History</h1>
+        <h1 className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Sales History</h1>
         <button
           onClick={() => setShowPdfModal(true)}
           className="px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors flex items-center gap-2"
@@ -295,10 +367,10 @@ export default function SalesPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded border border-gray-200 mb-5">
+      <div className={`p-4 rounded border mb-5 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="flex items-center gap-2 mb-4">
-          <Filter size={18} className="text-gray-600" />
-          <h2 className="font-semibold text-base text-gray-900">Filters</h2>
+          <Filter size={18} className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+          <h2 className={`font-semibold text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Filters</h2>
           {(selectedCashier || selectedProduct || selectedPaymentMethod || selectedPaymentStatus || startDate || endDate) && (
             <button
               onClick={clearFilters}
@@ -312,11 +384,11 @@ export default function SalesPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {/* Cashier Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Cashier</label>
+            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cashier</label>
             <select
               value={selectedCashier}
               onChange={(e) => setSelectedCashier(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
             >
               <option value="">All Cashiers</option>
               {cashiers.map((cashier) => (
@@ -329,11 +401,11 @@ export default function SalesPage() {
 
           {/* Product Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Product</label>
+            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product</label>
             <select
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
             >
               <option value="">All Products</option>
               {products.map((product) => (
@@ -346,11 +418,11 @@ export default function SalesPage() {
 
           {/* Payment Method Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Payment Method</label>
+            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Payment Method</label>
             <select
               value={selectedPaymentMethod}
               onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
             >
               <option value="">All Methods</option>
               <option value="Cash">Cash</option>
@@ -360,11 +432,11 @@ export default function SalesPage() {
 
           {/* Payment Status Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Payment Status</label>
+            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Payment Status</label>
             <select
               value={selectedPaymentStatus}
               onChange={(e) => setSelectedPaymentStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
             >
               <option value="">All Statuses</option>
               <option value="Paid">Paid</option>
@@ -375,44 +447,44 @@ export default function SalesPage() {
 
           {/* Start Date Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
             />
           </div>
 
           {/* End Date Filter */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
             />
           </div>
         </div>
 
         {/* Results Count */}
-        <div className="mt-4 text-xs text-gray-600">
+        <div className={`mt-4 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
           Showing {filteredSales.length} of {sales.length} sales
         </div>
       </div>
 
       {filteredSales.length === 0 ? (
-        <div className="bg-white p-6 rounded border border-gray-200 text-center">
-          <p className="text-gray-500 text-sm">
+        <div className={`p-6 rounded border text-center ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {sales.length === 0 ? 'No sales found' : 'No sales match the selected filters'}
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded border border-gray-200 overflow-hidden">
+        <div className={`rounded border overflow-hidden ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
+              <thead className={`border-b ${isDarkMode ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
                 <tr>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Description</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold hidden md:table-cell">Date</th>
@@ -509,6 +581,43 @@ export default function SalesPage() {
                               <FileText size={14} />
                               Receipt
                             </button>
+                            {/* Manager only: Delete button */}
+                            {userIsManager && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setDeletingSale(sale)
+                                  setShowDeleteModal(true)
+                                }}
+                                className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                                title="Delete Sale"
+                              >
+                                <Trash2 size={14} />
+                                Delete
+                              </button>
+                            )}
+                            {/* Cashier only: Mark for Review button */}
+                            {userIsCashier && !sale.marked_for_review && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setReviewingSale(sale)
+                                  setShowReviewModal(true)
+                                }}
+                                className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
+                                title="Mark for Review"
+                              >
+                                <AlertCircle size={14} />
+                                Review
+                              </button>
+                            )}
+                            {/* Show indicator if already marked for review */}
+                            {sale.marked_for_review && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 border border-yellow-300 rounded">
+                                <AlertCircle size={14} />
+                                Marked
+                              </span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -735,7 +844,7 @@ export default function SalesPage() {
 
       {/* Edit Sale Modal */}
       {showEditModal && editingSale && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-lg font-semibold text-gray-900">Edit Sale</h2>
@@ -856,7 +965,7 @@ export default function SalesPage() {
 
       {/* PDF Generation Modal */}
       {showPdfModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5 max-h-[90vh] overflow-y-auto">
             <div className="mb-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Generate Sales Record</h2>
@@ -990,7 +1099,7 @@ export default function SalesPage() {
 
       {/* Receipt Modal */}
       {showReceiptModal && receiptSale && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:bg-white">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 print:bg-white">
           <div className="bg-white rounded border border-gray-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header (print:hidden) */}
             <div className="flex justify-between items-center p-4 border-b border-gray-200 print:hidden">
@@ -1173,8 +1282,157 @@ export default function SalesPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Sale Modal */}
+      {showDeleteModal && deletingSale && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Trash2 size={20} className="text-red-600" />
+              Delete Sale
+            </h2>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
+                <p className="text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded">
+              <p className="text-sm text-red-900 mb-3">
+                Are you sure you want to delete this sale? This action will:
+              </p>
+              <ul className="text-sm text-red-800 list-disc list-inside space-y-1">
+                <li>Permanently remove the sale record</li>
+                <li>Restore product stock quantities</li>
+                <li>Restore IMEI numbers if applicable</li>
+                <li>Cannot be undone</li>
+              </ul>
+            </div>
+
+            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+              <div className="mb-2">
+                <span className="font-semibold text-gray-700">Sale #:</span>{' '}
+                <span className="text-gray-900">{deletingSale.sale_description || deletingSale.sale_number}</span>
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold text-gray-700">Total:</span>{' '}
+                <span className="text-gray-900">${deletingSale.total_amount.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="font-semibold text-gray-700">Date:</span>{' '}
+                <span className="text-gray-900">
+                  {new Date(deletingSale.sale_date).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setDeletingSale(null)
+                  setError('')
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteSale}
+                className="flex-1 px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+              >
+                Delete Sale
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark for Review Modal */}
+      {showReviewModal && reviewingSale && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <AlertCircle size={20} className="text-yellow-600" />
+              Mark Sale for Review
+            </h2>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
+                <p className="text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
+              <p className="text-yellow-900">
+                This will flag the sale for manager review. Add a note explaining why this sale needs attention.
+              </p>
+            </div>
+
+            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+              <div className="mb-2">
+                <span className="font-semibold text-gray-700">Sale #:</span>{' '}
+                <span className="text-gray-900">{reviewingSale.sale_description || reviewingSale.sale_number}</span>
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold text-gray-700">Total:</span>{' '}
+                <span className="text-gray-900">${reviewingSale.total_amount.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="font-semibold text-gray-700">Date:</span>{' '}
+                <span className="text-gray-900">
+                  {new Date(reviewingSale.sale_date).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <label className="block mb-1 font-medium text-xs text-gray-700">Review Note*</label>
+              <textarea
+                value={reviewNote}
+                onChange={(e) => setReviewNote(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                rows={4}
+                placeholder="Explain why this sale needs review..."
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowReviewModal(false)
+                  setReviewingSale(null)
+                  setReviewNote('')
+                  setError('')
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMarkForReview}
+                className="flex-1 px-3 py-2 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 transition-colors"
+                disabled={!reviewNote.trim()}
+              >
+                Mark for Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
-
-
 }

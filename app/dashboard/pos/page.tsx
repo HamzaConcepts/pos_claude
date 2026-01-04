@@ -6,6 +6,7 @@ import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import { supabase, getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import IMEISelectionModal from '@/components/IMEISelectionModal'
+import { useDarkMode } from '@/hooks/useDarkMode'
 
 interface CartItem {
   product: ProductWithBackwardCompatibility
@@ -15,6 +16,7 @@ interface CartItem {
 
 export default function POSPage() {
   const router = useRouter()
+  const isDarkMode = useDarkMode()
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -28,7 +30,6 @@ export default function POSPage() {
   const [error, setError] = useState('')
   const [cashierId, setCashierId] = useState<string>('')
   const [selectedCashierFromSidebar, setSelectedCashierFromSidebar] = useState<any>(null)
-  const [isDarkMode, setIsDarkMode] = useState(false)
   
   // IMEI selection states
   const [showIMEIModal, setShowIMEIModal] = useState(false)
@@ -47,40 +48,199 @@ export default function POSPage() {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const customerNameInputRef = useRef<HTMLInputElement>(null)
 
+  // Customer details states (for regular sales)
+  const [customerDetails, setCustomerDetails] = useState({
+    name: '',
+    phone: '',
+    cnic: ''
+  })
+  const [allCustomers, setAllCustomers] = useState<any[]>([])
+  const [customerSearchResults, setCustomerSearchResults] = useState<any[]>([])
+  const [showCustomerResults, setShowCustomerResults] = useState(false)
+  const customerSearchRef = useRef<HTMLInputElement>(null)
+
+  // Barcode scanning state
+  const [barcodeBuffer, setBarcodeBuffer] = useState('')
+  const [lastKeyTime, setLastKeyTime] = useState(0)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Barcode scanner detection - scanners type fast and send Enter
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Ignore if typing in other inputs
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        if (target !== searchInputRef.current) return
+      }
+
+      const currentTime = Date.now()
+      const timeDiff = currentTime - lastKeyTime
+
+      // Enter key - process accumulated barcode
+      if (e.key === 'Enter' && barcodeBuffer.length > 0) {
+        e.preventDefault()
+        handleBarcodeScanned(barcodeBuffer)
+        setBarcodeBuffer('')
+        setLastKeyTime(0)
+        return
+      }
+
+      // Accumulate characters (scanner types fast)
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (timeDiff < 100 || barcodeBuffer.length === 0) {
+          setBarcodeBuffer(prev => prev + e.key)
+          setLastKeyTime(currentTime)
+        } else {
+          // Slow typing - reset buffer
+          setBarcodeBuffer(e.key)
+          setLastKeyTime(currentTime)
+        }
+      }
+    }
+
+    window.addEventListener('keypress', handleKeyPress)
+    return () => window.removeEventListener('keypress', handleKeyPress)
+  }, [barcodeBuffer, lastKeyTime])
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (customerNameInputRef.current && !customerNameInputRef.current.contains(event.target as Node)) {
         setShowCustomerDropdown(false)
       }
+      if (customerSearchRef.current && !customerSearchRef.current.contains(event.target as Node)) {
+        setShowCustomerResults(false)
+      }
     }
 
-    if (showCustomerDropdown) {
+    if (showCustomerDropdown || showCustomerResults) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showCustomerDropdown])
-
-  // Listen for dark mode changes
-  useEffect(() => {
-    const handleDarkModeChange = (e: any) => {
-      setIsDarkMode(e.detail.isDarkMode)
-    }
-
-    const savedDarkMode = localStorage.getItem('dark_mode')
-    if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
-    }
-
-    window.addEventListener('darkModeChange', handleDarkModeChange)
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
-  }, [])
+  }, [showCustomerDropdown, showCustomerResults])
 
   useEffect(() => {
     fetchProducts()
     fetchCurrentUser()
     loadSelectedCashier()
+    fetchAllCustomers()
   }, [])
+
+  const fetchAllCustomers = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/partial-payment-customers?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        // Group by phone to get unique customers
+        const uniqueCustomers = new Map()
+        result.data.forEach((customer: any) => {
+          if (!uniqueCustomers.has(customer.customer_phone)) {
+            uniqueCustomers.set(customer.customer_phone, {
+              name: customer.customer_name,
+              phone: customer.customer_phone,
+              id: customer.id
+            })
+          }
+        })
+        setAllCustomers(Array.from(uniqueCustomers.values()))
+      }
+    } catch (err) {
+      console.error('Failed to fetch customers:', err)
+    }
+  }
+
+  const handleBarcodeScanned = async (barcode: string) => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      console.log('[POS] Barcode scanned:', barcode)
+
+      // Search for product by barcode or IMEI
+      const response = await fetch(`/api/products?store_id=${storeId}&barcode=${encodeURIComponent(barcode)}`)
+      const result = await response.json()
+
+      if (result.success && result.data.length > 0) {
+        const product = result.data[0]
+        
+        // If it's a phone with IMEI match, we need to handle it specially
+        if (product.is_phone && result.imei_match) {
+          // Add to cart with specific IMEI
+          const cartItem = { product, quantity: 1, imei_numbers: [barcode] }
+          const existingIndex = cart.findIndex(item => item.product.id === product.id)
+          
+          if (existingIndex >= 0) {
+            // Update existing cart item
+            const newCart = [...cart]
+            newCart[existingIndex] = {
+              ...newCart[existingIndex],
+              quantity: newCart[existingIndex].quantity + 1,
+              imei_numbers: [...(newCart[existingIndex].imei_numbers || []), barcode]
+            }
+            setCart(newCart)
+          } else {
+            setCart([...cart, cartItem])
+          }
+          
+          console.log('[POS] ✓ Phone added with IMEI:', barcode)
+        } else {
+          // Regular product - add to cart
+          addToCart(product)
+          console.log('[POS] ✓ Product added:', product.name)
+        }
+
+        // Clear search
+        setSearchTerm('')
+        setError('')
+      } else {
+        console.log('[POS] ✗ Product not found for barcode:', barcode)
+        setError(`Product not found for barcode: ${barcode}`)
+        setTimeout(() => setError(''), 3000)
+      }
+    } catch (err) {
+      console.error('[POS] Barcode scan error:', err)
+      setError('Failed to scan barcode')
+      setTimeout(() => setError(''), 3000)
+    }
+  }
+
+  const handleCustomerSearch = (searchValue: string) => {
+    setCustomerDetails({ ...customerDetails, name: searchValue })
+    
+    if (searchValue.trim() === '') {
+      setCustomerSearchResults([])
+      setShowCustomerResults(false)
+      return
+    }
+
+    // Search by name or phone
+    const results = allCustomers.filter(customer => 
+      customer.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+      customer.phone.includes(searchValue)
+    ).slice(0, 5) // Limit to 5 results
+
+    setCustomerSearchResults(results)
+    setShowCustomerResults(results.length > 0)
+  }
+
+  const selectCustomer = (customer: any) => {
+    setCustomerDetails({
+      name: customer.name,
+      phone: customer.phone,
+      cnic: ''
+    })
+    setShowCustomerResults(false)
+  }
+
+  const clearCustomer = () => {
+    setCustomerDetails({ name: '', phone: '', cnic: '' })
+    setCustomerSearchResults([])
+    setShowCustomerResults(false)
+  }
 
   const loadSelectedCashier = () => {
     const savedCashier = localStorage.getItem('selected_cashier')
@@ -350,6 +510,14 @@ export default function POSPage() {
 
     // If entered amount < lowest negotiable: show Khaata modal
     if (paid < lowestNegotiable) {
+      // Pre-fill with existing customer details if available
+      if (customerDetails.name || customerDetails.phone) {
+        setPartialPaymentData({
+          customerName: customerDetails.name,
+          customerPhone: customerDetails.phone,
+          salePrice: '' // Only ask for sale price
+        })
+      }
       setShowPartialPaymentModal(true)
       setError('')
       return
@@ -366,6 +534,14 @@ export default function POSPage() {
   }
 
   const handleGoToPartialPayment = () => {
+    // Pre-fill with existing customer details if available
+    if (customerDetails.name || customerDetails.phone) {
+      setPartialPaymentData({
+        customerName: customerDetails.name,
+        customerPhone: customerDetails.phone,
+        salePrice: '' // Only ask for sale price
+      })
+    }
     setShowPartialPaymentModal(true)
     // Fetch existing customers when modal opens
     fetchExistingCustomers('')
@@ -419,7 +595,7 @@ export default function POSPage() {
     setShowPartialPaymentConfirm(false)
     const total = calculateTotal()
     const paid = parseFloat(amountPaid) || 0
-    setError(`Insufficient payment. Total: $${total.toFixed(2)}, Paid: $${paid.toFixed(2)}`)
+    setError(`Insufficient payment. Total: Rs. ${total.toFixed(2)}, Paid: Rs. ${paid.toFixed(2)}`)
   }
 
   const processSaleTransaction = async (partialPaymentCustomer: any, discountAmount: number = 0) => {
@@ -475,6 +651,10 @@ export default function POSPage() {
         store_id: storeId,
         discount_type: discountAmount > 0 ? 'amount' : 'none',
         discount_value: discountAmount,
+        // Add customer details if provided
+        customer_name: customerDetails.name.trim() || null,
+        customer_phone: customerDetails.phone.trim() || null,
+        customer_cnic: customerDetails.cnic.trim() || null,
       }
       
       console.log('[POS] Sending sale data to API:', JSON.stringify(saleData, null, 2))
@@ -502,7 +682,9 @@ export default function POSPage() {
         setShowPartialPaymentModal(false)
         setPartialPaymentData({ customerName: '', customerPhone: '', salePrice: '' })
         setPartialPaymentError('')
+        clearCustomer() // Clear customer details
         fetchProducts() // Refresh product stock
+        fetchAllCustomers() // Refresh customer list
       } else {
         console.error('[POS] ❌ Sale failed:', result.error)
         console.error('[POS] Error code:', result.code)
@@ -544,7 +726,7 @@ export default function POSPage() {
     // Check against lowest negotiable
     const lowestNegotiable = calculateLowestNegotiable()
     if (salePriceNum < lowestNegotiable) {
-      setPartialPaymentError(`Sale price ($${salePriceNum.toFixed(2)}) cannot be below the minimum acceptable price ($${lowestNegotiable.toFixed(2)})`)
+      setPartialPaymentError(`Sale price (Rs. ${salePriceNum.toFixed(2)}) cannot be below the minimum acceptable price (Rs. ${lowestNegotiable.toFixed(2)})`)
       return
     }
 
@@ -568,11 +750,11 @@ export default function POSPage() {
 
   if (showReceipt && lastSale) {
     return (
-      <div className="max-w-2xl mx-auto p-4">
-        <div className="bg-white p-6 rounded border border-gray-200" id="receipt">
+      <div className={`max-w-2xl mx-auto p-4 ${isDarkMode ? 'bg-gray-900' : ''}`}>
+        <div className={`p-6 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`} id="receipt">
           <div className="text-center mb-5">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">POS System</h1>
-            <h2 className="text-lg text-gray-700">Sales Receipt</h2>
+            <h1 className={`text-2xl font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>POS System</h1>
+            <h2 className={`text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Sales Receipt</h2>
           </div>
 
           <div className="mb-5 border-t border-b border-gray-200 py-4">
@@ -682,11 +864,11 @@ export default function POSPage() {
             )}
             <div className="flex justify-between text-lg font-bold mb-2 text-gray-900">
               <span>Total:</span>
-              <span>${lastSale.total_amount.toFixed(2)}</span>
+              <span>Rs. {lastSale.total_amount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between mb-2 text-sm">
               <span className="text-gray-600">Amount Paid:</span>
-              <span className="text-gray-900">${lastSale.amount_paid.toFixed(2)}</span>
+              <span className="text-gray-900">Rs. {lastSale.amount_paid.toFixed(2)}</span>
             </div>
             {lastSale.payment_status === 'Partial' ? (
               <div className="flex justify-between text-base font-medium text-red-600">
@@ -747,10 +929,20 @@ export default function POSPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
+                ref={searchInputRef}
                 type="text"
-                placeholder="Search products by name or SKU..."
+                placeholder="Search products by name, SKU, or scan barcode..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && searchTerm.trim().length > 0) {
+                    e.preventDefault()
+                    // Try as barcode first
+                    handleBarcodeScanned(searchTerm.trim())
+                  }
+                }}
+                autoFocus
+                autoComplete="off"
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
               />
             </div>
@@ -770,7 +962,7 @@ export default function POSPage() {
                           {product.sku} • Stock: {product.stock_quantity}
                         </p>
                       </div>
-                      <p className="font-medium text-sm">${(product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)}</p>
+                      <p className="font-medium text-sm">Rs. {(product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)}</p>
                     </div>
                   </button>
                 ))}
@@ -778,8 +970,91 @@ export default function POSPage() {
             )}
           </div>
 
+          {/* Customer Details Section */}
+          <div className="bg-white rounded border border-gray-200 mt-4">
+            <div className="p-3 bg-gray-50 border-b border-gray-200">
+              <h2 className="text-base font-bold text-gray-900">Customer Details (Optional)</h2>
+              <p className="text-xs text-gray-600 mt-1">Link this sale to a customer for tracking</p>
+            </div>
+
+            <div className="p-3 space-y-3">
+              {/* Customer Search/Name */}
+              <div className="relative" ref={customerSearchRef}>
+                <label className="block mb-1 text-xs font-medium text-gray-700">
+                  Customer Name
+                </label>
+                <input
+                  type="text"
+                  value={customerDetails.name}
+                  onChange={(e) => handleCustomerSearch(e.target.value)}
+                  onFocus={() => {
+                    if (customerSearchResults.length > 0) {
+                      setShowCustomerResults(true)
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  placeholder="Search or enter new customer name"
+                />
+                
+                {/* Customer Search Results Dropdown */}
+                {showCustomerResults && customerSearchResults.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                    {customerSearchResults.map((customer, index) => (
+                      <button
+                        key={index}
+                        onClick={() => selectCustomer(customer)}
+                        className="w-full text-left px-3 py-2 hover:bg-cyan-50 border-b border-gray-200 last:border-b-0"
+                      >
+                        <div className="text-sm font-medium text-gray-900">{customer.name}</div>
+                        <div className="text-xs text-gray-600">{customer.phone}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Customer Phone */}
+              <div>
+                <label className="block mb-1 text-xs font-medium text-gray-700">
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={customerDetails.phone}
+                  onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  placeholder="e.g., 03001234567"
+                />
+              </div>
+
+              {/* Customer CNIC */}
+              <div>
+                <label className="block mb-1 text-xs font-medium text-gray-700">
+                  CNIC (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={customerDetails.cnic}
+                  onChange={(e) => setCustomerDetails({ ...customerDetails, cnic: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  placeholder="e.g., 12345-1234567-1"
+                />
+              </div>
+
+              {/* Clear Customer Button */}
+              {(customerDetails.name || customerDetails.phone || customerDetails.cnic) && (
+                <button
+                  onClick={clearCustomer}
+                  className="w-full px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 border border-gray-300 rounded transition-colors"
+                >
+                  Clear Customer Details
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Cart */}
-          <div className="bg-white rounded border border-gray-200">
+          <div className="bg-white rounded border border-gray-200 mt-4">
             <div className="p-3 bg-cyan-50 border-b border-gray-200 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <ShoppingCart size={18} className="text-cyan-600" />
@@ -814,7 +1089,7 @@ export default function POSPage() {
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">{item.product.name}</p>
                           <p className="text-xs text-gray-600">
-                            ${(item.product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)} each
+                            Rs. {(item.product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)} each
                           </p>
                           {item.product.is_phone && (
                             <div className="mt-1">
@@ -870,7 +1145,7 @@ export default function POSPage() {
                           </div>
 
                           <p className="font-medium w-20 text-right text-sm">
-                            ${((item.product.aggregated_stock?.aggregated_selling_price || 0) * item.quantity).toFixed(2)}
+                            Rs. {((item.product.aggregated_stock?.aggregated_selling_price || 0) * item.quantity).toFixed(2)}
                           </p>
 
                           <button
@@ -902,9 +1177,9 @@ export default function POSPage() {
 
             <div className="mb-4">
               <p className="text-xs text-gray-600 mb-1">Total Amount</p>
-              <p className="text-2xl font-bold text-gray-900">${total.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">Rs. {total.toFixed(2)}</p>
               <p className="text-xs text-orange-600 mt-1">
-                Min. Acceptable: ${calculateLowestNegotiable().toFixed(2)}
+                Min. Acceptable: Rs. {calculateLowestNegotiable().toFixed(2)}
               </p>
             </div>
 
@@ -972,7 +1247,7 @@ export default function POSPage() {
             {amountPaid && parseFloat(amountPaid) >= total && (
               <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded">
                 <p className="text-xs text-gray-600 mb-1">Change</p>
-                <p className="text-xl font-bold text-gray-900">${change.toFixed(2)}</p>
+                <p className="text-xl font-bold text-gray-900">Rs. {change.toFixed(2)}</p>
               </div>
             )}
 
@@ -1035,7 +1310,7 @@ export default function POSPage() {
                   <div>
                     <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
                       <p className="text-orange-800 font-medium">
-                        ⚠️ Amount is below minimum price (${lowestNegotiable.toFixed(2)})
+                        ⚠️ Amount is below minimum price (Rs. {lowestNegotiable.toFixed(2)})
                       </p>
                       <p className="text-orange-700 text-xs mt-1">
                         Only Khaata (customer credit) option is available
@@ -1060,32 +1335,32 @@ export default function POSPage() {
 
       {/* Discount or Partial Payment Choice Modal */}
       {showPartialPaymentConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5 shadow-xl">
-            <div className="mb-5">
-              <h2 className="text-lg font-bold text-gray-900 mb-2">Insufficient Payment</h2>
-              <p className="text-gray-600 text-sm">The entered amount is less than the total. How would you like to proceed?</p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg border border-gray-300 max-w-sm w-full p-4 shadow-2xl">
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-1">Insufficient Payment</h2>
+              <p className="text-gray-600 text-xs">The entered amount is less than the total. How would you like to proceed?</p>
             </div>
             
             <div className="mb-5 p-4 border border-gray-200 rounded bg-gray-50">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total Amount:</span>
-                  <span className="font-semibold text-gray-900">${calculateTotal().toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">Rs. {calculateTotal().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Lowest Negotiable:</span>
-                  <span className="font-medium text-orange-600">${calculateLowestNegotiable().toFixed(2)}</span>
+                  <span className="font-medium text-orange-600">Rs. {calculateLowestNegotiable().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-semibold text-gray-900">${(parseFloat(amountPaid) || 0).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">Rs. {(parseFloat(amountPaid) || 0).toFixed(2)}</span>
                 </div>
                 <div className="border-t border-gray-300 pt-2 mt-2"></div>
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-900">Remaining Amount:</span>
                   <span className="font-bold text-lg text-orange-600">
-                    ${(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
+                    Rs. {(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -1129,11 +1404,11 @@ export default function POSPage() {
 
       {/* Partial Payment Customer Information Modal */}
       {showPartialPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5 shadow-xl">
-            <div className="mb-5">
-              <h2 className="text-lg font-bold text-gray-900 mb-2">Khaata - Customer Information</h2>
-              <p className="text-red-600 text-sm">Please enter customer details and sale price for credit tracking.</p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg border border-gray-300 max-w-sm w-full p-4 shadow-2xl">
+            <div className="mb-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-1">Khaata - Customer Information</h2>
+              <p className="text-red-600 text-xs">Please enter customer details and sale price for credit tracking.</p>
             </div>
 
             {/* Validation Error */}
@@ -1147,17 +1422,17 @@ export default function POSPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total Amount:</span>
-                  <span className="font-semibold text-gray-900">${calculateTotal().toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">Rs. {calculateTotal().toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-semibold text-gray-900">${(parseFloat(amountPaid) || 0).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">Rs. {(parseFloat(amountPaid) || 0).toFixed(2)}</span>
                 </div>
                 <div className="border-t border-gray-300 pt-2 mt-2"></div>
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-900">Amount Due:</span>
                   <span className="font-bold text-lg text-gray-900">
-                    ${(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
+                    Rs. {(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -1241,7 +1516,7 @@ export default function POSPage() {
                   placeholder="Enter sale price"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Minimum: ${calculateLowestNegotiable().toFixed(2)} (Lowest Negotiable)
+                  Minimum: Rs. {calculateLowestNegotiable().toFixed(2)} (Lowest Negotiable)
                 </p>
               </div>
             </div>

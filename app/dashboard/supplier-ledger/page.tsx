@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, Edit, Trash2, ChevronDown, ChevronRight, Package } from 'lucide-react'
+import { Search, Edit, Trash2, ChevronDown, ChevronRight, Package, DollarSign } from 'lucide-react'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
 
@@ -60,6 +60,15 @@ export default function SupplierKhaataPage() {
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     amount_paid: '',
+    notes: ''
+  })
+
+  // Pay Dues modal states
+  const [showPayDuesModal, setShowPayDuesModal] = useState(false)
+  const [selectedForPayment, setSelectedForPayment] = useState<any>(null)
+  const [paymentFormData, setPaymentFormData] = useState({
+    payment_amount: '',
+    payment_method: 'Cash',
     notes: ''
   })
 
@@ -193,6 +202,50 @@ export default function SupplierKhaataPage() {
     setError('')
   }
 
+  const handlePayDues = async () => {
+    if (!selectedForPayment) return
+
+    const paymentAmount = parseFloat(paymentFormData.payment_amount)
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      setError('Please enter a valid payment amount')
+      return
+    }
+
+    if (paymentAmount > selectedForPayment.amount_remaining) {
+      setError('Payment amount cannot exceed remaining balance')
+      return
+    }
+
+    try {
+      const payload = {
+        supplier_id: selectedForPayment.supplier_id,
+        payment_amount: paymentAmount,
+        payment_method: paymentFormData.payment_method,
+        notes: paymentFormData.notes.trim() || null,
+        store_id: getStoreId()
+      }
+
+      const response = await fetch('/api/supplier-khaata-payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setShowPayDuesModal(false)
+        setSelectedForPayment(null)
+        setPaymentFormData({ payment_amount: '', payment_method: 'Cash', notes: '' })
+        fetchSuppliers()
+      } else {
+        setError(result.error || 'Failed to record payment')
+      }
+    } catch (err) {
+      setError('Failed to record payment: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    }
+  }
+
   const confirmDelete = async () => {
     if (!selectedRecord) return
 
@@ -297,8 +350,26 @@ export default function SupplierKhaataPage() {
                             {supplier.transactions.length}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          {isExpanded ? <ChevronDown className="text-gray-400" size={16} /> : <ChevronRight className="text-gray-400" size={16} />}
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-2 justify-center">
+                            {supplier.amount_remaining > 0 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedForPayment(supplier)
+                                  setPaymentFormData({ payment_amount: '', payment_method: 'Cash', notes: '' })
+                                  setShowPayDuesModal(true)
+                                  setError('')
+                                }}
+                                className="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 flex items-center gap-1"
+                                title="Pay Dues"
+                              >
+                                <DollarSign size={14} />
+                                Pay Dues
+                              </button>
+                            )}
+                            {isExpanded ? <ChevronDown className="text-gray-400" size={16} /> : <ChevronRight className="text-gray-400" size={16} />}
+                          </div>
                         </td>
                       </tr>
 
@@ -473,6 +544,94 @@ export default function SupplierKhaataPage() {
           </div>
         </div>
       )}
+
+      {/* Pay Dues Modal */}
+      {showPayDuesModal && selectedForPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded border border-gray-200 p-5 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Pay Supplier Dues</h2>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+
+            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+              <p className="text-sm text-gray-900"><strong>Supplier:</strong> {selectedForPayment.supplier_name}</p>
+              <p className="text-sm text-gray-900"><strong>Phone:</strong> {selectedForPayment.supplier_phone}</p>
+              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> Rs. {selectedForPayment.total_amount.toLocaleString()}</p>
+              <p className="text-sm text-gray-900"><strong>Amount Paid:</strong> Rs. {selectedForPayment.amount_paid.toLocaleString()}</p>
+              <p className="text-sm text-red-600 font-semibold"><strong>Remaining Balance:</strong> Rs. {selectedForPayment.amount_remaining.toLocaleString()}</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">Payment Amount <span className="text-red-600">*</span></label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max={selectedForPayment.amount_remaining}
+                  value={paymentFormData.payment_amount}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  placeholder="Enter payment amount"
+                />
+                {paymentFormData.payment_amount && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    New Remaining: Rs. {(selectedForPayment.amount_remaining - parseFloat(paymentFormData.payment_amount || '0')).toLocaleString()}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">Payment Method <span className="text-red-600">*</span></label>
+                <select
+                  value={paymentFormData.payment_method}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Check">Check</option>
+                  <option value="Digital">Digital</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">Notes</label>
+                <textarea
+                  value={paymentFormData.notes}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  rows={3}
+                  placeholder="Add any notes..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => {
+                  setShowPayDuesModal(false)
+                  setError('')
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePayDues}
+                className="flex-1 px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+              >
+                Confirm Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
+

@@ -31,6 +31,22 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
   const [history, setHistory] = useState<StockBatch[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Dark mode detection
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('dark_mode')
+    if (savedDarkMode) {
+      setIsDarkMode(savedDarkMode === 'true')
+    }
+    
+    const handleDarkModeChange = (event: any) => {
+      setIsDarkMode(event.detail.isDarkMode)
+    }
+    
+    window.addEventListener('darkModeChange', handleDarkModeChange)
+    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
+  }, [])
 
   useEffect(() => {
     fetchRestockHistory()
@@ -55,16 +71,22 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border-2 border-black w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b-2 border-black sticky top-0 bg-white">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className={`rounded-lg border w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl ${
+        isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'
+      }`}>
+        <div className={`flex justify-between items-center p-5 border-b sticky top-0 ${
+          isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        }`}>
           <div>
-            <h2 className="text-2xl font-bold">Restock History</h2>
-            <p className="text-sm text-text-secondary mt-1">{productName}</p>
+            <h2 className="text-xl font-semibold">Restock History</h2>
+            <p className="text-xs text-text-secondary mt-1">{productName}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-200 rounded transition-colors"
+            className={`p-1 rounded transition-colors ${
+              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
+            }`}
           >
             <X size={24} />
           </button>
@@ -94,12 +116,17 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
                   <div
                     key={record.id}
                     className={`border-2 rounded p-4 ${
-                      isLatest ? 'border-black bg-gray-50' : 'border-gray-300'
+                      isLatest 
+                        ? isDarkMode ? 'border-gray-500 bg-gray-750' : 'border-black bg-gray-50' 
+                        : isDarkMode ? 'border-gray-600' : 'border-gray-300'
                     }`}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className={`p-2 rounded ${isLatest ? 'bg-black text-white' : 'bg-gray-200'}`}>
+                        <div className={`p-2 rounded ${isLatest 
+                          ? 'bg-black text-white' 
+                          : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                        }`}>
                           <Package size={20} />
                         </div>
                         <div>
@@ -155,19 +182,27 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-3 border-t border-gray-300">
+                    <div className={`grid grid-cols-2 md:grid-cols-3 gap-4 pt-3 border-t ${
+                      isDarkMode ? 'border-gray-600' : 'border-gray-300'
+                    }`}>
                       <div>
-                        <div className="text-xs text-text-secondary mb-1">Cost Price</div>
-                        <div className="font-medium">${record.cost_price.toFixed(2)}</div>
+                        <div className={`text-xs mb-1 ${
+                          isDarkMode ? 'text-gray-400' : 'text-text-secondary'
+                        }`}>Cost Price</div>
+                        <div className="font-medium">Rs. {record.cost_price.toFixed(2)}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-text-secondary mb-1">Selling Price</div>
-                        <div className="font-medium">${record.selling_price.toFixed(2)}</div>
+                        <div className={`text-xs mb-1 ${
+                          isDarkMode ? 'text-gray-400' : 'text-text-secondary'
+                        }`}>Selling Price</div>
+                        <div className="font-medium">Rs. {record.selling_price.toFixed(2)}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-text-secondary mb-1">Profit/Unit</div>
+                        <div className={`text-xs mb-1 ${
+                          isDarkMode ? 'text-gray-400' : 'text-text-secondary'
+                        }`}>Profit/Unit</div>
                         <div className="font-medium text-status-success">
-                          ${(record.selling_price - record.cost_price).toFixed(2)}
+                          Rs. {(record.selling_price - record.cost_price).toFixed(2)}
                         </div>
                       </div>
                     </div>
@@ -216,7 +251,9 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
           )}
         </div>
 
-        <div className="p-6 border-t-2 border-black bg-gray-50">
+        <div className={`p-6 border-t-2 ${
+          isDarkMode ? 'border-gray-600 bg-gray-750' : 'border-black bg-gray-50'
+        }`}>
           <button
             onClick={onClose}
             className="w-full px-6 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors font-medium"

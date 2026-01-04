@@ -303,7 +303,7 @@ export default function InventoryPage() {
           
           <button
             onClick={() => setIsRestockModalOpen(true)}
-            className="flex items-center gap-2 bg-white border border-gray-300 px-3 py-2 rounded text-sm hover:bg-gray-50 transition-colors"
+            className={`flex items-center gap-2 border px-3 py-2 rounded text-sm transition-colors ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
           >
             <Package size={16} />
             Restock
@@ -332,17 +332,17 @@ export default function InventoryPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white p-3 rounded border border-gray-200 mb-4">
+      <div className={`p-3 rounded border mb-4 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
             <input
               type="text"
               placeholder="Search by name or SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+              className={`w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
             />
           </div>
 
@@ -350,7 +350,7 @@ export default function InventoryPage() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+            className={`px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
@@ -359,7 +359,7 @@ export default function InventoryPage() {
           </select>
 
           {/* Low Stock Filter */}
-          <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded text-sm cursor-pointer hover:bg-gray-50">
+          <label className={`flex items-center gap-2 px-3 py-2 border rounded text-sm cursor-pointer ${isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-50'}`}>
             <input
               type="checkbox"
               checked={showLowStock}
@@ -377,10 +377,10 @@ export default function InventoryPage() {
       </div>
 
       {/* Products Table */}
-      <div className="bg-white rounded border border-gray-200 overflow-hidden">
+      <div className={`rounded border overflow-hidden ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
+            <thead className={`border-b ${isDarkMode ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
               <tr>
                 <th className="px-3 py-2.5 text-left text-sm font-semibold">SKU</th>
                 <th className="px-3 py-2.5 text-left text-sm font-semibold">Name</th>
@@ -431,13 +431,13 @@ export default function InventoryPage() {
                         </td>
                         <td className="px-3 py-3 text-right hidden lg:table-cell">
                           <span className="font-medium text-sm text-gray-900">
-                            ${(product.aggregated_stock?.aggregated_lowest_negotiable || 0).toFixed(2)}
+                            Rs. {(product.aggregated_stock?.aggregated_lowest_negotiable || 0).toFixed(2)}
                           </span>
                         </td>
                         <td className="px-3 py-3 text-right hidden lg:table-cell">
                           {product.aggregated_stock?.aggregated_selling_price ? (
                             <span className="font-medium text-green-600 text-sm">
-                              ${product.aggregated_stock.aggregated_selling_price.toFixed(2)}
+                              Rs. {product.aggregated_stock.aggregated_selling_price.toFixed(2)}
                             </span>
                           ) : (
                             <span className="text-gray-400 text-xs">-</span>
@@ -509,21 +509,21 @@ export default function InventoryPage() {
                                   <div className="grid grid-cols-2 gap-3 mt-4">
                                     <div>
                                       <span className="text-gray-600 text-xs">Cost Price:</span>
-                                      <p className="font-medium text-sm text-gray-900">${(product.aggregated_stock?.aggregated_cost_price || 0).toFixed(2)}</p>
+                                      <p className="font-medium text-sm text-gray-900">Rs. {(product.aggregated_stock?.aggregated_cost_price || 0).toFixed(2)}</p>
                                     </div>
                                     
                                     {profitMargin && (
                                       <div>
                                         <span className="text-gray-600 text-xs">Profit Margin:</span>
                                         <p className="font-medium text-green-600 text-sm">
-                                          ${profitMargin.profit.toFixed(2)} ({profitMargin.margin.toFixed(1)}%)
+                                          Rs. {profitMargin.profit.toFixed(2)} ({profitMargin.margin.toFixed(1)}%)
                                         </p>
                                       </div>
                                     )}
                                     
                                     <div>
                                       <span className="text-gray-600 text-xs">Stock Value:</span>
-                                      <p className="font-medium text-sm text-gray-900">${stockValue.toFixed(2)}</p>
+                                      <p className="font-medium text-sm text-gray-900">Rs. {stockValue.toFixed(2)}</p>
                                     </div>
                                     
                                     <div>
@@ -591,13 +591,13 @@ export default function InventoryPage() {
                                               <div>
                                                 <span className="text-gray-600">Cost Price:</span>
                                                 <div className="font-medium text-gray-900">
-                                                  ${batch.cost_price.toFixed(2)}
+                                                  Rs. {batch.cost_price.toFixed(2)}
                                                 </div>
                                               </div>
                                               <div>
                                                 <span className="text-gray-600">Target Price:</span>
                                                 <div className="font-medium text-gray-900">
-                                                  ${(batch.selling_price || 0).toFixed(2)}
+                                                  Rs. {(batch.selling_price || 0).toFixed(2)}
                                                 </div>
                                               </div>
                                             </div>

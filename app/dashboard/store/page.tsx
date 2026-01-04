@@ -353,8 +353,8 @@ export default function StorePage() {
     <>
       <div className="flex justify-between items-center mb-5">
         <div>
-          <h1 className="text-2xl font-bold mb-1.5">Store Management</h1>
-          <p className="text-sm text-text-secondary">Manage users, categories, and store settings</p>
+          <h1 className={`text-2xl font-bold mb-1.5 ${isDarkMode ? 'text-white' : ''}`}>Store Management</h1>
+          <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-text-secondary'}`}>Manage users, categories, and store settings</p>
         </div>
       </div>
 
@@ -365,16 +365,15 @@ export default function StorePage() {
       )}
 
       {/* Tab Navigation */}
-      <div className="mb-5 border-b border-gray-200">
+      <div className={`mb-5 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex gap-1">
           <button
             onClick={() => setActiveTab('users')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'users'
-                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
-                : 'border-transparent hover:bg-gray-50 text-gray-600'
-            }`}
-          >
+                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
+                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+            }`}>
             <Users size={16} />
             Users
           </button>
@@ -382,10 +381,9 @@ export default function StorePage() {
             onClick={() => setActiveTab('categories')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'categories'
-                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
-                : 'border-transparent hover:bg-gray-50 text-gray-600'
-            }`}
-          >
+                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
+                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+            }`}>
             <Grid size={16} />
             Categories
           </button>
@@ -393,10 +391,9 @@ export default function StorePage() {
             onClick={() => setActiveTab('info')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'info'
-                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
-                : 'border-transparent hover:bg-gray-50 text-gray-600'
-            }`}
-          >
+                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
+                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+            }`}>
             <Store size={16} />
             Store Info
           </button>
@@ -404,10 +401,9 @@ export default function StorePage() {
             onClick={() => setActiveTab('cashiers')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'cashiers'
-                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
-                : 'border-transparent hover:bg-gray-50 text-gray-600'
-            }`}
-          >
+                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
+                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+            }`}>
             <User size={16} />
             Cashiers
           </button>
@@ -415,10 +411,9 @@ export default function StorePage() {
             onClick={() => setActiveTab('suppliers')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'suppliers'
-                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
-                : 'border-transparent hover:bg-gray-50 text-gray-600'
-            }`}
-          >
+                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
+                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+            }`}>
             <Users size={16} />
             Suppliers
           </button>
@@ -426,10 +421,9 @@ export default function StorePage() {
             onClick={() => setActiveTab('initial-stock')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'initial-stock'
-                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
-                : 'border-transparent hover:bg-gray-50 text-gray-600'
-            }`}
-          >
+                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
+                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+            }`}>
             <Plus size={16} />
             Initial Stock
           </button>
@@ -437,7 +431,7 @@ export default function StorePage() {
             onClick={() => setActiveTab('expenses')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'expenses'
-                ? 'border-cyan-600 bg-cyan-50 text-cyan-700'
+                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
                 : 'border-transparent hover:bg-gray-50 text-gray-600'
             }`}
           >
@@ -1183,7 +1177,7 @@ function CategoryModal({ category, onClose }: any) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded border border-gray-200 w-full max-w-md">
         <div className="p-3 bg-gray-50 border-b border-gray-200 text-gray-900 flex justify-between items-center">
           <h2 className="text-lg font-bold">{category ? 'Edit Category' : 'Add Category'}</h2>
@@ -1309,7 +1303,7 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded border border-gray-200 w-full max-w-md">
         <div className="p-3 bg-gray-50 border-b border-gray-200 text-gray-900 flex justify-between items-center">
           <h2 className="text-lg font-bold">{subcategory ? 'Edit Subcategory' : 'Add Subcategory'}</h2>
@@ -1595,7 +1589,7 @@ function CashierModal({ cashier, onClose }: { cashier: Cashier | null, onClose: 
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded border border-gray-200 w-full max-w-md">
         <div className="p-4 border-b-2 border-black flex justify-between items-center">
           <h2 className="text-lg font-bold">{cashier ? 'Edit Cashier' : 'Add Cashier'}</h2>

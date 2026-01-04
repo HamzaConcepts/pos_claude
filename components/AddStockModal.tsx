@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Plus, Search } from 'lucide-react'
+import { X, Plus, Search, AlertCircle } from 'lucide-react'
 import { getStoreId } from '@/lib/supabase'
 
 interface Category {
@@ -36,6 +36,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
     subcategory_id: '',
     name: '',
     description: '',
+    barcode: '', // Barcode for non-phone products
     
     // Step 2: Pricing
     cost_price: '',
@@ -65,6 +66,22 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [generatedSKU, setGeneratedSKU] = useState('')
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Dark mode detection
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('dark_mode')
+    if (savedDarkMode) {
+      setIsDarkMode(savedDarkMode === 'true')
+    }
+    
+    const handleDarkModeChange = (event: any) => {
+      setIsDarkMode(event.detail.isDarkMode)
+    }
+    
+    window.addEventListener('darkModeChange', handleDarkModeChange)
+    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
+  }, [])
 
   useEffect(() => {
     fetchCategories()
@@ -343,9 +360,10 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
         category_id: parseInt(formData.category_id),
         subcategory_id: formData.subcategory_id ? parseInt(formData.subcategory_id) : null,
         is_phone: isPhoneCategory,
+        barcode: !isPhoneCategory && formData.barcode ? formData.barcode.trim() : null, // Only for non-phone products
         
-        // Stock information
-        low_stock_threshold: parseInt(formData.low_stock_threshold) || 10,
+        // Stock information - allow 0 as valid value
+        low_stock_threshold: formData.low_stock_threshold !== '' ? parseInt(formData.low_stock_threshold) : 10,
       }
 
       const productResponse = await fetch('/api/products', {
@@ -361,9 +379,16 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
 
       const productId = productResult.data.id
 
-      // Step 3: Create stock batch with payment info
+      // Step 3: Validate supplier info if partial payment
       const totalAmount = parseFloat(formData.cost_price) * parseInt(formData.quantity)
       const amountPaid = formData.amount_paid ? parseFloat(formData.amount_paid) : 0
+      
+      // Supplier info is required when partial payment
+      if (amountPaid < totalAmount && !formData.supplier_phone) {
+        setError('Supplier information is required when making partial payment')
+        setLoading(false)
+        return
+      }
       
       const batchPayload = {
         product_id: productId,
@@ -430,18 +455,26 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border-2 border-black w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b-2 border-black">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className={`rounded-lg border w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl ${
+        isDarkMode 
+          ? 'bg-gray-800 border-gray-700 text-white' 
+          : 'bg-white border-gray-300'
+      }`}>
+        <div className={`flex justify-between items-center p-5 border-b ${
+          isDarkMode ? 'border-gray-700' : 'border-gray-200'
+        }`}>
           <div>
-            <h2 className="text-2xl font-bold">Add Stock</h2>
-            <p className="text-sm text-text-secondary mt-1">
+            <h2 className="text-xl font-semibold">Add Stock</h2>
+            <p className="text-xs text-text-secondary mt-1">
               Step {step} of {isPhoneCategory ? 4 : 3}
             </p>
           </div>
           <button
             onClick={() => onClose(false)}
-            className="p-1 hover:bg-gray-200 rounded transition-colors"
+            className={`p-1 rounded transition-colors ${
+              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
+            }`}
             disabled={loading}
           >
             <X size={24} />
@@ -454,7 +487,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
           </div>
         )}
 
-        <form className="p-6">
+        <form className="p-6" onSubmit={(e) => e.preventDefault()}>
           {/* Step 1: Product Information */}
           {step === 1 && (
             <div className="space-y-4">
@@ -464,7 +497,11 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 <label className="block mb-2 font-medium">
                   SKU (Auto-generated)
                 </label>
-                <div className="w-full px-3 py-2 border-2 border-gray-300 rounded bg-gray-100 font-mono text-text-secondary">
+                <div className={`w-full px-3 py-2 border-2 rounded font-mono ${
+                  isDarkMode
+                    ? 'border-gray-600 bg-gray-700 text-gray-400'
+                    : 'border-gray-300 bg-gray-100 text-text-secondary'
+                }`}>
                   {generatedSKU || 'Loading...'}
                 </div>
               </div>
@@ -477,7 +514,19 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   id="category_id"
                   value={formData.category_id}
                   onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (formData.category_id) {
+                        document.getElementById('subcategory_id')?.focus() || document.getElementById('name')?.focus()
+                      }
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300'
+                  }`}
                   disabled={loading}
                 >
                   <option value="">Select a category</option>
@@ -498,7 +547,17 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                     id="subcategory_id"
                     value={formData.subcategory_id}
                     onChange={(e) => setFormData({ ...formData, subcategory_id: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        document.getElementById('name')?.focus()
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                      isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300'
+                    }`}
                     disabled={loading || subcategories.length === 0}
                   >
                     <option value="">Select a subcategory (optional)</option>
@@ -520,7 +579,17 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      document.getElementById('description')?.focus()
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300'
+                  }`}
                   disabled={loading}
                   placeholder="Enter product name"
                 />
@@ -534,12 +603,59 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      if (!isPhoneCategory) {
+                        document.getElementById('barcode')?.focus()
+                      } else {
+                        const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
+                        nextBtn?.click()
+                      }
+                    }
+                  }}
                   rows={3}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300'
+                  }`}
                   disabled={loading}
                   placeholder="Optional product description"
                 />
               </div>
+
+              {/* Barcode field - only for non-phone products */}
+              {!isPhoneCategory && (
+                <div>
+                  <label htmlFor="barcode" className="block mb-2 font-medium">
+                    Barcode <span className="text-text-secondary font-normal">(Optional - Auto-generated if empty)</span>
+                  </label>
+                  <input
+                    id="barcode"
+                    type="text"
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
+                        nextBtn?.click()
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                      isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300'
+                    }`}
+                    disabled={loading}
+                    placeholder="Leave empty to auto-generate"
+                  />
+                  <p className="text-xs text-text-secondary mt-1">
+                    If left empty, a unique barcode will be automatically generated for this product
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -559,7 +675,17 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   min="0"
                   value={formData.cost_price}
                   onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      document.getElementById('selling_price')?.focus()
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300'
+                  }`}
                   disabled={loading}
                   placeholder="Purchase price"
                 />
@@ -579,7 +705,17 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   min="0"
                   value={formData.selling_price}
                   onChange={(e) => setFormData({ ...formData, selling_price: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      document.getElementById('lowest_negotiable_price')?.focus()
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300'
+                  }`}
                   disabled={loading}
                   placeholder="Regular selling price"
                 />
@@ -596,7 +732,18 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   min="0"
                   value={formData.lowest_negotiable_price}
                   onChange={(e) => setFormData({ ...formData, lowest_negotiable_price: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
+                      nextBtn?.click()
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300'
+                  }`}
                   disabled={loading}
                   placeholder="Lowest negotiable price"
                 />
@@ -636,7 +783,22 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       setFormData(prev => ({ ...prev, imei_numbers: newImeis.length > 0 ? newImeis : [''] }))
                     }
                   }}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (isPhoneCategory) {
+                        const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
+                        nextBtn?.click()
+                      } else {
+                        document.getElementById('supplier_name')?.focus()
+                      }
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300'
+                  }`}
                   disabled={loading}
                   placeholder="Number of items"
                 />
@@ -652,7 +814,17 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   min="0"
                   value={formData.low_stock_threshold}
                   onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })}
-                  className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      document.getElementById('supplier_phone')?.focus()
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                    isDarkMode
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300'
+                  }`}
                   disabled={loading}
                   placeholder="Alert when stock falls below this number"
                 />
@@ -672,7 +844,21 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                     value={formData.supplier_phone}
                     onChange={(e) => handleSupplierSearch(e.target.value)}
                     onFocus={() => formData.supplier_phone && setShowSupplierDropdown(true)}
-                    className="w-full px-3 py-2 pr-10 border-2 border-black rounded focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        if (formData.supplier_id) {
+                          document.getElementById('amount_paid')?.focus()
+                        } else {
+                          document.getElementById('supplier_name')?.focus()
+                        }
+                      }
+                    }}
+                    className={`w-full px-3 py-2 pr-10 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                      isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300'
+                    }`}
                     disabled={loading}
                     placeholder="Enter phone number"
                   />
@@ -706,7 +892,17 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                     type="text"
                     value={formData.supplier_name}
                     onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        document.getElementById('amount_paid')?.focus()
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                      isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300'
+                    }`}
                     disabled={loading}
                     placeholder="New supplier name (optional)"
                   />
@@ -746,7 +942,19 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                     step="0.01"
                     value={formData.amount_paid}
                     onChange={(e) => setFormData({ ...formData, amount_paid: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
+                        const submitBtn = document.querySelector('[data-step-action="submit"]') as HTMLButtonElement
+                        nextBtn?.click() || submitBtn?.click()
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                      isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300'
+                    }`}
                     disabled={loading}
                     placeholder="Enter amount paid"
                   />
@@ -806,7 +1014,25 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         type="text"
                         value={imei}
                         onChange={(e) => updateIMEI(index, e.target.value)}
-                        className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none font-mono"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            // If not the last IMEI field, move to next
+                            if (index < formData.imei_numbers.length - 1) {
+                              const nextInput = e.currentTarget.parentElement?.parentElement?.nextElementSibling?.querySelector('input')
+                              nextInput?.focus()
+                            } else {
+                              // Last field - trigger submit
+                              const submitBtn = document.querySelector('[data-step-action="submit"]') as HTMLButtonElement
+                              submitBtn?.click()
+                            }
+                          }
+                        }}
+                        className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono ${
+                          isDarkMode
+                            ? 'bg-gray-700 border-gray-600 text-white'
+                            : 'bg-white border-gray-300'
+                        }`}
                         disabled={loading}
                         placeholder="Enter IMEI number"
                       />
@@ -846,7 +1072,11 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 <button
                   type="button"
                   onClick={prevStep}
-                  className="px-6 py-2 border-2 border-black rounded hover:bg-gray-100 transition-colors"
+                  className={`px-6 py-2 border-2 rounded transition-colors font-medium ${
+                    isDarkMode
+                      ? 'border-gray-600 hover:bg-gray-700'
+                      : 'border-gray-300 hover:bg-gray-100'
+                  }`}
                   disabled={loading}
                 >
                   Back
@@ -858,7 +1088,11 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
               <button
                 type="button"
                 onClick={() => onClose(false)}
-                className="px-6 py-2 border-2 border-black rounded hover:bg-gray-100 transition-colors"
+                className={`px-6 py-2 border-2 rounded transition-colors font-medium ${
+                  isDarkMode
+                    ? 'border-gray-600 hover:bg-gray-700'
+                    : 'border-gray-300 hover:bg-gray-100'
+                }`}
                 disabled={loading}
               >
                 Cancel
@@ -868,7 +1102,8 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="px-6 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
+                  data-step-action="next"
+                  className="px-6 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors font-medium"
                   disabled={loading}
                 >
                   Next
@@ -877,7 +1112,8 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  className="px-6 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:bg-gray-400"
+                  data-step-action="submit"
+                  className="px-6 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors disabled:bg-gray-400 font-medium"
                   disabled={loading}
                 >
                   {loading ? 'Adding Stock...' : 'Add Stock'}

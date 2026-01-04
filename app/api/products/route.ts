@@ -48,6 +48,36 @@ async function generateNextSKU(storeId: number): Promise<string> {
   return `${prefix}-${nextNumber.toString().padStart(4, '0')}`
 }
 
+// Helper: Generate next unique barcode for a store
+async function generateNextBarcode(storeId: number): Promise<string> {
+  let attempts = 0
+  const maxAttempts = 10
+
+  while (attempts < maxAttempts) {
+    // Generate barcode: BC + timestamp (last 6 digits) + random 4 digits
+    const timestamp = Date.now().toString().slice(-6)
+    const random = Math.floor(1000 + Math.random() * 9000) // 4-digit random
+    const barcode = `BC${timestamp}${random}`
+
+    // Check if barcode already exists
+    const { data: existing } = await supabaseAdmin
+      .from('products')
+      .select('id')
+      .eq('barcode', barcode)
+      .eq('store_id', storeId)
+      .maybeSingle()
+
+    if (!existing) {
+      return barcode
+    }
+
+    attempts++
+  }
+
+  // Fallback: use UUID-like format
+  return `BC${Date.now()}${Math.random().toString(36).substring(2, 9).toUpperCase()}`
+}
+
 // GET - Fetch products with inventory and pricing
 export async function GET(request: Request) {
   try {
@@ -57,12 +87,162 @@ export async function GET(request: Request) {
     const category = searchParams.get('category') || ''
     const lowStock = searchParams.get('low_stock') === 'true'
     const includeInactive = searchParams.get('include_inactive') === 'true'
+    const barcode = searchParams.get('barcode')
 
     if (!storeId) {
       return NextResponse.json(
         { success: false, error: 'Store ID is required' },
         { status: 400 }
       )
+    }
+
+    // If barcode is provided, search specifically by barcode or IMEI
+    if (barcode) {
+      // First try to find by regular barcode
+      const { data: productByBarcode, error: barcodeError } = await supabaseAdmin
+        .from('products')
+        .select(`
+          *,
+          categories (id, name),
+          subcategories (id, name),
+          aggregated_stock (
+            aggregated_cost_price,
+            aggregated_selling_price,
+            aggregated_lowest_negotiable,
+            total_quantity_purchased,
+            total_quantity_remaining,
+            total_quantity_sold,
+            low_stock_threshold
+          ),
+          stock_batches (
+            id,
+            batch_number,
+            cost_price,
+            selling_price,
+            lowest_negotiable_price,
+            quantity_remaining,
+            quantity_purchased,
+            purchase_date,
+            is_depleted
+          )
+        `)
+        .eq('store_id', parseInt(storeId))
+        .eq('is_active', true)
+        .eq('barcode', barcode)
+        .maybeSingle()
+
+      if (barcodeError) {
+        console.error('Error searching by barcode:', barcodeError)
+      }
+
+      if (productByBarcode) {
+        const aggStock = productByBarcode.aggregated_stock?.[0] || null
+        const transformedProduct = {
+          id: productByBarcode.id,
+          sku: productByBarcode.sku,
+          name: productByBarcode.name,
+          description: productByBarcode.description,
+          category: productByBarcode.category,
+          store_id: productByBarcode.store_id,
+          category_id: productByBarcode.category_id,
+          subcategory_id: productByBarcode.subcategory_id,
+          category_name: productByBarcode.categories?.name || null,
+          subcategory_name: productByBarcode.subcategories?.name || null,
+          is_active: productByBarcode.is_active,
+          is_phone: productByBarcode.is_phone || false,
+          stock_quantity: aggStock?.total_quantity_remaining || 0,
+          low_stock_threshold: aggStock?.low_stock_threshold || 10,
+          created_at: productByBarcode.created_at,
+          updated_at: productByBarcode.updated_at,
+          batches: productByBarcode.stock_batches || [],
+          aggregated_stock: aggStock,
+          imei_match: false
+        }
+        return NextResponse.json({
+          success: true,
+          data: [transformedProduct]
+        })
+      }
+
+      // If not found by barcode, try to find by IMEI
+      const { data: imeiProduct, error: imeiError } = await supabaseAdmin
+        .from('product_imeis')
+        .select(`
+          imei_number,
+          sold,
+          product_id,
+          products (
+            *,
+            categories (id, name),
+            subcategories (id, name),
+            aggregated_stock (
+              aggregated_cost_price,
+              aggregated_selling_price,
+              aggregated_lowest_negotiable,
+              total_quantity_purchased,
+              total_quantity_remaining,
+              total_quantity_sold,
+              low_stock_threshold
+            ),
+            stock_batches (
+              id,
+              batch_number,
+              cost_price,
+              selling_price,
+              lowest_negotiable_price,
+              quantity_remaining,
+              quantity_purchased,
+              purchase_date,
+              is_depleted
+            )
+          )
+        `)
+        .eq('imei_number', barcode)
+        .eq('sold', false)
+        .maybeSingle()
+
+      if (imeiError) {
+        console.error('Error searching by IMEI:', imeiError)
+      }
+
+      if (imeiProduct && imeiProduct.products) {
+        // Check if the product belongs to the correct store
+        if (imeiProduct.products.store_id === parseInt(storeId)) {
+          const aggStock = imeiProduct.products.aggregated_stock?.[0] || null
+          const transformedProduct = {
+            id: imeiProduct.products.id,
+            sku: imeiProduct.products.sku,
+            name: imeiProduct.products.name,
+            description: imeiProduct.products.description,
+            category: imeiProduct.products.category,
+            store_id: imeiProduct.products.store_id,
+            category_id: imeiProduct.products.category_id,
+            subcategory_id: imeiProduct.products.subcategory_id,
+            category_name: imeiProduct.products.categories?.name || null,
+            subcategory_name: imeiProduct.products.subcategories?.name || null,
+            is_active: imeiProduct.products.is_active,
+            is_phone: imeiProduct.products.is_phone || false,
+            stock_quantity: aggStock?.total_quantity_remaining || 0,
+            low_stock_threshold: aggStock?.low_stock_threshold || 10,
+            created_at: imeiProduct.products.created_at,
+            updated_at: imeiProduct.products.updated_at,
+            batches: imeiProduct.products.stock_batches || [],
+            aggregated_stock: aggStock,
+            imei_match: true,
+            matched_imei: barcode
+          }
+          return NextResponse.json({
+            success: true,
+            data: [transformedProduct]
+          })
+        }
+      }
+
+      // Not found by barcode or IMEI
+      return NextResponse.json({
+        success: true,
+        data: []
+      })
     }
 
     // Build query - join with aggregated_stock instead of calculating manually
@@ -190,7 +370,8 @@ export async function POST(request: Request) {
       subcategory_id,
       store_id,
       is_phone,
-      low_stock_threshold
+      low_stock_threshold,
+      barcode
     } = body
 
     // Validation
@@ -199,6 +380,27 @@ export async function POST(request: Request) {
         { success: false, error: 'Name and Store ID are required' },
         { status: 400 }
       )
+    }
+
+    // Check if barcode already exists (if provided)
+    if (barcode) {
+      const { data: existingProduct, error: barcodeCheckError } = await supabaseAdmin
+        .from('products')
+        .select('id, name')
+        .eq('barcode', barcode)
+        .eq('store_id', parseInt(store_id))
+        .maybeSingle()
+
+      if (barcodeCheckError) {
+        console.error('Error checking barcode:', barcodeCheckError)
+      }
+
+      if (existingProduct) {
+        return NextResponse.json(
+          { success: false, error: `Barcode already exists for product: ${existingProduct.name}` },
+          { status: 400 }
+        )
+      }
     }
 
     // Check if category requires IMEI
@@ -218,6 +420,12 @@ export async function POST(request: Request) {
     // Generate SKU
     const generatedSKU = await generateNextSKU(parseInt(store_id))
 
+    // Generate barcode if not provided (for non-phone products)
+    let finalBarcode = barcode
+    if (!finalBarcode && !finalIsPhone) {
+      finalBarcode = await generateNextBarcode(parseInt(store_id))
+    }
+
     // Insert product (without price columns - they're in aggregated_stock)
     const { data: product, error: productError } = await supabaseAdmin
       .from('products')
@@ -230,7 +438,8 @@ export async function POST(request: Request) {
         subcategory_id: subcategory_id || null,
         store_id: parseInt(store_id),
         is_active: true,
-        is_phone: finalIsPhone
+        is_phone: finalIsPhone,
+        barcode: finalBarcode || null
       })
       .select()
       .single()

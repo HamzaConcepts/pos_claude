@@ -76,7 +76,7 @@ async function generateSalesReport(storeId: string, filters: any) {
     .select(`
       *,
       sale_items (*),
-      partial_payment_customers (*)
+      partial_payment_customers!partial_payment_customers_sale_id_fkey (*)
     `)
     .eq('store_id', parseInt(storeId))
     .order('sale_date', { ascending: false })

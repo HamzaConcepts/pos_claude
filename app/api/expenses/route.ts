@@ -29,6 +29,7 @@ export async function GET(request: Request) {
       )
     }
 
+    // Fetch expenses - no relationships needed
     const { data, error } = await supabaseAdmin
       .from('expenses')
       .select('*')
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
       throw error
     }
 
-    // Fetch recorder names separately if needed
+    // Fetch recorder names separately
     if (data && data.length > 0) {
       const recordedByIds = [...new Set(data.map(e => e.recorded_by).filter(Boolean))]
       

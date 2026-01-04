@@ -33,6 +33,22 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
   const [error, setError] = useState('')
   const [searching, setSearching] = useState(true)
   const [userRole, setUserRole] = useState<string>('')
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Dark mode detection
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('dark_mode')
+    if (savedDarkMode) {
+      setIsDarkMode(savedDarkMode === 'true')
+    }
+    
+    const handleDarkModeChange = (event: any) => {
+      setIsDarkMode(event.detail.isDarkMode)
+    }
+    
+    window.addEventListener('darkModeChange', handleDarkModeChange)
+    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
+  }, [])
 
   useEffect(() => {
     fetchAllProducts()
@@ -298,7 +314,17 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
         supplierId = supplierResult.data.id
       }
 
-      // Step 2: Create stock batch (API will update product prices automatically)
+      // Step 2: Validate supplier info if partial payment
+      // (totalAmount and amountPaid already declared above during validation)
+      
+      // Supplier info is required when partial payment
+      if (amountPaid < totalAmount && !formData.supplier_phone) {
+        setError('Supplier information is required when making partial payment')
+        setLoading(false)
+        return
+      }
+      
+      // Create stock batch (API will update product prices automatically)
       const batchPayload = {
         product_id: selectedProduct!.id,
         store_id: storeId,
@@ -367,22 +393,28 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border-2 border-black w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b-2 border-black">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className={`rounded-lg border w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl ${
+        isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'
+      }`}>
+        <div className={`flex justify-between items-center p-5 border-b ${
+          isDarkMode ? 'border-gray-700' : 'border-gray-200'
+        }`}>
           <div>
-            <h2 className="text-2xl font-bold">
+            <h2 className="text-xl font-semibold">
               {isInitialStock ? 'Add Initial Stock' : 'Restock Product'}
             </h2>
             {isInitialStock && (
-              <p className="text-sm text-blue-600 mt-1">
+              <p className="text-xs text-blue-600 mt-1">
                 ⚠️ This stock will NOT be recorded as an expense
               </p>
             )}
           </div>
           <button
             onClick={() => onClose(false)}
-            className="p-1 hover:bg-gray-200 rounded transition-colors"
+            className={`p-1 rounded transition-colors ${
+              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
+            }`}
           >
             <X size={24} />
           </button>
@@ -407,18 +439,24 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                   placeholder="Search by name or SKU..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-3 border-2 border-black rounded focus:outline-none"
+                  className={`w-full pl-10 pr-3 py-3 border-2 rounded focus:outline-none ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-black'
+                  }`}
                   autoFocus
                 />
               </div>
 
               {searchTerm && filteredProducts.length > 0 && (
-                <div className="border-2 border-black rounded max-h-64 overflow-y-auto">
+                <div className={`border-2 rounded max-h-64 overflow-y-auto ${
+                  isDarkMode ? 'border-gray-600' : 'border-black'
+                }`}>
                   {filteredProducts.slice(0, 10).map((product) => (
                     <button
                       key={product.id}
                       onClick={() => handleProductSelect(product)}
-                      className="w-full p-3 text-left hover:bg-bg-secondary transition-colors border-b border-gray-300 last:border-b-0"
+                      className={`w-full p-3 text-left transition-colors border-b last:border-b-0 ${
+                        isDarkMode ? 'hover:bg-gray-700 border-gray-600' : 'hover:bg-bg-secondary border-gray-300'
+                      }`}
                     >
                       <div className="flex justify-between items-center">
                         <div>
@@ -451,7 +489,9 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
           ) : (
             <div>
               {/* Selected Product Info */}
-              <div className="mb-6 p-4 bg-bg-secondary rounded border-2 border-black">
+              <div className={`mb-6 p-4 rounded border-2 ${
+                isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-bg-secondary border-black'
+              }`}>
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-bold text-lg">{selectedProduct.name}</h3>
@@ -466,7 +506,9 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                   </div>
                   <button
                     onClick={() => setSelectedProduct(null)}
-                    className="text-sm text-text-secondary hover:text-black"
+                    className={`text-sm transition-colors ${
+                      isDarkMode ? 'text-gray-400 hover:text-white' : 'text-text-secondary hover:text-black'
+                    }`}
                   >
                     Change
                   </button>
@@ -478,9 +520,13 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Cost Price */}
                   <div>
-                    <label htmlFor="cost_price" className="block mb-2 font-medium">
+                    <label htmlFor="cost_price" className={`block mb-2 font-medium ${
+                      isDarkMode ? 'text-gray-300' : ''
+                    }`}>
                       Cost Price (C.P) *
-                      <span className="ml-2 text-xs text-text-secondary">(Hidden from public view)</span>
+                      <span className={`ml-2 text-xs ${
+                        isDarkMode ? 'text-gray-400' : 'text-text-secondary'
+                      }`}>(Hidden from public view)</span>
                       {userRole === 'Cashier' && (
                         <span className="ml-2 text-xs text-status-warning">(View only)</span>
                       )}
@@ -494,14 +540,18 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       value={formData.cost_price}
                       onChange={handleChange}
                       disabled={userRole === 'Cashier'}
-                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-100"
+                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
+                      }`}
                       required
                     />
                   </div>
 
                   {/* Target Price */}
                   <div>
-                    <label htmlFor="selling_price" className="block mb-2 font-medium">
+                    <label htmlFor="selling_price" className={`block mb-2 font-medium ${
+                      isDarkMode ? 'text-gray-300' : ''
+                    }`}>
                       Selling Price *
                       {userRole === 'Cashier' && (
                         <span className="ml-2 text-xs text-status-warning">(View only)</span>
@@ -516,7 +566,9 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       value={formData.selling_price}
                       onChange={handleChange}
                       disabled={userRole === 'Cashier'}
-                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-100"
+                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
+                      }`}
                       required
                     />
                     {formData.cost_price && formData.selling_price && (
@@ -528,7 +580,9 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
 
                   {/* Lowest Negotiable Price */}
                   <div>
-                    <label htmlFor="lowest_negotiable_price" className="block mb-2 font-medium">
+                    <label htmlFor="lowest_negotiable_price" className={`block mb-2 font-medium ${
+                      isDarkMode ? 'text-gray-300' : ''
+                    }`}>
                       Lowest Negotiable Price *
                       {userRole === 'Cashier' && (
                         <span className="ml-2 text-xs text-status-warning">(View only)</span>
@@ -543,14 +597,18 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       value={formData.lowest_negotiable_price}
                       onChange={handleChange}
                       disabled={userRole === 'Cashier'}
-                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black disabled:bg-gray-100"
+                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
+                      }`}
                       required
                     />
                   </div>
 
                   {/* Quantity */}
                   <div>
-                    <label htmlFor="quantity_added" className="block mb-2 font-medium">
+                    <label htmlFor="quantity_added" className={`block mb-2 font-medium ${
+                      isDarkMode ? 'text-gray-300' : ''
+                    }`}>
                       Quantity to Add *
                     </label>
                     <input
@@ -560,14 +618,18 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       min="1"
                       value={formData.quantity_added}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black"
+                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
+                      }`}
                       required
                     />
                   </div>
 
                   {/* Amount Paid to Supplier */}
                   <div>
-                    <label htmlFor="amount_paid" className="block mb-2 font-medium">
+                    <label htmlFor="amount_paid" className={`block mb-2 font-medium ${
+                      isDarkMode ? 'text-gray-300' : ''
+                    }`}>
                       Amount Paid to Supplier *
                     </label>
                     <input
@@ -578,7 +640,9 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       min="0"
                       value={formData.amount_paid}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black"
+                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
+                      }`}
                       required
                     />
                     {formData.cost_price && formData.quantity_added && (
@@ -621,9 +685,13 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
 
                 {/* Supplier Section */}
                 <div className="mt-4">
-                  <label className="block mb-2 font-medium">
+                  <label className={`block mb-2 font-medium ${
+                    isDarkMode ? 'text-gray-300' : ''
+                  }`}>
                     Supplier
-                    <span className="ml-2 text-xs text-text-secondary">(Optional - search by phone)</span>
+                    <span className={`ml-2 text-xs ${
+                      isDarkMode ? 'text-gray-400' : 'text-text-secondary'
+                    }`}>(Optional - search by phone)</span>
                   </label>
                   
                   {formData.supplier_id ? (
@@ -650,17 +718,23 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                           value={formData.supplier_phone}
                           onChange={handleChange}
                           onFocus={() => formData.supplier_phone.length >= 3 && setShowSupplierDropdown(true)}
-                          className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black"
+                          className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
+                            isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-gray-500' : 'border-black focus:ring-black'
+                          }`}
                         />
                         
                         {showSupplierDropdown && filteredSuppliers.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border-2 border-black rounded shadow-lg max-h-48 overflow-y-auto">
+                          <div className={`absolute z-10 w-full mt-1 border-2 rounded shadow-lg max-h-48 overflow-y-auto ${
+                            isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-black'
+                          }`}>
                             {filteredSuppliers.map((supplier) => (
                               <button
                                 key={supplier.id}
                                 type="button"
                                 onClick={() => selectSupplier(supplier)}
-                                className="w-full p-3 text-left hover:bg-bg-secondary border-b border-gray-200 last:border-b-0"
+                                className={`w-full p-3 text-left border-b last:border-b-0 ${
+                                  isDarkMode ? 'hover:bg-gray-600 border-gray-600' : 'hover:bg-bg-secondary border-gray-200'
+                                }`}
                               >
                                 <p className="font-medium">{supplier.supplier_name}</p>
                                 <p className="text-sm text-text-secondary">{supplier.phone_number}</p>
@@ -672,14 +746,18 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
 
                       {formData.supplier_phone && filteredSuppliers.length === 0 && formData.supplier_phone.length >= 3 && (
                         <div className="mt-2">
-                          <p className="text-sm text-text-secondary mb-2">New supplier - enter name:</p>
+                          <p className={`text-sm mb-2 ${
+                            isDarkMode ? 'text-gray-400' : 'text-text-secondary'
+                          }`}>New supplier - enter name:</p>
                           <input
                             type="text"
                             name="supplier_name"
                             placeholder="Supplier name"
                             value={formData.supplier_name}
                             onChange={handleChange}
-                            className="w-full px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black"
+                            className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
+                              isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-gray-500' : 'border-black focus:ring-black'
+                            }`}
                           />
                         </div>
                       )}
@@ -690,13 +768,19 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                 {/* IMEI Section - Only for phones */}
                 {selectedProduct.is_phone && formData.quantity_added && parseInt(formData.quantity_added) > 0 && (
                   <div className="mt-4">
-                    <label className="block mb-2 font-medium">
+                    <label className={`block mb-2 font-medium ${
+                      isDarkMode ? 'text-gray-300' : ''
+                    }`}>
                       IMEI Numbers *
-                      <span className="ml-2 text-xs text-text-secondary">
+                      <span className={`ml-2 text-xs ${
+                        isDarkMode ? 'text-gray-400' : 'text-text-secondary'
+                      }`}>
                         ({formData.imei_numbers.filter(i => i.trim()).length}/{parseInt(formData.quantity_added)})
                       </span>
                     </label>
-                    <div className="space-y-2 max-h-64 overflow-y-auto border-2 border-black rounded p-3">
+                    <div className={`space-y-2 max-h-64 overflow-y-auto border-2 rounded p-3 ${
+                      isDarkMode ? 'border-gray-600' : 'border-black'
+                    }`}>
                       {formData.imei_numbers.map((imei, index) => (
                         <div key={index} className="flex gap-2">
                           <input
@@ -704,7 +788,9 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                             value={imei}
                             onChange={(e) => handleIMEIChange(index, e.target.value)}
                             placeholder={`IMEI #${index + 1}`}
-                            className="flex-1 px-3 py-2 border-2 border-black rounded focus:outline-none focus:ring-2 focus:ring-black"
+                            className={`flex-1 px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
+                              isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-gray-500' : 'border-black focus:ring-black'
+                            }`}
                             required
                           />
                           {formData.imei_numbers.length > 1 && (
@@ -722,7 +808,9 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                         <button
                           type="button"
                           onClick={addIMEIField}
-                          className="w-full px-3 py-2 border-2 border-black rounded hover:bg-bg-secondary"
+                          className={`w-full px-3 py-2 border-2 rounded ${
+                            isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-black hover:bg-bg-secondary'
+                          }`}
                         >
                           + Add IMEI
                         </button>
@@ -736,14 +824,16 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                   <button
                     type="button"
                     onClick={() => onClose(false)}
-                    className="flex-1 px-4 py-3 bg-white text-black border-2 border-black rounded hover:bg-bg-secondary transition-colors"
+                    className={`flex-1 px-4 py-3 border-2 rounded transition-colors font-medium ${
+                      isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'
+                    }`}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-1 px-4 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-3 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors disabled:opacity-50 font-medium"
                   >
                     {loading ? 'Restocking...' : 'Restock Product'}
                   </button>

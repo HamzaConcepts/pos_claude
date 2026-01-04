@@ -159,3 +159,198 @@ export async function PUT(
     )
   }
 }
+
+// DELETE - Delete a sale (Manager only) - triggers will handle stock reversion
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const managerId = searchParams.get('manager_id')
+    const storeId = searchParams.get('store_id')
+
+    // Validation - only managers can delete sales
+    if (!managerId) {
+      return NextResponse.json(
+        { success: false, error: 'Manager authentication required' },
+        { status: 403 }
+      )
+    }
+
+    if (!storeId) {
+      return NextResponse.json(
+        { success: false, error: 'Store ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const saleId = parseInt(params.id)
+    if (isNaN(saleId)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid sale ID' },
+        { status: 400 }
+      )
+    }
+
+    // Verify manager belongs to the store
+    const { data: manager, error: managerError } = await supabaseAdmin
+      .from('managers')
+      .select('id, store_id')
+      .eq('id', managerId)
+      .eq('store_id', parseInt(storeId))
+      .single()
+
+    if (managerError || !manager) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Manager not found or does not belong to this store' },
+        { status: 403 }
+      )
+    }
+
+    // Fetch the sale to verify it exists and belongs to the store
+    const { data: sale, error: saleError } = await supabaseAdmin
+      .from('sales')
+      .select('*, sale_items(*)')
+      .eq('id', saleId)
+      .eq('store_id', parseInt(storeId))
+      .single()
+
+    if (saleError || !sale) {
+      return NextResponse.json(
+        { success: false, error: 'Sale not found' },
+        { status: 404 }
+      )
+    }
+
+    // Delete the sale - the trigger will automatically handle:
+    // 1. Stock reversion (restoring quantities to batches)
+    // 2. IMEI status updates
+    // 3. Cascade deletion of sale_items, payments, and partial_payment_customers
+    const { error: deleteError } = await supabaseAdmin
+      .from('sales')
+      .delete()
+      .eq('id', saleId)
+
+    if (deleteError) {
+      console.error('Error deleting sale:', deleteError)
+      return NextResponse.json(
+        { success: false, error: deleteError.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Sale deleted successfully. Stock has been restored.',
+      data: { id: saleId, sale_number: sale.sale_number }
+    })
+  } catch (error: any) {
+    console.error('Exception in DELETE /api/sales/[id]:', error)
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+// PATCH - Mark a sale for review (Cashier feature)
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await request.json()
+    const { action, cashier_id, review_reason } = body
+
+    if (action === 'mark_for_review') {
+      if (!cashier_id || !review_reason) {
+        return NextResponse.json(
+          { success: false, error: 'Cashier ID and review reason are required' },
+          { status: 400 }
+        )
+      }
+
+      const saleId = parseInt(params.id)
+      if (isNaN(saleId)) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid sale ID' },
+          { status: 400 }
+        )
+      }
+
+      // Update the sale to mark it for review
+      const { data, error } = await supabaseAdmin
+        .from('sales')
+        .update({
+          marked_for_review: true,
+          review_reason: review_reason.trim(),
+          marked_by_cashier_id: parseInt(cashier_id),
+          marked_at: new Date().toISOString()
+        })
+        .eq('id', saleId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error marking sale for review:', error)
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Sale marked for review successfully',
+        data
+      })
+    } else if (action === 'unmark_review') {
+      // Manager can unmark a sale after reviewing it
+      const saleId = parseInt(params.id)
+      if (isNaN(saleId)) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid sale ID' },
+          { status: 400 }
+        )
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('sales')
+        .update({
+          marked_for_review: false,
+          review_reason: null,
+          marked_by_cashier_id: null,
+          marked_at: null
+        })
+        .eq('id', saleId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error unmarking sale:', error)
+        return NextResponse.json(
+          { success: false, error: error.message },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Sale unmarked successfully',
+        data
+      })
+    } else {
+      return NextResponse.json(
+        { success: false, error: 'Invalid action' },
+        { status: 400 }
+      )
+    }
+  } catch (error: any) {
+    console.error('Exception in PATCH /api/sales/[id]:', error)
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    )
+  }
+}

@@ -6,17 +6,21 @@ import {
   LayoutDashboard, 
   ShoppingCart, 
   Package, 
-  DollarSign, 
-  FileText, 
+  Receipt, 
+  Wallet, 
+  BarChart3, 
   Users,
   LogOut,
   Menu,
   X,
-  BookOpen,
+  BookUser,
+  Truck,
   User,
   ChevronDown,
   Moon,
-  Sun
+  Sun,
+  Settings,
+  UserCog
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase, hasPermission, type UserRole, getStoreId } from '@/lib/supabase'
@@ -98,12 +102,13 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, permission: 'view_dashboard' },
     { href: '/dashboard/pos', label: 'New Sale', icon: ShoppingCart, permission: 'process_sale' },
     { href: '/dashboard/inventory', label: 'Products', icon: Package, permission: 'create_product' },
-    { href: '/dashboard/sales', label: 'Sales History', icon: DollarSign, permission: 'view_sales' },
-    { href: '/dashboard/expenses', label: 'Expense Tracker', icon: FileText, permission: 'add_expense' },
-    { href: '/dashboard/reports', label: 'Reports', icon: FileText, permission: 'view_dashboard' },
-    { href: '/dashboard/khaata', label: 'Customer Ledger', icon: BookOpen, permission: 'create_user' },
-    { href: '/dashboard/cashiers', label: 'Staff Performance', icon: Users, permission: 'create_user', managerOnly: true },
-    { href: '/dashboard/store', label: 'Settings', icon: Users, permission: 'create_user' },
+    { href: '/dashboard/sales', label: 'Sales History', icon: Receipt, permission: 'view_sales' },
+    { href: '/dashboard/expenses', label: 'Expense Tracker', icon: Wallet, permission: 'add_expense' },
+    { href: '/dashboard/reports', label: 'Reports', icon: BarChart3, permission: 'view_dashboard' },
+    { href: '/dashboard/customer-ledger', label: 'Customer Ledger', icon: BookUser, permission: 'create_user' },
+    { href: '/dashboard/supplier-ledger', label: 'Supplier Ledger', icon: Truck, permission: 'create_user' },
+    { href: '/dashboard/cashiers', label: 'Staff Performance', icon: UserCog, permission: 'create_user', managerOnly: true },
+    { href: '/dashboard/store', label: 'Settings', icon: Settings, permission: 'create_user' },
   ]
 
   const handleLogout = async () => {

@@ -45,6 +45,22 @@ export default function PredefinedExpensesManager() {
   const [description, setDescription] = useState('')
   const [isActive, setIsActive] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Dark mode detection
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('dark_mode')
+    if (savedDarkMode) {
+      setIsDarkMode(savedDarkMode === 'true')
+    }
+    
+    const handleDarkModeChange = (event: any) => {
+      setIsDarkMode(event.detail.isDarkMode)
+    }
+    
+    window.addEventListener('darkModeChange', handleDarkModeChange)
+    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
+  }, [])
 
   useEffect(() => {
     fetchCurrentUser()
@@ -262,7 +278,7 @@ export default function PredefinedExpensesManager() {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 flex items-center gap-2"
+          className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 font-medium flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Expense
@@ -286,7 +302,7 @@ export default function PredefinedExpensesManager() {
           </p>
           <button
             onClick={() => handleOpenModal()}
-            className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800"
+            className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 font-medium"
           >
             Add Your First Expense
           </button>
@@ -294,15 +310,23 @@ export default function PredefinedExpensesManager() {
       ) : (
         <div className="space-y-6">
           {Object.entries(groupedExpenses).map(([category, categoryExpenses]) => (
-            <div key={category} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <div key={category} className={`border rounded-lg overflow-hidden ${
+              isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            }`}>
+              <div className={`px-4 py-3 border-b ${
+                isDarkMode ? 'bg-gray-750 border-gray-700' : 'bg-gray-50 border-gray-200'
+              }`}>
                 <h3 className="font-semibold text-lg">{category}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className={`border-b ${
+                    isDarkMode ? 'bg-gray-750 border-gray-700' : 'bg-gray-50 border-gray-200'
+                  }`}>
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
+                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
                         Name
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -319,7 +343,9 @@ export default function PredefinedExpensesManager() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className={`divide-y ${
+                    isDarkMode ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'
+                  }`}>
                     {categoryExpenses.map((expense) => (
                       <tr key={expense.id} className={!expense.is_active ? 'opacity-50' : ''}>
                         <td className="px-4 py-3 whitespace-nowrap">
@@ -381,40 +407,52 @@ export default function PredefinedExpensesManager() {
 
       {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className={`rounded-lg border w-full max-w-md p-5 shadow-2xl ${
+            isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'
+          }`}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">
+              <h2 className="text-lg font-semibold">
                 {editingExpense ? 'Edit Pre-defined Expense' : 'Add Pre-defined Expense'}
               </h2>
-              <button onClick={handleCloseModal} className="p-1 hover:bg-gray-100 rounded">
+              <button onClick={handleCloseModal} className={`p-1 rounded ${
+                isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+              }`}>
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className={`block text-sm font-medium mb-1 ${
+                  isDarkMode ? 'text-gray-300' : ''
+                }`}>
                   Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-black focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'
+                  }`}
                   placeholder="e.g., Monthly Rent"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className={`block text-sm font-medium mb-1 ${
+                  isDarkMode ? 'text-gray-300' : ''
+                }`}>
                   Category <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-black focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'
+                  }`}
                   required
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
@@ -426,14 +464,18 @@ export default function PredefinedExpensesManager() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className={`block text-sm font-medium mb-1 ${
+                  isDarkMode ? 'text-gray-300' : ''
+                }`}>
                   Default Amount (Rs.) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   value={defaultAmount}
                   onChange={(e) => setDefaultAmount(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-black focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'
+                  }`}
                   placeholder="0.00"
                   step="0.01"
                   min="0"
@@ -442,13 +484,17 @@ export default function PredefinedExpensesManager() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">
+                <label className={`block text-sm font-medium mb-1 ${
+                  isDarkMode ? 'text-gray-300' : ''
+                }`}>
                   Description
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-black focus:border-transparent"
+                  className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'
+                  }`}
                   rows={3}
                   placeholder="Optional description"
                 />
@@ -477,14 +523,16 @@ export default function PredefinedExpensesManager() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                  className={`flex-1 px-4 py-2 border-2 rounded transition-colors ${
+                    isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'
+                  }`}
                   disabled={submitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 font-medium disabled:opacity-50"
                   disabled={submitting}
                 >
                   {submitting ? 'Saving...' : editingExpense ? 'Update' : 'Add'}

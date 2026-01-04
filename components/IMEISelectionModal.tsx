@@ -22,6 +22,22 @@ export default function IMEISelectionModal({
   const [selectedIMEIs, setSelectedIMEIs] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Dark mode detection
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('dark_mode')
+    if (savedDarkMode) {
+      setIsDarkMode(savedDarkMode === 'true')
+    }
+    
+    const handleDarkModeChange = (event: any) => {
+      setIsDarkMode(event.detail.isDarkMode)
+    }
+    
+    window.addEventListener('darkModeChange', handleDarkModeChange)
+    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
+  }, [])
 
   useEffect(() => {
     fetchAvailableIMEIs()
@@ -77,18 +93,24 @@ export default function IMEISelectionModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border-2 border-black w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b-2 border-black sticky top-0 bg-white">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className={`rounded-lg border w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl ${
+        isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'
+      }`}>
+        <div className={`sticky top-0 z-10 flex justify-between items-center p-5 border-b ${
+          isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+        }`}>
           <div>
-            <h2 className="text-2xl font-bold">Select IMEI Numbers</h2>
+            <h2 className="text-xl font-semibold">Select IMEI Numbers</h2>
             <p className="text-sm text-text-secondary mt-1">
               {product.name} - Select {quantity} IMEI{quantity > 1 ? 's' : ''}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-200 rounded transition-colors"
+            className={`p-1 rounded transition-colors ${
+              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
+            }`}
           >
             <X size={24} />
           </button>
@@ -125,7 +147,9 @@ export default function IMEISelectionModal({
             </div>
           ) : (
             <div>
-              <div className="mb-4 p-3 bg-bg-secondary rounded border border-gray-300">
+              <div className={`mb-4 p-3 rounded border ${
+                isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-bg-secondary border-gray-300'
+              }`}>
                 <p className="text-sm">
                   Selected: <span className="font-bold">{selectedIMEIs.length}</span> / {quantity}
                 </p>
@@ -143,10 +167,10 @@ export default function IMEISelectionModal({
                       disabled={isDisabled}
                       className={`w-full p-4 rounded border-2 text-left transition-all ${
                         isSelected
-                          ? 'border-black bg-green-50'
+                          ? isDarkMode ? 'border-white bg-gray-700' : 'border-black bg-green-50'
                           : isDisabled
-                          ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
-                          : 'border-gray-300 hover:border-gray-500'
+                          ? isDarkMode ? 'border-gray-700 bg-gray-800 cursor-not-allowed opacity-50' : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
+                          : isDarkMode ? 'border-gray-600 hover:border-gray-500' : 'border-gray-300 hover:border-gray-500'
                       }`}
                     >
                       <div className="flex justify-between items-center">
@@ -169,17 +193,21 @@ export default function IMEISelectionModal({
                 })}
               </div>
 
-              <div className="flex gap-4 mt-6 sticky bottom-0 bg-white pt-4 border-t-2 border-gray-200">
+              <div className={`flex gap-4 mt-6 sticky bottom-0 pt-4 border-t-2 ${
+                isDarkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
+              }`}>
                 <button
                   onClick={onClose}
-                  className="flex-1 px-4 py-3 bg-white text-black border-2 border-black rounded hover:bg-bg-secondary transition-colors"
+                  className={`flex-1 px-4 py-3 border-2 rounded transition-colors ${
+                    isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'
+                  }`}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleConfirm}
                   disabled={selectedIMEIs.length !== quantity}
-                  className="flex-1 px-4 py-3 bg-black text-white rounded hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 bg-cyan-600 text-white rounded hover:bg-cyan-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Confirm Selection ({selectedIMEIs.length}/{quantity})
                 </button>

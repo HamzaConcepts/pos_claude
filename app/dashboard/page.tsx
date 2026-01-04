@@ -34,12 +34,12 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchDashboardStats()
     
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      fetchDashboardStats(true)
-    }, 30000)
+    // // Auto-refresh every 30 seconds
+    // const interval = setInterval(() => {
+    //   fetchDashboardStats(true)
+    // }, 30000)
 
-    return () => clearInterval(interval)
+    // return () => clearInterval(interval)
   }, [])
 
   const fetchDashboardStats = async (silent = false) => {
@@ -138,7 +138,7 @@ export default function DashboardPage() {
             </div>
             <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Sales</p>
           </div>
-          <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${stats.monthlySales.revenue.toFixed(2)}</p>
+          <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {stats.monthlySales.revenue.toFixed(2)}</p>
           <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>This month</p>
         </div>
 
@@ -162,8 +162,8 @@ export default function DashboardPage() {
             </div>
             <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Expenses</p>
           </div>
-          <p className="text-2xl font-bold text-red-600">${stats.monthlyExpenses.toFixed(2)}</p>
-          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>${stats.todayExpenses?.toFixed(2) || '0.00'} today</p>
+          <p className="text-2xl font-bold text-red-600">Rs. {stats.monthlyExpenses.toFixed(2)}</p>
+          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Rs. {stats.todayExpenses?.toFixed(2) || '0.00'} today</p>
         </div>
 
         {/* Net Profit */}
@@ -175,7 +175,7 @@ export default function DashboardPage() {
             <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Net Profit</p>
           </div>
           <p className={`text-2xl font-bold ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            ${stats.netProfit.toFixed(2)}
+            Rs. {stats.netProfit.toFixed(2)}
           </p>
           <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>This month</p>
         </div>
@@ -200,7 +200,7 @@ export default function DashboardPage() {
               {stats.expensesByCategory.slice(0, 3).map((cat: any) => (
                 <div key={cat.category} className="flex-1">
                   <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{cat.category}</p>
-                  <p className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${cat.total.toFixed(2)}</p>
+                  <p className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {cat.total.toFixed(2)}</p>
                 </div>
               ))}
             </div>
@@ -247,7 +247,7 @@ export default function DashboardPage() {
                       }}
                     />
                   </div>
-                  <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${day.revenue.toFixed(2)}</span>
+                  <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {day.revenue.toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -259,17 +259,17 @@ export default function DashboardPage() {
         {/* Top Products */}
         <div className={`p-4 rounded transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
           <h2 className={`text-base font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Top Products (This Month)</h2>
-          {stats.topProducts.length > 0 ? (
+          {stats.topProducts && stats.topProducts.length > 0 ? (
             <div className="space-y-2">
-              {stats.topProducts.map((product, index) => (
-                <div key={product.product_name} className="flex items-center gap-2">
+              {stats.topProducts.map((product: any, index: number) => (
+                <div key={product.product_name || index} className="flex items-center gap-2">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${isDarkMode ? 'bg-cyan-900/50 text-cyan-400' : 'bg-cyan-100 text-cyan-700'}`}>
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`font-medium text-sm truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product.product_name}</p>
+                    <p className={`font-medium text-sm truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product.product_name || 'Unknown'}</p>
                     <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      ${product.revenue.toFixed(2)}
+                      ${Number(product.revenue || 0).toFixed(2)} · {product.quantity || 0} sold
                     </p>
                   </div>
                 </div>

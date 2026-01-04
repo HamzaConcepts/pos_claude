@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { FileText, Download, Calendar, Filter } from 'lucide-react'
 import { getStoreId } from '@/lib/supabase'
+import { useDarkMode } from '@/hooks/useDarkMode'
 import { SummaryReport } from '@/components/reports/SummaryReport'
 import { SalesReport } from '@/components/reports/SalesReport'
 import { ExpensesReport } from '@/components/reports/ExpensesReport'
@@ -20,6 +21,7 @@ interface ReportFilters {
 }
 
 export default function ReportsPage() {
+  const isDarkMode = useDarkMode()
   const [filters, setFilters] = useState<ReportFilters>({
     type: 'summary',
     period: 'monthly',
@@ -209,45 +211,84 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className={`p-6 max-w-7xl mx-auto ${isDarkMode ? 'bg-gray-900 text-white' : ''}`}>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Reports & Analytics</h1>
-        <p className="text-gray-600">Comprehensive business insights and reports</p>
+        <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : ''}`}>Reports & Analytics</h1>
+        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Comprehensive business insights and reports</p>
+      </div>
+
+      {/* Tabs for Report Type */}
+      <div className={`mb-6 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="flex gap-1 overflow-x-auto">
+          <button
+            onClick={() => setFilters({ ...filters, type: 'summary' })}
+            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'summary'
+                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
+                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+            }`}
+          >
+            Summary
+          </button>
+          <button
+            onClick={() => setFilters({ ...filters, type: 'sales' })}
+            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'sales'
+                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
+                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+            }`}
+          >
+            Sales
+          </button>
+          <button
+            onClick={() => setFilters({ ...filters, type: 'expenses' })}
+            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'expenses'
+                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
+                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+            }`}
+          >
+            Expenses
+          </button>
+          <button
+            onClick={() => setFilters({ ...filters, type: 'inventory' })}
+            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'inventory'
+                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
+                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+            }`}
+          >
+            Inventory
+          </button>
+          <button
+            onClick={() => setFilters({ ...filters, type: 'profit' })}
+            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'profit'
+                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
+                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+            }`}
+          >
+            Profit & Loss
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+      <div className={`rounded-lg border p-6 mb-6 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
         <div className="flex items-center gap-2 mb-4">
           <Filter className="w-5 h-5" />
-          <h2 className="text-lg font-semibold">Filters</h2>
+          <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : ''}`}>Filters</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Report Type */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Report Type</label>
-            <select
-              value={filters.type}
-              onChange={(e) => setFilters({ ...filters, type: e.target.value as any })}
-              className="w-full border rounded px-3 py-2"
-            >
-              <option value="summary">Summary</option>
-              <option value="sales">Sales</option>
-              <option value="expenses">Expenses</option>
-              <option value="inventory">Inventory</option>
-              <option value="profit">Profit & Loss</option>
-            </select>
-          </div>
-
-          {/* Period */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{/* Period */}
           {(filters.type === 'sales' || filters.type === 'expenses' || filters.type === 'profit') && (
             <div>
-              <label className="block text-sm font-medium mb-1">Group By</label>
+              <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Group By</label>
               <select
                 value={filters.period || ''}
                 onChange={(e) => setFilters({ ...filters, period: e.target.value as any || null })}
-                className="w-full border rounded px-3 py-2"
+                className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}>
               >
                 <option value="">No Grouping</option>
                 <option value="daily">Daily</option>
@@ -260,34 +301,34 @@ export default function ReportsPage() {
 
           {/* Start Date */}
           <div>
-            <label className="block text-sm font-medium mb-1">Start Date</label>
+            <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Start Date</label>
             <input
               type="date"
               value={filters.startDate}
               onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
             />
           </div>
 
           {/* End Date */}
           <div>
-            <label className="block text-sm font-medium mb-1">End Date</label>
+            <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>End Date</label>
             <input
               type="date"
               value={filters.endDate}
               onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-              className="w-full border rounded px-3 py-2"
+              className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
             />
           </div>
 
           {/* Payment Method */}
           {(filters.type === 'sales' || filters.type === 'expenses') && (
             <div>
-              <label className="block text-sm font-medium mb-1">Payment Method</label>
+              <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Payment Method</label>
               <select
                 value={filters.paymentMethod}
                 onChange={(e) => setFilters({ ...filters, paymentMethod: e.target.value })}
-                className="w-full border rounded px-3 py-2"
+                className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 <option value="">All</option>
                 <option value="Cash">Cash</option>
@@ -299,11 +340,11 @@ export default function ReportsPage() {
           {/* Cashier Filter */}
           {filters.type === 'sales' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Cashier</label>
+              <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Cashier</label>
               <select
                 value={filters.cashierId}
                 onChange={(e) => setFilters({ ...filters, cashierId: e.target.value })}
-                className="w-full border rounded px-3 py-2"
+                className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 <option value="">All Cashiers</option>
                 {cashiers.map(cashier => (
@@ -316,11 +357,11 @@ export default function ReportsPage() {
           {/* Category Filter */}
           {filters.type === 'expenses' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Category</label>
+              <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Category</label>
               <select
                 value={filters.category}
                 onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                className="w-full border rounded px-3 py-2"
+                className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
               >
                 <option value="">All Categories</option>
                 {categories.map(cat => (

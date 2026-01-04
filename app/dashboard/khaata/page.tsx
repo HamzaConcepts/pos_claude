@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserCircle, Building2, Search, Edit, Trash2, ChevronDown, ChevronRight, Package } from 'lucide-react'
+import { UserCircle, Building2, Search, Edit, Trash2, ChevronDown, ChevronRight, Package, DollarSign } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { getStoreId } from '@/lib/supabase'
+import { getStoreId, getManagerId, getCashierId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
 
 interface KhaataCustomer {
@@ -96,6 +96,15 @@ export default function KhaataPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [error, setError] = useState('')
+  
+  // Pay Dues state
+  const [showPayDuesModal, setShowPayDuesModal] = useState(false)
+  const [selectedForPayment, setSelectedForPayment] = useState<any>(null)
+  const [paymentFormData, setPaymentFormData] = useState({
+    payment_amount: '',
+    payment_method: 'Cash',
+    notes: ''
+  })
   
   // Customer form data
   const [customerFormData, setCustomerFormData] = useState({
@@ -425,6 +434,74 @@ export default function KhaataPage() {
     }
   }
 
+  // Handle Pay Dues functionality
+  const handlePayDues = async () => {
+    if (!selectedForPayment) return
+
+    try {
+      setError('')
+      const amount = parseFloat(paymentFormData.payment_amount)
+      
+      if (amount <= 0) {
+        setError('Payment amount must be greater than 0')
+        return
+      }
+      
+      if (amount > selectedForPayment.remaining) {
+        setError('Payment amount cannot exceed remaining balance')
+        return
+      }
+
+      const storeId = getStoreId()
+      const managerId = await getManagerId()
+      const cashierId = getCashierId()
+
+      const endpoint = selectedForPayment.type === 'customer' 
+        ? '/api/khaata-payments'
+        : '/api/supplier-khaata-payments'
+
+      const payload = {
+        [selectedForPayment.type === 'customer' ? 'partial_payment_customer_id' : 'supplier_khaata_id']: selectedForPayment.id,
+        payment_amount: amount,
+        payment_method: paymentFormData.payment_method,
+        notes: paymentFormData.notes.trim() || null,
+        store_id: storeId,
+        recorded_by: managerId,
+        cashier_id: cashierId
+      }
+
+      // Add sale_id for customer payments
+      if (selectedForPayment.type === 'customer' && selectedForPayment.sale_id) {
+        payload.sale_id = selectedForPayment.sale_id
+      }
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setShowPayDuesModal(false)
+        setSelectedForPayment(null)
+        setPaymentFormData({ payment_amount: '', payment_method: 'Cash', notes: '' })
+        
+        // Refresh the appropriate list
+        if (selectedForPayment.type === 'customer') {
+          fetchCustomers()
+        } else {
+          fetchSuppliers()
+        }
+      } else {
+        setError(result.error || 'Failed to record payment')
+      }
+    } catch (err) {
+      setError('Failed to record payment: ' + (err instanceof Error ? err.message : 'Unknown error'))
+    }
+  }
+
   return (
     <>
       <div className="mb-5">
@@ -515,6 +592,7 @@ export default function KhaataPage() {
                     <th className="px-3 py-2.5 text-right text-sm font-semibold">Total Paid</th>
                     <th className="px-3 py-2.5 text-right text-sm font-semibold">Remaining Balance</th>
                     <th className="px-3 py-2.5 text-center text-sm font-semibold">Transactions</th>
+                    <th className="px-3 py-2.5 text-center text-sm font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -542,6 +620,25 @@ export default function KhaataPage() {
                             <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-medium">
                               {customer.transactions.length}
                             </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedForPayment({
+                                  type: 'customer',
+                                  customer_name: customer.customer_name,
+                                  customer_phone: customer.customer_phone,
+                                  remaining_balance: customer.amount_remaining
+                                })
+                                setShowPayDuesModal(true)
+                              }}
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1 mx-auto"
+                              disabled={customer.amount_remaining <= 0}
+                            >
+                              <DollarSign size={14} />
+                              Pay Dues
+                            </button>
                           </td>
                         </tr>
 
@@ -679,6 +776,7 @@ export default function KhaataPage() {
                     <th className="px-3 py-2.5 text-right text-sm font-semibold">Amount Paid</th>
                     <th className="px-3 py-2.5 text-right text-sm font-semibold">Remaining</th>
                     <th className="px-3 py-2.5 text-center text-sm font-semibold">Transactions</th>
+                    <th className="px-3 py-2.5 text-center text-sm font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -706,6 +804,25 @@ export default function KhaataPage() {
                             <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-medium">
                               {supplier.transactions.length}
                             </span>
+                          </td>
+                          <td className="px-3 py-2.5 text-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedForPayment({
+                                  type: 'supplier',
+                                  supplier_id: supplier.supplier_id,
+                                  supplier_name: supplier.supplier_name,
+                                  remaining_balance: supplier.amount_remaining
+                                })
+                                setShowPayDuesModal(true)
+                              }}
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1 mx-auto"
+                              disabled={supplier.amount_remaining <= 0}
+                            >
+                              <DollarSign size={14} />
+                              Pay Dues
+                            </button>
                           </td>
                         </tr>
 
@@ -789,7 +906,7 @@ export default function KhaataPage() {
 
       {/* Edit Customer Modal */}
       {showEditModal && selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Customer</h2>
             
@@ -895,7 +1012,7 @@ export default function KhaataPage() {
 
       {/* Edit Supplier Modal */}
       {showEditModal && selectedSupplier && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Update Payment</h2>
             
@@ -966,7 +1083,7 @@ export default function KhaataPage() {
 
       {/* Delete Supplier Modal */}
       {showDeleteModal && selectedSupplier && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Delete Record</h2>
 
@@ -1001,6 +1118,92 @@ export default function KhaataPage() {
           </div>
         </div>
       )}
+
+      {/* Pay Dues Modal */}
+      {showPayDuesModal && selectedForPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Pay Dues - {selectedForPayment.type === 'customer' ? selectedForPayment.customer_name : selectedForPayment.supplier_name}
+            </h2>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
+                <p className="text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
+              <p className="text-blue-900">
+                <strong>Current Balance:</strong> ${selectedForPayment.remaining_balance.toFixed(2)}
+              </p>
+            </div>
+
+            <div className="space-y-4 mb-5">
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">Payment Amount*</label>
+                <input
+                  type="number"
+                  value={paymentFormData.payment_amount}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  placeholder="Enter payment amount"
+                  step="0.01"
+                  min="0"
+                  max={selectedForPayment.remaining_balance}
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">Payment Method*</label>
+                <select
+                  value={paymentFormData.payment_method}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Debit Card">Debit Card</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Mobile Payment">Mobile Payment</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700">Notes</label>
+                <textarea
+                  value={paymentFormData.notes}
+                  onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  rows={3}
+                  placeholder="Add payment notes..."
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPayDuesModal(false)
+                  setSelectedForPayment(null)
+                  setPaymentFormData({ payment_amount: '', payment_method: 'Cash', notes: '' })
+                  setError('')
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePayDues}
+                className="flex-1 px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+              >
+                Record Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
+
