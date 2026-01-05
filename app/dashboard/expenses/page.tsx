@@ -338,7 +338,7 @@ export default function ExpensesPage() {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
-          'x-store-id': storeId || '',
+          'x-store-id': storeId?.toString() || '',
           'x-cashier-name': cashierName
         },
         body: JSON.stringify({
@@ -375,7 +375,7 @@ export default function ExpensesPage() {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json',
-          'x-store-id': storeId || '',
+          'x-store-id': storeId?.toString() || '',
           'x-cashier-name': cashierName
         },
         body: JSON.stringify({

@@ -289,7 +289,7 @@ export default function ReportsPage() {
                 value={filters.period || ''}
                 onChange={(e) => setFilters({ ...filters, period: e.target.value as any || null })}
                 className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}>
-              >
+              
                 <option value="">No Grouping</option>
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>

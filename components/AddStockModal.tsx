@@ -947,7 +947,11 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         e.preventDefault()
                         const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
                         const submitBtn = document.querySelector('[data-step-action="submit"]') as HTMLButtonElement
-                        nextBtn?.click() || submitBtn?.click()
+                        if (nextBtn) {
+                          nextBtn.click()
+                        } else if (submitBtn) {
+                          submitBtn.click()
+                        }
                       }
                     }}
                     className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${

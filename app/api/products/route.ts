@@ -206,27 +206,30 @@ export async function GET(request: Request) {
       }
 
       if (imeiProduct && imeiProduct.products) {
+        // Handle products as it might be typed as an array by Supabase
+        const product = Array.isArray(imeiProduct.products) ? imeiProduct.products[0] : imeiProduct.products
+        
         // Check if the product belongs to the correct store
-        if (imeiProduct.products.store_id === parseInt(storeId)) {
-          const aggStock = imeiProduct.products.aggregated_stock?.[0] || null
+        if (product && product.store_id === parseInt(storeId)) {
+          const aggStock = product.aggregated_stock?.[0] || null
           const transformedProduct = {
-            id: imeiProduct.products.id,
-            sku: imeiProduct.products.sku,
-            name: imeiProduct.products.name,
-            description: imeiProduct.products.description,
-            category: imeiProduct.products.category,
-            store_id: imeiProduct.products.store_id,
-            category_id: imeiProduct.products.category_id,
-            subcategory_id: imeiProduct.products.subcategory_id,
-            category_name: imeiProduct.products.categories?.name || null,
-            subcategory_name: imeiProduct.products.subcategories?.name || null,
-            is_active: imeiProduct.products.is_active,
-            is_phone: imeiProduct.products.is_phone || false,
+            id: product.id,
+            sku: product.sku,
+            name: product.name,
+            description: product.description,
+            category: product.category,
+            store_id: product.store_id,
+            category_id: product.category_id,
+            subcategory_id: product.subcategory_id,
+            category_name: product.categories?.name || null,
+            subcategory_name: product.subcategories?.name || null,
+            is_active: product.is_active,
+            is_phone: product.is_phone || false,
             stock_quantity: aggStock?.total_quantity_remaining || 0,
             low_stock_threshold: aggStock?.low_stock_threshold || 10,
-            created_at: imeiProduct.products.created_at,
-            updated_at: imeiProduct.products.updated_at,
-            batches: imeiProduct.products.stock_batches || [],
+            created_at: product.created_at,
+            updated_at: product.updated_at,
+            batches: product.stock_batches || [],
             aggregated_stock: aggStock,
             imei_match: true,
             matched_imei: barcode
