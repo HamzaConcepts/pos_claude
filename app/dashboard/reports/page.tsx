@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FileText, Download, Calendar, Filter } from 'lucide-react'
+import { FileText, Download, Calendar, Filter, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarSign, CreditCard } from 'lucide-react'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { SummaryReport } from '@/components/reports/SummaryReport'
@@ -9,6 +9,7 @@ import { SalesReport } from '@/components/reports/SalesReport'
 import { ExpensesReport } from '@/components/reports/ExpensesReport'
 import { InventoryReport } from '@/components/reports/InventoryReport'
 import { ProfitReport } from '@/components/reports/ProfitReport'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface ReportFilters {
   type: 'summary' | 'sales' | 'expenses' | 'inventory' | 'profit'
@@ -20,8 +21,12 @@ interface ReportFilters {
   category: string
 }
 
+type QuickPeriod = 'today' | 'week' | 'month' | 'year' | 'custom'
+
 export default function ReportsPage() {
   const isDarkMode = useDarkMode()
+  const [quickPeriod, setQuickPeriod] = useState<QuickPeriod>('month')
+  const [showCustomDates, setShowCustomDates] = useState(false)
   const [filters, setFilters] = useState<ReportFilters>({
     type: 'summary',
     period: 'monthly',
@@ -37,6 +42,13 @@ export default function ReportsPage() {
   const [cashiers, setCashiers] = useState<any[]>([])
   const [categories, setCategories] = useState<string[]>([])
 
+  // Auto-generate report when quick period changes
+  useEffect(() => {
+    if (quickPeriod !== 'custom') {
+      generateReport()
+    }
+  }, [quickPeriod])
+
   useEffect(() => {
     fetchCashiers()
     fetchCategories()
@@ -46,6 +58,36 @@ export default function ReportsPage() {
   useEffect(() => {
     setReportData(null)
   }, [filters.type])
+
+  const handleQuickPeriodChange = (period: QuickPeriod) => {
+    setQuickPeriod(period)
+    const today = new Date()
+    let startDate = ''
+    let endDate = today.toISOString().split('T')[0]
+
+    switch (period) {
+      case 'today':
+        startDate = endDate
+        break
+      case 'week':
+        const weekStart = new Date(today)
+        weekStart.setDate(today.getDate() - today.getDay()) // Start of week (Sunday)
+        startDate = weekStart.toISOString().split('T')[0]
+        break
+      case 'month':
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
+        break
+      case 'year':
+        startDate = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0]
+        break
+      case 'custom':
+        setShowCustomDates(true)
+        return
+    }
+
+    setFilters({ ...filters, startDate, endDate })
+    setShowCustomDates(false)
+  }
 
   const fetchCashiers = async () => {
     try {
@@ -211,19 +253,121 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className={`p-6 max-w-7xl mx-auto ${isDarkMode ? 'bg-gray-900 text-white' : ''}`}>
+    <div className={`p-4 max-w-7xl mx-auto ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className={`text-3xl font-bold mb-2 ${isDarkMode ? 'text-white' : ''}`}>Reports & Analytics</h1>
-        <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Comprehensive business insights and reports</p>
+      <div className="mb-4">
+        <h1 className={`text-2xl font-bold mb-1 ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Reports & Analytics</h1>
+        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Comprehensive business insights and reports</p>
+      </div>
+
+      {/* Quick Period Buttons */}
+      <div className={`mb-4 p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleQuickPeriodChange('today')}
+            className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+              quickPeriod === 'today'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
+                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+            }`}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => handleQuickPeriodChange('week')}
+            className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+              quickPeriod === 'week'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
+                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+            }`}
+          >
+            This Week
+          </button>
+          <button
+            onClick={() => handleQuickPeriodChange('month')}
+            className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+              quickPeriod === 'month'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
+                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+            }`}
+          >
+            This Month
+          </button>
+          <button
+            onClick={() => handleQuickPeriodChange('year')}
+            className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+              quickPeriod === 'year'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
+                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+            }`}
+          >
+            This Year
+          </button>
+          <button
+            onClick={() => handleQuickPeriodChange('custom')}
+            className={`px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-1 ${
+              quickPeriod === 'custom'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
+                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+            }`}
+          >
+            More
+            {showCustomDates ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {/* Custom Date Range Section */}
+        {showCustomDates && (
+          <div className={`mt-3 pt-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Start Date</label>
+                <input
+                  type="date"
+                  value={filters.startDate}
+                  onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-gray-100' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>End Date</label>
+                <input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                  className={`w-full border rounded-lg px-3 py-2 text-sm ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-gray-100' 
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                />
+              </div>
+            </div>
+            <button
+              onClick={generateReport}
+              disabled={loading}
+              className={`mt-3 px-4 py-2 text-sm rounded-lg transition-colors ${
+                isDarkMode 
+                  ? 'bg-cyan-600 text-white hover:bg-cyan-700 disabled:opacity-50' 
+                  : 'bg-black text-white hover:bg-gray-800 disabled:opacity-50'
+              }`}
+            >
+              {loading ? 'Generating...' : 'Apply Custom Range'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tabs for Report Type */}
-      <div className={`mb-6 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className={`mb-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex gap-1 overflow-x-auto">
           <button
             onClick={() => setFilters({ ...filters, type: 'summary' })}
-            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'summary'
                 ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
                 : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
@@ -233,7 +377,7 @@ export default function ReportsPage() {
           </button>
           <button
             onClick={() => setFilters({ ...filters, type: 'sales' })}
-            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'sales'
                 ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
                 : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
@@ -243,7 +387,7 @@ export default function ReportsPage() {
           </button>
           <button
             onClick={() => setFilters({ ...filters, type: 'expenses' })}
-            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'expenses'
                 ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
                 : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
@@ -253,7 +397,7 @@ export default function ReportsPage() {
           </button>
           <button
             onClick={() => setFilters({ ...filters, type: 'inventory' })}
-            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'inventory'
                 ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
                 : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
@@ -263,7 +407,7 @@ export default function ReportsPage() {
           </button>
           <button
             onClick={() => setFilters({ ...filters, type: 'profit' })}
-            className={`px-6 py-3 font-medium transition-colors whitespace-nowrap border-b-2 ${
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'profit'
                 ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
                 : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
@@ -274,149 +418,254 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className={`rounded-lg border p-6 mb-6 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5" />
-          <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : ''}`}>Filters</h2>
-        </div>
+      {/* Additional Filters - Compact */}
+      {(filters.type === 'sales' || filters.type === 'expenses') && (
+        <div className={`mb-4 p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {(filters.type === 'sales' || filters.type === 'expenses') && (
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Payment Method</label>
+                <select
+                  value={filters.paymentMethod}
+                  onChange={(e) => setFilters({ ...filters, paymentMethod: e.target.value })}
+                  className={`w-full border rounded px-2 py-1.5 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300'}`}
+                >
+                  <option value="">All</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Digital">Digital</option>
+                </select>
+              </div>
+            )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{/* Period */}
-          {(filters.type === 'sales' || filters.type === 'expenses' || filters.type === 'profit') && (
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Group By</label>
-              <select
-                value={filters.period || ''}
-                onChange={(e) => setFilters({ ...filters, period: e.target.value as any || null })}
-                className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}>
-              
-                <option value="">No Grouping</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
+            {filters.type === 'sales' && (
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Cashier</label>
+                <select
+                  value={filters.cashierId}
+                  onChange={(e) => setFilters({ ...filters, cashierId: e.target.value })}
+                  className={`w-full border rounded px-2 py-1.5 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300'}`}
+                >
+                  <option value="">All</option>
+                  {cashiers.map(cashier => (
+                    <option key={cashier.id} value={cashier.id}>{cashier.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {filters.type === 'expenses' && (
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Category</label>
+                <select
+                  value={filters.category}
+                  onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                  className={`w-full border rounded px-2 py-1.5 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300'}`}
+                >
+                  <option value="">All</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-end">
+              <button
+                onClick={generateReport}
+                disabled={loading}
+                className={`w-full px-3 py-1.5 text-sm rounded transition-colors ${
+                  isDarkMode 
+                    ? 'bg-cyan-600 text-white hover:bg-cyan-700 disabled:opacity-50' 
+                    : 'bg-black text-white hover:bg-gray-800 disabled:opacity-50'
+                }`}
+              >
+                {loading ? 'Loading...' : 'Apply'}
+              </button>
             </div>
-          )}
-
-          {/* Start Date */}
-          <div>
-            <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Start Date</label>
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-              className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-            />
           </div>
-
-          {/* End Date */}
-          <div>
-            <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>End Date</label>
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-              className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-            />
-          </div>
-
-          {/* Payment Method */}
-          {(filters.type === 'sales' || filters.type === 'expenses') && (
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Payment Method</label>
-              <select
-                value={filters.paymentMethod}
-                onChange={(e) => setFilters({ ...filters, paymentMethod: e.target.value })}
-                className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-              >
-                <option value="">All</option>
-                <option value="Cash">Cash</option>
-                <option value="Digital">Digital</option>
-              </select>
-            </div>
-          )}
-
-          {/* Cashier Filter */}
-          {filters.type === 'sales' && (
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Cashier</label>
-              <select
-                value={filters.cashierId}
-                onChange={(e) => setFilters({ ...filters, cashierId: e.target.value })}
-                className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-              >
-                <option value="">All Cashiers</option>
-                {cashiers.map(cashier => (
-                  <option key={cashier.id} value={cashier.id}>{cashier.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Category Filter */}
-          {filters.type === 'expenses' && (
-            <div>
-              <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : ''}`}>Category</label>
-              <select
-                value={filters.category}
-                onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                className={`w-full border rounded px-3 py-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
-              >
-                <option value="">All Categories</option>
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
+      )}
 
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={generateReport}
-            disabled={loading}
-            className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50"
-          >
-            {loading ? 'Generating...' : 'Generate Report'}
-          </button>
+      {/* Export Buttons - Compact */}
+      {reportData && (
+        <div className="flex gap-2 mb-4">
           <button
             onClick={handleExportCSV}
-            disabled={!reportData}
-            className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
+            className={`px-3 py-1.5 text-sm border rounded flex items-center gap-1 ${
+              isDarkMode 
+                ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                : 'border-gray-300 hover:bg-gray-50'
+            }`}
           >
-            <Download className="w-4 h-4" />
-            Export CSV
+            <Download className="w-3 h-3" />
+            CSV
           </button>
           <button
             onClick={handleExportPDF}
-            disabled={!reportData}
-            className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
+            className={`px-3 py-1.5 text-sm border rounded flex items-center gap-1 ${
+              isDarkMode 
+                ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                : 'border-gray-300 hover:bg-gray-50'
+            }`}
           >
-            <FileText className="w-4 h-4" />
-            Export PDF
+            <FileText className="w-3 h-3" />
+            PDF
           </button>
         </div>
-      </div>
+      )}
 
       {/* Report Content */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
-          <p className="mt-4 text-gray-600">Generating report...</p>
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
+          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Generating report...</p>
         </div>
       ) : reportData ? (
         <div>
-          {filters.type === 'summary' && <SummaryReport reportData={reportData} formatCurrency={formatCurrency} />}
+          {/* Enhanced Summary Report with Cash In/Out */}
+          {filters.type === 'summary' && (
+            <div className="space-y-4">
+              {/* Cash Flow Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Cash In Card */}
+                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash In (Sales)</h3>
+                    <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-green-900/30' : 'bg-green-50'}`}>
+                      <TrendingUp className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                    </div>
+                  </div>
+                  <div className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                    {formatCurrency(reportData.sales?.totalRevenue ?? 0)}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className={`p-1.5 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-0.5`}>Cash</div>
+                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                        {formatCurrency(reportData.sales?.totalCash ?? 0)}
+                      </div>
+                    </div>
+                    <div className={`p-1.5 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-0.5`}>Digital</div>
+                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                        {formatCurrency(reportData.sales?.totalDigital ?? 0)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`text-xs mt-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {reportData.sales?.totalSales ?? 0} transactions
+                  </div>
+                </div>
+
+                {/* Cash Out Card */}
+                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash Out (Expenses)</h3>
+                    <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-red-900/30' : 'bg-red-50'}`}>
+                      <TrendingDown className={`w-4 h-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+                    </div>
+                  </div>
+                  <div className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                    {formatCurrency(reportData.expenses?.totalAmount ?? 0)}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className={`p-1.5 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-0.5`}>Cash</div>
+                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                        {formatCurrency(reportData.expenses?.totalCash ?? 0)}
+                      </div>
+                    </div>
+                    <div className={`p-1.5 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-0.5`}>Digital</div>
+                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                        {formatCurrency(reportData.expenses?.totalDigital ?? 0)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`text-xs mt-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {reportData.expenses?.totalExpenses ?? 0} transactions
+                  </div>
+                </div>
+              </div>
+
+              {/* Net Position & Inventory */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <h3 className={`text-xs font-semibold mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Net Profit</h3>
+                  <div className={`text-xl font-bold ${reportData.profit?.netProfit >= 0 ? (isDarkMode ? 'text-cyan-400' : 'text-black') : (isDarkMode ? 'text-red-400' : 'text-red-600')}`}>
+                    {formatCurrency(reportData.profit?.netProfit ?? 0)}
+                  </div>
+                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Profit Margin: {reportData.profit?.profitMargin?.toFixed(2) ?? 0}%
+                  </div>
+                </div>
+
+                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <h3 className={`text-xs font-semibold mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Stock Value</h3>
+                  <div className={`text-xl font-bold ${isDarkMode ? 'text-cyan-400' : 'text-black'}`}>
+                    {formatCurrency(reportData.inventory?.totalStockValue ?? 0)}
+                  </div>
+                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {reportData.inventory?.totalRemaining ?? 0} items in stock
+                  </div>
+                </div>
+              </div>
+
+              {/* Cash Flow Chart */}
+              {reportData.cashFlowTrend && reportData.cashFlowTrend.length > 0 && (
+                <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>Cash Flow Trend</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={reportData.cashFlowTrend}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#e5e7eb'} />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke={isDarkMode ? '#9ca3af' : '#6b7280'}
+                        style={{ fontSize: '12px' }}
+                      />
+                      <YAxis 
+                        stroke={isDarkMode ? '#9ca3af' : '#6b7280'}
+                        style={{ fontSize: '12px' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
+                          border: `1px solid ${isDarkMode ? '#374151' : '#e5e7eb'}`,
+                          borderRadius: '8px',
+                          color: isDarkMode ? '#f3f4f6' : '#111827'
+                        }}
+                      />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="cashIn" 
+                        stroke={isDarkMode ? '#34d399' : '#10b981'} 
+                        name="Cash In"
+                        strokeWidth={2}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="cashOut" 
+                        stroke={isDarkMode ? '#f87171' : '#ef4444'} 
+                        name="Cash Out"
+                        strokeWidth={2}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          )}
+          
           {filters.type === 'sales' && <SalesReport reportData={reportData} formatCurrency={formatCurrency} />}
           {filters.type === 'expenses' && <ExpensesReport reportData={reportData} formatCurrency={formatCurrency} />}
           {filters.type === 'inventory' && <InventoryReport reportData={reportData} formatCurrency={formatCurrency} />}
           {filters.type === 'profit' && <ProfitReport reportData={reportData} formatCurrency={formatCurrency} />}
         </div>
       ) : (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Select filters and click "Generate Report" to view data</p>
+        <div className={`text-center py-12 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <FileText className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+          <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Select a period to view reports</p>
         </div>
       )}
     </div>

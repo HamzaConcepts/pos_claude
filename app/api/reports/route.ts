@@ -291,12 +291,55 @@ async function generateSummaryReport(storeId: string, filters: any) {
   const inventory = await generateInventoryReport(storeId, filters)
   const profit = await generateProfitReport(storeId, filters)
 
+  // Generate cash flow trend data - pass the full reports
+  const cashFlowTrend = generateCashFlowTrend(sales, expenses, filters)
+
   return {
     sales: sales.summary,
     expenses: expenses.summary,
     inventory: inventory.summary,
-    profit: profit.summary
+    profit: profit.summary,
+    cashFlowTrend
   }
+}
+
+function generateCashFlowTrend(salesReport: any, expensesReport: any, filters: any) {
+  // Determine date range
+  const startDate = filters.startDate ? new Date(filters.startDate) : new Date()
+  const endDate = filters.endDate ? new Date(filters.endDate) : new Date()
+  
+  // Create daily entries for the entire range
+  const trendMap: any = {}
+  
+  // Fill in all dates in the range with zero values
+  const currentDate = new Date(startDate)
+  while (currentDate <= endDate) {
+    const dateStr = currentDate.toISOString().split('T')[0]
+    trendMap[dateStr] = { date: dateStr, cashIn: 0, cashOut: 0 }
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+
+  // Add sales data
+  const salesData = salesReport.sales || []
+  salesData.forEach((sale: any) => {
+    const date = new Date(sale.sale_date).toISOString().split('T')[0]
+    if (trendMap[date]) {
+      trendMap[date].cashIn += sale.total_amount
+    }
+  })
+
+  // Add expenses data
+  const expensesData = expensesReport.expenses || []
+  expensesData.forEach((expense: any) => {
+    const date = new Date(expense.expense_date).toISOString().split('T')[0]
+    if (trendMap[date]) {
+      trendMap[date].cashOut += expense.amount
+    }
+  })
+
+  // Convert to array and sort by date
+  return Object.values(trendMap)
+    .sort((a: any, b: any) => a.date.localeCompare(b.date))
 }
 
 function groupByPeriod(data: any[], period: string, dateField: string, valueField: string) {
