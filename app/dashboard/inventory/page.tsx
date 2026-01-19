@@ -19,12 +19,14 @@ export default function InventoryPage() {
   // State
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [filteredProducts, setFilteredProducts] = useState<ProductWithBackwardCompatibility[]>([])
-  const [categories, setCategories] = useState<string[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [subcategories, setSubcategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [subcategoryFilter, setSubcategoryFilter] = useState('')
   const [showLowStock, setShowLowStock] = useState(false)
   
   // Modals
@@ -53,7 +55,7 @@ export default function InventoryPage() {
   // Filter products whenever dependencies change
   useEffect(() => {
     filterProducts()
-  }, [products, searchTerm, categoryFilter, showLowStock])
+  }, [products, searchTerm, categoryFilter, subcategoryFilter, showLowStock])
 
   // Fetch products from API
   const fetchProducts = useCallback(async () => {
@@ -91,8 +93,7 @@ export default function InventoryPage() {
       const result = await response.json()
 
       if (result.success) {
-        const categoryNames = result.data.map((cat: any) => cat.name)
-        setCategories(categoryNames)
+        setCategories(result.data || [])
       }
     } catch (err) {
       console.error('Error fetching categories:', err)
@@ -114,7 +115,12 @@ export default function InventoryPage() {
 
     // Filter by category
     if (categoryFilter) {
-      filtered = filtered.filter(p => (p as any).category_name === categoryFilter)
+      filtered = filtered.filter(p => (p as any).category_id === parseInt(categoryFilter))
+    }
+
+    // Filter by subcategory
+    if (subcategoryFilter) {
+      filtered = filtered.filter(p => (p as any).subcategory_id === parseInt(subcategoryFilter))
     }
 
     // Filter low stock items
@@ -123,7 +129,20 @@ export default function InventoryPage() {
     }
 
     setFilteredProducts(filtered)
-  }, [products, searchTerm, categoryFilter, showLowStock])
+  }, [products, searchTerm, categoryFilter, subcategoryFilter, showLowStock])
+
+  // Handle category change and load subcategories
+  const handleCategoryChange = (value: string) => {
+    setCategoryFilter(value)
+    setSubcategoryFilter('') // Reset subcategory when category changes
+    
+    if (value) {
+      const category = categories.find(c => c.id === parseInt(value))
+      setSubcategories(category?.subcategories || [])
+    } else {
+      setSubcategories([])
+    }
+  }
 
   // Delete product
   const handleDelete = async (id: number) => {
@@ -275,13 +294,16 @@ export default function InventoryPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-xl">Loading inventory...</div>
+        <div className="text-center">
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
+          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading inventory...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <>
+    <div className="animate-fadeIn">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-3">
         <h1 className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Inventory Management</h1>
@@ -333,7 +355,7 @@ export default function InventoryPage() {
 
       {/* Filters */}
       <div className={`p-3 rounded border mb-4 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {/* Search */}
           <div className="relative">
             <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
@@ -349,12 +371,29 @@ export default function InventoryPage() {
           {/* Category Filter */}
           <select
             value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
+            onChange={(e) => handleCategoryChange(e.target.value)}
             className={`px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+
+          {/* Subcategory Filter */}
+          <select
+            value={subcategoryFilter}
+            onChange={(e) => setSubcategoryFilter(e.target.value)}
+            disabled={!categoryFilter || subcategories.length === 0}
+            className={`px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${
+              !categoryFilter || subcategories.length === 0 
+                ? 'opacity-50 cursor-not-allowed' 
+                : ''
+            } ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+          >
+            <option value="">All Subcategories</option>
+            {subcategories.map((sub) => (
+              <option key={sub.id} value={sub.id}>{sub.name}</option>
             ))}
           </select>
 
@@ -694,6 +733,6 @@ export default function InventoryPage() {
           }}
         />
       )}
-    </>
+    </div>
   )
 }

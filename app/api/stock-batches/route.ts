@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
       amount_paid = 0, // Payment made to supplier
       supplier_name = '',
       supplier_phone = '',
+      payment_method = 'Cash', // Payment method: Cash or Digital
     } = body
 
     // Validation
@@ -138,7 +139,8 @@ export async function POST(request: NextRequest) {
         quantity_remaining: quantity_purchased,
         is_depleted: false,
         is_initial_stock, // Mark as initial stock (won't create expense via trigger)
-        purchase_date: new Date().toISOString()
+        purchase_date: new Date().toISOString(),
+        payment_method, // Store payment method
       })
       .select()
       .single()

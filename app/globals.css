@@ -62,7 +62,7 @@ a {
   }
   
   .animate-fadeIn {
-    animation: fadeIn 0.3s ease-out;
+    animation: fadeIn 0.4s ease-out;
   }
   
   /* Consistent button styles - Minimal design */

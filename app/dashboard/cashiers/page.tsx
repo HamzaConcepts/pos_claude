@@ -24,6 +24,7 @@ interface CashierStats {
 }
 
 export default function CashiersManagementPage() {
+  const isDarkMode = useDarkMode()
   const [cashiers, setCashiers] = useState<Cashier[]>([])
   const [stats, setStats] = useState<CashierStats[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,13 +90,16 @@ export default function CashiersManagementPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-xl">Loading cashier data...</div>
+        <div className="text-center">
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
+          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading cashiers...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <>
+    <div className="animate-fadeIn">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-5">
         <div>
@@ -288,6 +292,6 @@ export default function CashiersManagementPage() {
           Profit = Total Sale Amount - Total Cost Price of Products Sold. The commission rate is set per cashier in the Settings page.
         </p>
       </div>
-    </>
+    </div>
   )
 }

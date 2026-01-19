@@ -291,6 +291,9 @@ async function generateSummaryReport(storeId: string, filters: any) {
   const inventory = await generateInventoryReport(storeId, filters)
   const profit = await generateProfitReport(storeId, filters)
 
+  // Calculate cash present (Cash sales - Cash expenses)
+  const cashPresent = sales.summary.totalCash - expenses.summary.totalCash
+
   // Generate cash flow trend data - pass the full reports
   const cashFlowTrend = generateCashFlowTrend(sales, expenses, filters)
 
@@ -299,6 +302,7 @@ async function generateSummaryReport(storeId: string, filters: any) {
     expenses: expenses.summary,
     inventory: inventory.summary,
     profit: profit.summary,
+    cashPresent, // Add cash present to summary
     cashFlowTrend
   }
 }

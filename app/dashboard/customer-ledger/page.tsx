@@ -253,7 +253,7 @@ export default function CustomerLedgerPage() {
   )
 
   return (
-    <>
+    <div className="animate-fadeIn">
       <div className="mb-5">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Customer Ledger</h1>
         <p className="text-xs text-gray-600">View and manage customer accounts with outstanding balances</p>
@@ -290,8 +290,9 @@ export default function CustomerLedgerPage() {
 
       {/* Customers Table */}
       {loading ? (
-        <div className="text-center py-8">
-          <p className="text-gray-500 text-sm">Loading...</p>
+        <div className="text-center py-12">
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
+          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading customers...</p>
         </div>
       ) : filteredAggregatedCustomers.length === 0 ? (
         <div className="text-center py-8 border border-gray-200 rounded">
@@ -519,6 +520,6 @@ export default function CustomerLedgerPage() {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }

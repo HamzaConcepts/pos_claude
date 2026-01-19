@@ -253,7 +253,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className={`p-4 max-w-7xl mx-auto ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
+    <div className={`animate-fadeIn p-4 max-w-7xl mx-auto ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
       {/* Header */}
       <div className="mb-4">
         <h1 className={`text-2xl font-bold mb-1 ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Reports & Analytics</h1>

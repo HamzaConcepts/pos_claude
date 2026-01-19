@@ -187,17 +187,20 @@ export default function POSPage() {
           }
           
           console.log('[POS] ✓ Phone added with IMEI:', barcode)
+          setError(`✓ Found by IMEI: ${product.name}`)
+          setTimeout(() => setError(''), 2000)
         } else {
           // Regular product - add to cart
           addToCart(product)
           console.log('[POS] ✓ Product added:', product.name)
+          setError(`✓ Found by barcode: ${product.name}`)
+          setTimeout(() => setError(''), 2000)
         }
 
         // Clear search
         setSearchTerm('')
-        setError('')
       } else {
-        console.log('[POS] ✗ Product not found for barcode:', barcode)
+        console.log('[POS] ✗ Product not found for barcode/IMEI:', barcode)
         setError(`Product not found for barcode: ${barcode}`)
         setTimeout(() => setError(''), 3000)
       }
@@ -918,10 +921,11 @@ export default function POSPage() {
   const change = calculateChange()
 
   return (
-    <>
-      <h1 className={`text-xl md:text-2xl font-bold mb-5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>New Sale</h1>
+    <div className="animate-fadeIn">
+      <div className={`flex flex-col gap-4 ${isDarkMode ? 'text-white' : ''}`}>
+        <h1 className={`text-xl md:text-2xl font-bold mb-5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>New Sale</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Product Search and Cart */}
         <div className="lg:col-span-2 space-y-3">
           {/* Search */}
@@ -931,13 +935,13 @@ export default function POSPage() {
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search products by name, SKU, or scan barcode..."
+                placeholder="Search by name, SKU, barcode, or IMEI number..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && searchTerm.trim().length > 0) {
                     e.preventDefault()
-                    // Try as barcode first
+                    // Try as barcode/IMEI first
                     handleBarcodeScanned(searchTerm.trim())
                   }
                 }}
@@ -946,6 +950,10 @@ export default function POSPage() {
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
               />
             </div>
+            
+            <p className="text-xs text-gray-500 mt-2">
+              💡 Press Enter to search by barcode or IMEI. Product search is automatic as you type.
+            </p>
 
             {filteredProducts.length > 0 && (
               <div className="mt-2 border border-gray-200 rounded max-h-64 overflow-y-auto">
@@ -1560,6 +1568,7 @@ export default function POSPage() {
           }}
         />
       )}
-    </>
+      </div>
+    </div>
   )
 }

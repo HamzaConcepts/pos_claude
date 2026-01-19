@@ -98,7 +98,10 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className={`flex items-center justify-center min-h-[400px] ${isDarkMode ? 'bg-gray-900' : ''}`}>
-        <div className={`text-xl ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>Loading dashboard...</div>
+        <div className="text-center">
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
+          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading dashboard...</p>
+        </div>
       </div>
     )
   }
@@ -368,6 +371,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </>
-  )
+    )
 }
 

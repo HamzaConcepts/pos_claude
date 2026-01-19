@@ -344,13 +344,16 @@ export default function StorePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-xl">Loading store data...</div>
+        <div className="text-center">
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
+          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading store data...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <>
+    <div className="animate-fadeIn">
       <div className="flex justify-between items-center mb-5">
         <div>
           <h1 className={`text-2xl font-bold mb-1.5 ${isDarkMode ? 'text-white' : ''}`}>Store Management</h1>
@@ -789,7 +792,7 @@ export default function StorePage() {
           }}
         />
       )}
-    </>
+    </div>
   )
 }
 

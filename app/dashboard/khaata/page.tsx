@@ -573,8 +573,9 @@ export default function KhaataPage() {
 
           {/* Customers Table */}
           {loading ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 text-sm">Loading...</p>
+            <div className="text-center py-12">
+              <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
+              <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading customers...</p>
             </div>
           ) : filteredAggregatedCustomers.length === 0 ? (
             <div className="text-center py-8 border border-gray-200 rounded">
@@ -754,8 +755,9 @@ export default function KhaataPage() {
 
           {/* Suppliers Table */}
           {loading ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 text-sm">Loading...</p>
+            <div className="text-center py-12">
+              <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
+              <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading suppliers...</p>
             </div>
           ) : filteredSuppliers.length === 0 ? (
             <div className="text-center py-8 border border-dashed border-gray-300 rounded">
@@ -1203,7 +1205,7 @@ export default function KhaataPage() {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
 

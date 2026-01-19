@@ -52,6 +52,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
     
     // Payment to supplier
     amount_paid: '',
+    payment_method: 'Cash', // Payment method: Cash or Digital
     
     // Step 4: IMEI (conditional)
     imei_numbers: [''],
@@ -67,6 +68,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
   const [error, setError] = useState('')
   const [generatedSKU, setGeneratedSKU] = useState('')
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [imeiErrors, setImeiErrors] = useState<string[]>([])
 
   // Dark mode detection
   useEffect(() => {
@@ -217,6 +219,19 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
       ...formData,
       imei_numbers: newImeis,
     })
+    
+    // Validate IMEI format in real-time
+    const newErrors = [...imeiErrors]
+    if (value.trim().length > 0) {
+      if (!/^\d{15}$/.test(value.trim())) {
+        newErrors[index] = 'IMEI must be exactly 15 digits'
+      } else {
+        newErrors[index] = ''
+      }
+    } else {
+      newErrors[index] = ''
+    }
+    setImeiErrors(newErrors)
   }
 
   const validateStep = (currentStep: number): boolean => {
@@ -280,6 +295,14 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
           if (validImeis.length !== quantity) {
             setError(`Please enter exactly ${quantity} IMEI number(s) to match the quantity`)
             return false
+          }
+          // Validate IMEI format (must be exactly 15 digits)
+          for (let i = 0; i < validImeis.length; i++) {
+            const imei = validImeis[i].trim()
+            if (!/^\d{15}$/.test(imei)) {
+              setError(`IMEI #${i + 1} must be exactly 15 digits (current: ${imei.length} characters)`)
+              return false
+            }
           }
           // Check for duplicates
           const uniqueImeis = new Set(validImeis)
@@ -404,6 +427,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
         amount_paid: amountPaid,
         supplier_name: formData.supplier_name || 'Unknown',
         supplier_phone: formData.supplier_phone || '',
+        payment_method: formData.payment_method, // Payment method (Cash/Digital)
       }
 
       const batchResponse = await fetch('/api/stock-batches', {
@@ -945,6 +969,33 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
+                        document.getElementById('payment_method')?.focus()
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                      isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300'
+                    }`}
+                    disabled={loading}
+                    placeholder="Enter amount paid"
+                  />
+                  <p className="text-xs text-text-secondary mt-1">
+                    If amount paid is less than total, it will be added to Supplier Khaata
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="payment_method" className="block mb-2 font-medium">
+                    Payment Method *
+                  </label>
+                  <select
+                    id="payment_method"
+                    value={formData.payment_method}
+                    onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
                         const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
                         const submitBtn = document.querySelector('[data-step-action="submit"]') as HTMLButtonElement
                         if (nextBtn) {
@@ -960,10 +1011,12 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         : 'bg-white border-gray-300'
                     }`}
                     disabled={loading}
-                    placeholder="Enter amount paid"
-                  />
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="Digital">Digital (Bank Transfer)</option>
+                  </select>
                   <p className="text-xs text-text-secondary mt-1">
-                    If amount paid is less than total, it will be added to Supplier Khaata
+                    How are you paying the supplier?
                   </p>
                 </div>
 
@@ -1033,13 +1086,32 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                           }
                         }}
                         className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono ${
-                          isDarkMode
+                          imeiErrors[index] && imei.trim().length > 0
+                            ? 'border-red-500'
+                            : isDarkMode
                             ? 'bg-gray-700 border-gray-600 text-white'
                             : 'bg-white border-gray-300'
                         }`}
                         disabled={loading}
-                        placeholder="Enter IMEI number"
+                        placeholder="Enter 15-digit IMEI number"
+                        maxLength={15}
                       />
+                      {imeiErrors[index] && imei.trim().length > 0 && (
+                        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                          <AlertCircle size={12} />
+                          {imeiErrors[index]}
+                        </p>
+                      )}
+                      {imei.trim().length > 0 && imei.trim().length < 15 && !imeiErrors[index] && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {imei.trim().length}/15 digits
+                        </p>
+                      )}
+                      {imei.trim().length === 15 && /^\d{15}$/.test(imei.trim()) && (
+                        <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                          ✓ Valid IMEI format
+                        </p>
+                      )}
                     </div>
                     {formData.imei_numbers.length > 1 && (
                       <button

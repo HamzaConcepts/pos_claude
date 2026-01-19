@@ -26,6 +26,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
     supplier_name: '',
     supplier_phone: '',
     amount_paid: '', // Payment to supplier
+    payment_method: 'Cash', // Payment method: Cash or Digital
     // IMEI fields for phone products
     imei_numbers: [''],
   })
@@ -165,12 +166,13 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
       supplier_name: '',
       supplier_phone: '',
       amount_paid: '',
+      payment_method: 'Cash',
       imei_numbers: initialIMEIs,
     })
     setSearchTerm('')
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     
     // If quantity changes and it's a phone, update IMEI fields count
@@ -339,6 +341,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
         amount_paid: parseFloat(formData.amount_paid || '0'),
         supplier_name: formData.supplier_name || 'Unknown',
         supplier_phone: formData.supplier_phone || '',
+        payment_method: formData.payment_method, // Payment method (Cash/Digital)
       }
 
       const batchResponse = await fetch('/api/stock-batches', {
@@ -650,6 +653,31 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                         Total: Rs. {(parseFloat(formData.cost_price) * parseInt(formData.quantity_added)).toLocaleString()}
                       </p>
                     )}
+                  </div>
+
+                  {/* Payment Method */}
+                  <div>
+                    <label htmlFor="payment_method" className={`block mb-2 font-medium ${
+                      isDarkMode ? 'text-gray-300' : ''
+                    }`}>
+                      Payment Method *
+                    </label>
+                    <select
+                      id="payment_method"
+                      name="payment_method"
+                      value={formData.payment_method}
+                      onChange={handleChange}
+                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
+                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
+                      }`}
+                      required
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Digital">Digital (Bank Transfer)</option>
+                    </select>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      How are you paying the supplier?
+                    </p>
                   </div>
                 </div>
 

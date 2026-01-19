@@ -1,4 +1,4 @@
-import { DollarSign, TrendingDown, TrendingUp, Package } from 'lucide-react'
+import { DollarSign, TrendingDown, TrendingUp, Package, Wallet } from 'lucide-react'
 import { StatCard } from './StatCard'
 
 interface SummaryReportProps {
@@ -10,7 +10,7 @@ export function SummaryReport({ reportData, formatCurrency }: SummaryReportProps
   if (!reportData) return null
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
       <StatCard
         title="Total Revenue"
         value={formatCurrency(reportData.sales?.totalRevenue ?? 0)}
@@ -32,6 +32,13 @@ export function SummaryReport({ reportData, formatCurrency }: SummaryReportProps
         trend={reportData.profit?.profitMargin ?? 0}
         trendLabel="% margin"
         isProfit
+      />
+      <StatCard
+        title="Cash Present"
+        value={formatCurrency(reportData.cashPresent ?? 0)}
+        icon={<Wallet />}
+        trend={reportData.sales?.totalCash ?? 0}
+        trendLabel="cash in"
       />
       <StatCard
         title="Stock Value"

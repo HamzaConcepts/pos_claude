@@ -169,7 +169,7 @@ export async function GET(request: Request) {
         .from('product_imeis')
         .select(`
           imei_number,
-          sold,
+          status,
           product_id,
           products (
             *,
@@ -198,7 +198,7 @@ export async function GET(request: Request) {
           )
         `)
         .eq('imei_number', barcode)
-        .eq('sold', false)
+        .eq('status', 'in_stock')
         .maybeSingle()
 
       if (imeiError) {

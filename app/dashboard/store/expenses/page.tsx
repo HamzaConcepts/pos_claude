@@ -243,8 +243,11 @@ export default function StoreExpensesPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
+          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading expenses...</p>
+        </div>
       </div>
     )
   }
@@ -252,7 +255,7 @@ export default function StoreExpensesPage() {
   const groupedExpenses = groupByCategory()
 
   return (
-    <div className="p-6">
+    <div className="animate-fadeIn p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Pre-defined Expenses</h1>
