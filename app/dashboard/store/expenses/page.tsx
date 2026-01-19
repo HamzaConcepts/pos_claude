@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { DollarSign, Plus, Edit2, Trash2, X, ToggleLeft, ToggleRight } from 'lucide-react'
 import { supabase, getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { useDarkMode } from '@/hooks/useDarkMode'
 
 interface PredefinedExpense {
   id: number
@@ -31,6 +32,7 @@ const EXPENSE_CATEGORIES = [
 
 export default function StoreExpensesPage() {
   const router = useRouter()
+  const isDarkMode = useDarkMode()
   const [expenses, setExpenses] = useState<PredefinedExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

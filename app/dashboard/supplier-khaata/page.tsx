@@ -216,7 +216,7 @@ export default function SupplierKhaataPage() {
   }
 
   return (
-    <>
+    <div className="animate-fadeIn">
       {/* Header */}
       <div className="mb-6">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Supplier Khaata (Accounts)</h1>

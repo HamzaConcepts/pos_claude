@@ -503,7 +503,7 @@ export default function KhaataPage() {
   }
 
   return (
-    <>
+    <div className="animate-fadeIn">
       <div className="mb-5">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Khaata System</h1>
         <p className="text-xs text-gray-600">View and manage customer accounts with outstanding balances</p>
