@@ -112,6 +112,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Ensure payment_method is always valid (default to 'Cash' if undefined/null)
+    const validPaymentMethod = payment_method || 'Cash'
+
     // Generate batch number
     const { data: batchNumber, error: batchError } = await supabaseAdmin
       .rpc('generate_batch_number', {
@@ -140,7 +143,7 @@ export async function POST(request: NextRequest) {
         is_depleted: false,
         is_initial_stock, // Mark as initial stock (won't create expense via trigger)
         purchase_date: new Date().toISOString(),
-        payment_method, // Store payment method
+        payment_method: validPaymentMethod, // Store payment method (validated)
       })
       .select()
       .single()

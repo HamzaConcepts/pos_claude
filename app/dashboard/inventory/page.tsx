@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { Search, Plus, Edit, Trash2, AlertTriangle, Package, History, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, AlertTriangle, Package, History, ChevronDown, ChevronUp, Printer } from 'lucide-react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import AddStockModal from '@/components/AddStockModal'
 import ProductModal from '@/components/ProductModal'
 import RestockModal from '@/components/RestockModal'
 import RestockHistoryModal from '@/components/RestockHistoryModal'
 import BatchEditModal from '@/components/BatchEditModal'
+import PrintLabelsModal from '@/components/PrintLabelsModal'
 import { getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useDarkMode } from '@/hooks/useDarkMode'
@@ -35,12 +36,14 @@ export default function InventoryPage() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [isBatchEditModalOpen, setIsBatchEditModalOpen] = useState(false)
+  const [isPrintLabelsModalOpen, setIsPrintLabelsModalOpen] = useState(false)
   
   // Selected items
   const [editingProduct, setEditingProduct] = useState<ProductWithBackwardCompatibility | null>(null)
   const [selectedProductForHistory, setSelectedProductForHistory] = useState<ProductWithBackwardCompatibility | null>(null)
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null)
   const [editingBatch, setEditingBatch] = useState<any | null>(null)
+  const [selectedProductForLabels, setSelectedProductForLabels] = useState<ProductWithBackwardCompatibility | null>(null)
   
   // Import
   const [importing, setImporting] = useState(false)
@@ -509,6 +512,17 @@ export default function InventoryPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
+                                setSelectedProductForLabels(product)
+                                setIsPrintLabelsModalOpen(true)
+                              }}
+                              className="p-1 hover:bg-blue-100 rounded text-blue-600 transition-colors"
+                              title="Print Labels"
+                            >
+                              <Printer size={16} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
                                 handleEdit(product)
                               }}
                               className="p-1 hover:bg-gray-200 rounded transition-colors"
@@ -719,6 +733,16 @@ export default function InventoryPage() {
           onClose={() => {
             setIsHistoryModalOpen(false)
             setSelectedProductForHistory(null)
+          }}
+        />
+      )}
+
+      {isPrintLabelsModalOpen && selectedProductForLabels && (
+        <PrintLabelsModal
+          product={selectedProductForLabels}
+          onClose={() => {
+            setIsPrintLabelsModalOpen(false)
+            setSelectedProductForLabels(null)
           }}
         />
       )}
