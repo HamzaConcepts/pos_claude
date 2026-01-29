@@ -201,11 +201,12 @@ export default function DashboardLayout({
   // User is authenticated, show dashboard
   console.log('[DASHBOARD] Rendering: Dashboard with user:', user.name)
   return (
-    <div className={`flex flex-row min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-[#F5F5F5]'}`}>
+    <div className={`flex flex-row min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#F5F5F5]'}`}>
       <Sidebar userRole={user.role} userName={user.name} />
       <main 
         {...swipeHandlers}
-        className={`flex-1 lg:ml-56 p-5 md:p-6 pb-20 lg:pb-6 transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-[#F5F5F5]'}`}
+        className={`flex-1 p-5 md:p-6 pb-20 lg:pb-6 transition-all duration-300 ${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#F5F5F5]'}`}
+        style={{ marginLeft: 'calc(var(--sidebar-width, 13rem))' }}
       >
         {children}
       </main>

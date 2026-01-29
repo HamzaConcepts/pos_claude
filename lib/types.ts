@@ -242,6 +242,8 @@ export interface DashboardStats {
   todayExpenses: number
   monthlyExpenses: number
   expensesByCategory: Array<{ category: string; total: number }>
+  monthlyCOGS: number
+  grossProfit: number
   netProfit: number
   lowStockCount: number
   lowStockProducts: ProductWithBackwardCompatibility[]

@@ -141,21 +141,23 @@ export async function GET(request: Request) {
       }
     }
 
-    // Monthly expenses
+    // Monthly expenses (excluding inventory purchases)
     const { data: expenses } = await supabaseAdmin
       .from('expenses')
       .select('amount, category')
       .eq('store_id', parseInt(storeId))
       .gte('expense_date', startOfMonth.toISOString().split('T')[0])
+      .not('category', 'in', '("new_product","inventory_restock")')
 
     const monthlyExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
 
-    // Today's expenses
+    // Today's expenses (excluding inventory purchases)
     const { data: todayExpensesData } = await supabaseAdmin
       .from('expenses')
       .select('amount')
       .eq('store_id', parseInt(storeId))
       .gte('expense_date', startOfToday.toISOString().split('T')[0])
+      .not('category', 'in', '("new_product","inventory_restock")')
 
     const todayExpenses = todayExpensesData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
 
@@ -226,6 +228,22 @@ export async function GET(request: Request) {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5)
 
+    // Calculate COGS for monthly sales
+    const { data: monthlySaleItems } = await supabaseAdmin
+      .from('sale_items')
+      .select('cost_price_snapshot, quantity, sales!inner(store_id, sale_date)')
+      .eq('sales.store_id', parseInt(storeId))
+      .gte('sales.sale_date', startOfMonth.toISOString())
+
+    const monthlyCOGS = monthlySaleItems?.reduce(
+      (sum, item) => sum + (item.cost_price_snapshot || 0) * item.quantity,
+      0
+    ) || 0
+
+    // Calculate correct profit: Gross Profit = Revenue - COGS, Net Profit = Gross Profit - Operating Expenses
+    const grossProfit = monthlyRevenue - monthlyCOGS
+    const netProfit = grossProfit - monthlyExpenses
+
     return NextResponse.json({
       success: true,
       data: {
@@ -240,7 +258,9 @@ export async function GET(request: Request) {
         todayExpenses,
         monthlyExpenses,
         expensesByCategory,
-        netProfit: monthlyRevenue - monthlyExpenses,
+        monthlyCOGS,
+        grossProfit,
+        netProfit,
         lowStockCount,
         lowStockProducts: lowStockProducts || [],
         recentSales: recentSales || [],

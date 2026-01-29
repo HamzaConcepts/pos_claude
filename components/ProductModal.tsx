@@ -155,6 +155,7 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
                 id="name"
                 name="name"
                 type="text"
+                autoFocus
                 value={formData.name}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border-2 rounded focus:outline-none ${

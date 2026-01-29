@@ -132,78 +132,98 @@ export default function DashboardPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        {/* Total Sales */}
-        <div className={`rounded p-4 transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`p-1.5 rounded ${isDarkMode ? 'bg-cyan-900/50' : 'bg-cyan-50'}`}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        {/* Total Sales (Revenue) */}
+        <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-cyan-500/20' : 'bg-cyan-50'}`}>
               <DollarSign size={18} className="text-cyan-600" />
             </div>
-            <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Sales</p>
+            <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Revenue</p>
           </div>
-          <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {stats.monthlySales.revenue.toFixed(2)}</p>
-          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>This month</p>
+          <p className={`text-xl font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>Rs. {stats.monthlySales.revenue.toFixed(2)}</p>
+          <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>This month</p>
         </div>
 
-        {/* Orders Completed */}
-        <div className={`rounded p-4 transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`p-1.5 rounded ${isDarkMode ? 'bg-blue-900/50' : 'bg-blue-50'}`}>
-              <ShoppingBag size={18} className="text-blue-600" />
+        {/* COGS */}
+        <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-500/20' : 'bg-orange-50'}`}>
+              <TrendingUp size={18} className="text-orange-600" />
             </div>
-            <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Orders</p>
+            <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>COGS</p>
           </div>
-          <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{stats.monthlySales.count}</p>
-          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{stats.todaySales.count} today</p>
+          <p className="text-xl font-bold text-orange-600">Rs. {(stats.monthlyCOGS || 0).toFixed(2)}</p>
+          <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Cost of goods sold</p>
         </div>
 
-        {/* Monthly Expenses */}
-        <div className={`rounded p-4 transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`p-1.5 rounded ${isDarkMode ? 'bg-red-900/50' : 'bg-red-50'}`}>
+        {/* Gross Profit */}
+        <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-green-500/20' : 'bg-green-50'}`}>
+              <TrendingUp size={18} className="text-green-600" />
+            </div>
+            <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Gross Profit</p>
+          </div>
+          <p className={`text-xl font-bold ${(stats.grossProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            Rs. {(stats.grossProfit || 0).toFixed(2)}
+          </p>
+          <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Revenue - COGS</p>
+        </div>
+
+        {/* Operating Expenses */}
+        <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-red-500/20' : 'bg-red-50'}`}>
               <TrendingUp size={18} className="text-red-600" />
             </div>
-            <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Expenses</p>
+            <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Expenses</p>
           </div>
-          <p className="text-2xl font-bold text-red-600">Rs. {stats.monthlyExpenses.toFixed(2)}</p>
-          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Rs. {stats.todayExpenses?.toFixed(2) || '0.00'} today</p>
+          <p className="text-xl font-bold text-red-600">Rs. {stats.monthlyExpenses.toFixed(2)}</p>
+          <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Rs. {stats.todayExpenses?.toFixed(2) || '0.00'} today</p>
         </div>
 
         {/* Net Profit */}
-        <div className={`rounded p-4 transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`p-1.5 rounded ${isDarkMode ? 'bg-green-900/50' : 'bg-green-50'}`}>
-              <TrendingUp size={18} className="text-green-600" />
+        <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
+              <TrendingUp size={18} className="text-blue-600" />
             </div>
-            <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Net Profit</p>
+            <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Net Profit</p>
           </div>
-          <p className={`text-2xl font-bold ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <p className={`text-xl font-bold ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             Rs. {stats.netProfit.toFixed(2)}
           </p>
-          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>This month</p>
+          <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Gross profit - Expenses</p>
         </div>
       </div>
 
-      {/* Quick Stats & Expenses */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-5">
-        <div className={`p-4 rounded transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <p className={`text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Low Stock Items</p>
-          <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{stats.lowStockCount}</p>
+      {/* Quick Stats Row - Orders Count */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+        <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-500/20' : 'bg-purple-50'}`}>
+              <ShoppingBag size={18} className="text-purple-600" />
+            </div>
+            <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Orders This Month</p>
+          </div>
+          <p className={`text-2xl font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{stats.monthlySales.count}</p>
+          <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>{stats.todaySales.count} today</p>
         </div>
 
-        <div className={`p-4 rounded lg:col-span-2 transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
+        <div className={`rounded-lg p-4 lg:col-span-3 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
           <div className="flex items-center justify-between mb-3">
-            <p className={`text-sm font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Top Expense Categories</p>
-            <Link href="/dashboard/expenses" className="text-xs text-cyan-600 hover:text-cyan-700">
+            <p className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Top Expense Categories</p>
+            <Link href="/dashboard/expenses" className="text-[10px] text-cyan-600 hover:text-cyan-700">
               View All →
             </Link>
           </div>
           {stats.expensesByCategory && stats.expensesByCategory.length > 0 ? (
-            <div className="flex gap-4">
+            <div className="grid grid-cols-3 gap-4">
               {stats.expensesByCategory.slice(0, 3).map((cat: any) => (
-                <div key={cat.category} className="flex-1">
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{cat.category}</p>
-                  <p className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {cat.total.toFixed(2)}</p>
+                <div key={cat.category}>
+                  <p className={`text-[10px] mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>{cat.category}</p>
+                  <p className={`text-base font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Rs. {cat.total.toFixed(2)}</p>
                 </div>
               ))}
             </div>
@@ -215,113 +235,115 @@ export default function DashboardPage() {
 
       {/* Low Stock Alert */}
       {stats.lowStockCount > 0 && (
-        <div className={`p-4 rounded mb-5 flex items-center justify-between ${isDarkMode ? 'bg-orange-900/30 border border-orange-800 text-orange-300' : 'bg-orange-50 border border-orange-200 text-orange-800'}`}>
+        <div className={`p-4 rounded-lg mb-6 flex items-center justify-between ${isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50 shadow-sm'}`}>
           <div className="flex items-center gap-2">
             <AlertTriangle size={18} className={isDarkMode ? 'text-orange-400' : 'text-orange-600'} />
-            <span className="text-sm font-medium">
+            <span className={`text-sm font-medium ${isDarkMode ? 'text-orange-300' : 'text-orange-800'}`}>
               {stats.lowStockCount} {stats.lowStockCount === 1 ? 'product is' : 'products are'} running low on stock
             </span>
           </div>
           <Link
             href="/dashboard/inventory?low_stock=true"
-            className="bg-orange-600 text-white px-3 py-1.5 rounded text-sm hover:bg-orange-700 transition-colors"
+            className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-orange-700 transition-colors font-medium"
           >
             View Inventory
           </Link>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-5">
-        {/* Sales Trend */}
-        <div className={`p-4 rounded transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <h2 className={`text-base font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Sales Trend (Last 7 Days)</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Sales Bar Chart */}
+        <div className={`rounded-lg p-5 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <h2 className={`text-sm font-semibold mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Sales Trend (Last 7 Days)</h2>
           {stats.salesTrend.length > 0 ? (
-            <div className="space-y-2">
-              {stats.salesTrend.map((day) => (
-                <div key={day.date} className="flex items-center justify-between">
-                  <span className={`text-xs w-16 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                  <div className={`flex-1 mx-3 rounded-full h-2 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <div
-                      className="bg-cyan-600 h-2 rounded-full"
-                      style={{
-                        width: `${Math.min((day.revenue / Math.max(...stats.salesTrend.map(d => d.revenue))) * 100, 100)}%`
-                      }}
-                    />
+            <div className="flex items-end justify-between gap-2 h-48">
+              {stats.salesTrend.map((day) => {
+                const maxRevenue = Math.max(...stats.salesTrend.map(d => d.revenue))
+                const heightPercentage = maxRevenue > 0 ? (day.revenue / maxRevenue) * 100 : 0
+                return (
+                  <div key={day.date} className="flex-1 flex flex-col items-center gap-2">
+                    <div className="relative w-full" style={{ height: `${Math.max(heightPercentage, 5)}%` }}>
+                      <div className="absolute bottom-0 w-full bg-gradient-to-t from-cyan-600 to-cyan-500 rounded-t-lg hover:from-cyan-500 hover:to-cyan-400 transition-all cursor-pointer" style={{ height: '100%' }}>
+                        {day.revenue > 0 && (
+                          <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-[10px] font-semibold whitespace-nowrap">
+                            <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Rs. {day.revenue.toFixed(0)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <p className={`text-[10px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                      </p>
+                    </div>
                   </div>
-                  <span className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {day.revenue.toFixed(2)}</span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
-            <p className={`text-center py-4 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No sales data available</p>
+            <p className={`text-center py-8 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No sales data available</p>
           )}
         </div>
 
         {/* Top Products */}
-        <div className={`p-4 rounded transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <h2 className={`text-base font-semibold mb-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Top Products (This Month)</h2>
+        <div className={`rounded-lg p-5 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <h2 className={`text-sm font-semibold mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Top Products (This Month)</h2>
           {stats.topProducts && stats.topProducts.length > 0 ? (
             <div className="space-y-2">
               {stats.topProducts.map((product: any, index: number) => (
-                <div key={product.product_name || index} className="flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${isDarkMode ? 'bg-cyan-900/50 text-cyan-400' : 'bg-cyan-100 text-cyan-700'}`}>
+                <div key={product.product_name || index} className={`flex items-center gap-3 p-2.5 rounded-lg ${isDarkMode ? 'bg-gray-800/30' : 'bg-gray-50'}`}>
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${isDarkMode ? 'bg-cyan-500/20 text-cyan-400' : 'bg-cyan-100 text-cyan-700'}`}>
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`font-medium text-sm truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product.product_name || 'Unknown'}</p>
-                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      ${Number(product.revenue || 0).toFixed(2)} · {product.quantity || 0} sold
+                    <p className={`font-medium text-xs truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{product.product_name || 'Unknown'}</p>
+                    <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
+                      Rs. {Number(product.revenue || 0).toFixed(2)} · {product.quantity || 0} sold
                     </p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className={`text-center py-4 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No sales data available</p>
+            <p className={`text-center py-8 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No sales data available</p>
           )}
         </div>
       </div>
 
       {/* Recent Sales & Low Stock Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Sales */}
-        <div className={`rounded overflow-hidden transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <div className={`p-4 border-b flex items-center justify-between ${isDarkMode ? 'bg-gray-750 border-gray-700' : 'bg-[#F5F5F5] border-gray-200'}`}>
-            <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Recent Sales</h2>
+        <div className={`rounded-lg overflow-hidden transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className="p-4 flex items-center justify-between">
+            <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Recent Sales</h2>
             {stats.recentSales.length > 0 && (
-              <Link href="/dashboard/sales" className="text-xs text-cyan-600 hover:text-cyan-700">
+              <Link href="/dashboard/sales" className="text-xs text-cyan-600 hover:text-cyan-700 font-medium">
                 View All →
               </Link>
             )}
           </div>
-          <div className="p-3">
+          <div className="px-4 pb-4">
             {stats.recentSales.length > 0 ? (
               <div className="space-y-2">
                 {stats.recentSales.slice(0, 5).map((sale: any) => (
-                  <div key={sale.id} className={`flex items-center justify-between p-2 rounded ${isDarkMode ? 'border border-gray-700 hover:bg-gray-700' : 'border border-gray-200 hover:bg-[#F5F5F5]'}`}>
+                  <div key={sale.id} className={`flex items-center justify-between p-2.5 rounded-lg ${isDarkMode ? 'bg-gray-800/30 hover:bg-gray-800/40' : 'bg-gray-50 hover:bg-gray-100'} transition-colors`}>
                     <div className="flex-1 min-w-0">
-                      <p className={`font-mono text-xs font-medium truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{sale.sale_number || `Sale #${sale.id}`}</p>
-                      <p className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <p className={`font-mono text-[10px] font-semibold truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.sale_number || `Sale #${sale.id}`}</p>
+                      <p className={`text-[10px] truncate mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
                         {new Date(sale.sale_date).toLocaleDateString('en-US', { 
                           month: 'short', 
                           day: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit'
-                        })}
-                      </p>
-                      <p className="text-xs text-gray-600 truncate">
-                        {sale.cashier_name || 'Unknown Cashier'}
+                        })} · {sale.cashier_name || 'Unknown'}
                       </p>
                     </div>
-                    <div className="text-right ml-2">
-                      <p className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${sale.total_amount.toFixed(2)}</p>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{sale.payment_method}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded border font-medium ${
-                        sale.payment_status === 'Paid' ? 'bg-green-50 text-green-700 border-green-200' :
-                        sale.payment_status === 'Partial' ? 'bg-red-50 text-red-700 border-red-200' :
-                        'bg-yellow-50 text-yellow-700 border-yellow-200'
+                    <div className="text-right ml-3">
+                      <p className={`font-bold text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Rs. {sale.total_amount.toFixed(2)}</p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium mt-0.5 inline-block ${
+                        sale.payment_status === 'Paid' ? 'bg-green-500/20 text-green-600' :
+                        sale.payment_status === 'Partial' ? 'bg-red-500/20 text-red-600' :
+                        'bg-yellow-500/20 text-yellow-600'
                       }`}>
                         {sale.payment_status}
                       </span>
@@ -330,42 +352,44 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className={`text-center py-6 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No recent sales</p>
+              <p className={`text-center py-8 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No recent sales</p>
             )}
           </div>
         </div>
 
         {/* Low Stock Products */}
-        <div className={`rounded overflow-hidden transition-colors ${isDarkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}>
-          <div className={`p-4 border-b flex items-center justify-between ${isDarkMode ? 'bg-gray-750 border-gray-700' : 'bg-[#F5F5F5] border-gray-200'}`}>
-            <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Low Stock Products</h2>
+        <div className={`rounded-lg overflow-hidden transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className="p-4 flex items-center justify-between">
+            <h2 className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Low Stock Products</h2>
             {stats.lowStockCount > 0 && (
-              <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-semibold border border-orange-200">
+              <span className="bg-orange-500/20 text-orange-600 px-2.5 py-1 rounded-full text-xs font-bold">
                 {stats.lowStockCount}
               </span>
             )}
           </div>
-          <div className="p-3">
+          <div className="px-4 pb-4">
             {stats.lowStockProducts && stats.lowStockProducts.length > 0 ? (
               <div className="space-y-2">
                 {stats.lowStockProducts.map((product: any) => (
-                  <div key={product.id} className={`flex items-center justify-between p-2 rounded ${isDarkMode ? 'border border-orange-800 bg-orange-900/20' : 'border border-orange-200 bg-orange-50'}`}>
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Package size={16} className={isDarkMode ? 'text-orange-400' : 'text-orange-600'} />
+                  <div key={product.id} className={`flex items-center justify-between p-2.5 rounded-lg ${isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50'}`}>
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-orange-500/20' : 'bg-orange-100'}`}>
+                        <Package size={16} className="text-orange-600" />
+                      </div>
                       <div className="min-w-0">
-                        <p className={`font-medium text-sm truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product.name}</p>
-                        <p className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{product.sku}</p>
+                        <p className={`font-medium text-xs truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{product.name}</p>
+                        <p className={`text-[10px] truncate ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>{product.sku}</p>
                       </div>
                     </div>
-                    <div className="text-right ml-2">
-                      <p className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product.stock_quantity}</p>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>in stock</p>
+                    <div className="text-right ml-3">
+                      <p className={`font-bold text-base ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{product.stock_quantity}</p>
+                      <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>in stock</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className={`text-center py-6 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>All products are well stocked</p>
+              <p className={`text-center py-8 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>All products are well stocked</p>
             )}
           </div>
         </div>

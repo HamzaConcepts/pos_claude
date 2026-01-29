@@ -806,8 +806,8 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                         ({formData.imei_numbers.filter(i => i.trim()).length}/{parseInt(formData.quantity_added)})
                       </span>
                     </label>
-                    <div className={`space-y-2 max-h-64 overflow-y-auto border-2 rounded p-3 ${
-                      isDarkMode ? 'border-gray-600' : 'border-black'
+                    <div className={`space-y-3 max-h-64 overflow-y-auto border rounded-lg p-4 ${
+                      isDarkMode ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50'
                     }`}>
                       {formData.imei_numbers.map((imei, index) => (
                         <div key={index} className="flex gap-2">
@@ -815,17 +815,33 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                             type="text"
                             value={imei}
                             onChange={(e) => handleIMEIChange(index, e.target.value)}
-                            placeholder={`IMEI #${index + 1}`}
-                            className={`flex-1 px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
-                              isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-gray-500' : 'border-black focus:ring-black'
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                // If not the last IMEI field, move to next
+                                if (index < formData.imei_numbers.length - 1) {
+                                  const nextInput = e.currentTarget.parentElement?.nextElementSibling?.querySelector('input')
+                                  nextInput?.focus()
+                                }
+                              }
+                            }}
+                            autoFocus={index === 0}
+                            placeholder={`IMEI #${index + 1} (15 digits)`}
+                            className={`flex-1 px-3 py-2.5 border rounded-lg font-mono focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500/20 ${
+                              isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300 bg-white'
                             }`}
+                            maxLength={15}
                             required
                           />
                           {formData.imei_numbers.length > 1 && (
                             <button
                               type="button"
                               onClick={() => removeIMEIField(index)}
-                              className="px-3 py-2 bg-status-error text-white rounded hover:bg-red-700"
+                              className={`px-3 py-2 border rounded-lg transition-colors ${
+                                isDarkMode 
+                                  ? 'border-red-500/50 text-red-400 hover:bg-red-900/30' 
+                                  : 'border-red-300 text-red-500 hover:bg-red-50'
+                              }`}
                             >
                               <X size={16} />
                             </button>
@@ -836,8 +852,8 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                         <button
                           type="button"
                           onClick={addIMEIField}
-                          className={`w-full px-3 py-2 border-2 rounded ${
-                            isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-black hover:bg-bg-secondary'
+                          className={`w-full px-3 py-2.5 border rounded-lg transition-colors ${
+                            isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-100'
                           }`}
                         >
                           + Add IMEI

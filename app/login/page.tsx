@@ -21,17 +21,7 @@ export default function LoginPage() {
 
   const checkExistingSession = async () => {
     try {
-      // Check for cashier session
-      const cashierSession = localStorage.getItem('user_session')
-      if (cashierSession) {
-        const session = JSON.parse(cashierSession)
-        if (session.store_id) {
-          router.replace('/dashboard/pos')
-          return
-        }
-      }
-
-      // Check for manager session
+      // First check for manager session (Supabase Auth)
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         // Verify manager has store_id
@@ -42,15 +32,59 @@ export default function LoginPage() {
           .maybeSingle()
 
         if (managerData?.store_id) {
+          // Valid manager session - restore sessionStorage
+          sessionStorage.setItem('store_id', managerData.store_id.toString())
+          sessionStorage.setItem('user_type', 'Manager')
+          sessionStorage.setItem('user_id', session.user.id)
           router.replace('/dashboard')
           return
         } else {
-          // Manager exists but no store - sign them out
+          // Manager exists but no store - sign them out and clear
           await supabase.auth.signOut()
+          sessionStorage.clear()
+        }
+      }
+
+      // Then check for cashier session
+      const cashierSession = localStorage.getItem('user_session')
+      if (cashierSession) {
+        try {
+          const session = JSON.parse(cashierSession)
+          if (session.store_id && session.id) {
+            // Verify cashier still exists and is active
+            const { data: cashierCheck } = await supabase
+              .from('cashiers')
+              .select('id, store_id')
+              .eq('id', session.id)
+              .maybeSingle()
+            
+            if (cashierCheck && cashierCheck.store_id) {
+              // Valid cashier session - restore sessionStorage
+              sessionStorage.setItem('store_id', cashierCheck.store_id.toString())
+              sessionStorage.setItem('user_type', 'Cashier')
+              router.replace('/dashboard/pos')
+              return
+            } else {
+              // Invalid cashier session - clear it
+              localStorage.removeItem('user_session')
+              sessionStorage.clear()
+            }
+          } else {
+            // Invalid session format - clear it
+            localStorage.removeItem('user_session')
+            sessionStorage.clear()
+          }
+        } catch (err) {
+          // Corrupted session data - clear it
+          localStorage.removeItem('user_session')
+          sessionStorage.clear()
         }
       }
     } catch (err) {
       console.error('Session check error:', err)
+      // On error, clear everything
+      localStorage.removeItem('user_session')
+      sessionStorage.clear()
     } finally {
       setCheckingSession(false)
     }

@@ -63,9 +63,33 @@ export default function POSPage() {
   const [barcodeBuffer, setBarcodeBuffer] = useState('')
   const [lastKeyTime, setLastKeyTime] = useState(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const [pendingBarcode, setPendingBarcode] = useState('') // Barcode waiting for user confirmation
+
+  // Arrow key navigation for product dropdown
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+
+  // Collapsible customer details section
+  const [isCustomerSectionExpanded, setIsCustomerSectionExpanded] = useState(false)
 
   // Barcode scanner detection - scanners type fast and send Enter
+  // Now requires double Enter: first from scanner (fills field), second from user (confirms)
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle Enter key here to prevent scanner's Enter from triggering actions
+      if (e.key === 'Enter' && barcodeBuffer.length > 0) {
+        e.preventDefault()
+        e.stopPropagation()
+        // First Enter from scanner: show barcode in search field, wait for confirmation
+        setSearchTerm(barcodeBuffer)
+        setPendingBarcode(barcodeBuffer)
+        setBarcodeBuffer('')
+        setLastKeyTime(0)
+        // Focus the search input so user can press Enter again to confirm
+        setTimeout(() => searchInputRef.current?.focus(), 10)
+        return
+      }
+    }
+
     const handleKeyPress = (e: KeyboardEvent) => {
       // Ignore if typing in other inputs
       const target = e.target as HTMLElement
@@ -75,15 +99,6 @@ export default function POSPage() {
 
       const currentTime = Date.now()
       const timeDiff = currentTime - lastKeyTime
-
-      // Enter key - process accumulated barcode
-      if (e.key === 'Enter' && barcodeBuffer.length > 0) {
-        e.preventDefault()
-        handleBarcodeScanned(barcodeBuffer)
-        setBarcodeBuffer('')
-        setLastKeyTime(0)
-        return
-      }
 
       // Accumulate characters (scanner types fast)
       if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -98,8 +113,12 @@ export default function POSPage() {
       }
     }
 
+    window.addEventListener('keydown', handleKeyDown, true) // Use capture phase
     window.addEventListener('keypress', handleKeyPress)
-    return () => window.removeEventListener('keypress', handleKeyPress)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true)
+      window.removeEventListener('keypress', handleKeyPress)
+    }
   }, [barcodeBuffer, lastKeyTime])
 
   // Close dropdown when clicking outside
@@ -285,8 +304,10 @@ export default function POSPage() {
           p.sku.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredProducts(filtered.slice(0, 10))
+      setHighlightedIndex(-1) // Reset highlighted index when results change
     } else {
       setFilteredProducts([])
+      setHighlightedIndex(-1)
     }
   }, [searchTerm, products])
 
@@ -753,8 +774,8 @@ export default function POSPage() {
 
   if (showReceipt && lastSale) {
     return (
-      <div className={`max-w-2xl mx-auto p-4 ${isDarkMode ? 'bg-gray-900' : ''}`}>
-        <div className={`p-6 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200'}`} id="receipt">
+      <div className={`max-w-2xl mx-auto p-4 ${isDarkMode ? 'bg-[#0f0f0f]' : ''}`}>
+        <div className={`p-6 rounded border ${isDarkMode ? 'border border-gray-700' : 'bg-white border-gray-200'}`} id="receipt">
           <div className="text-center mb-5">
             <h1 className={`text-2xl font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>POS System</h1>
             <h2 className={`text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Sales Receipt</h2>
@@ -788,6 +809,35 @@ export default function POSPage() {
                 </p>
               </div>
             </div>
+
+            {/* Show customer info (for regular sales with customer details) */}
+            {(lastSale.customer_name || lastSale.customer_phone || lastSale.customer_cnic) && (
+              <div className={`mt-4 p-3 rounded border ${isDarkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-blue-50 border-blue-200'}`}>
+                <p className={`font-semibold mb-2 text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>
+                  👤 Customer Information
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {lastSale.customer_name && (
+                    <div>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-blue-700'}`}>Name</p>
+                      <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-blue-900'}`}>{lastSale.customer_name}</p>
+                    </div>
+                  )}
+                  {lastSale.customer_phone && (
+                    <div>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-blue-700'}`}>Phone</p>
+                      <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-blue-900'}`}>{lastSale.customer_phone}</p>
+                    </div>
+                  )}
+                  {lastSale.customer_cnic && (
+                    <div className="col-span-2">
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-blue-700'}`}>CNIC</p>
+                      <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-blue-900'}`}>{lastSale.customer_cnic}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Show customer info for partial payments */}
             {lastSale.partial_payment_customers && lastSale.partial_payment_customers.length > 0 && (
@@ -925,52 +975,99 @@ export default function POSPage() {
       <div className={`flex flex-col gap-4 ${isDarkMode ? 'text-white' : ''}`}>
         <h1 className={`text-xl md:text-2xl font-bold mb-5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>New Sale</h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Product Search and Cart */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="lg:col-span-2 space-y-5">
           {/* Search */}
-          <div className="bg-white p-3 rounded border border-gray-200">
+          <div className={`p-5 rounded-lg ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
               <input
                 ref={searchInputRef}
                 type="text"
                 placeholder="Search by name, SKU, barcode, or IMEI number..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  // Clear pending barcode if user modifies the text
+                  if (pendingBarcode && e.target.value !== pendingBarcode) {
+                    setPendingBarcode('')
+                  }
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && searchTerm.trim().length > 0) {
+                  if (e.key === 'ArrowDown') {
                     e.preventDefault()
-                    // Try as barcode/IMEI first
-                    handleBarcodeScanned(searchTerm.trim())
+                    if (filteredProducts.length > 0) {
+                      setHighlightedIndex(prev => 
+                        prev < filteredProducts.length - 1 ? prev + 1 : prev
+                      )
+                    }
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    if (filteredProducts.length > 0) {
+                      setHighlightedIndex(prev => prev > 0 ? prev - 1 : 0)
+                    }
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault()
+                    if (highlightedIndex >= 0 && filteredProducts[highlightedIndex]) {
+                      // Select highlighted product
+                      addToCart(filteredProducts[highlightedIndex])
+                      setHighlightedIndex(-1)
+                      setPendingBarcode('')
+                    } else if (searchTerm.trim().length > 0) {
+                      // User pressed Enter - process as barcode/IMEI
+                      handleBarcodeScanned(searchTerm.trim())
+                      setPendingBarcode('')
+                    }
+                  } else if (e.key === 'Escape') {
+                    setFilteredProducts([])
+                    setHighlightedIndex(-1)
+                    setPendingBarcode('')
                   }
                 }}
                 autoFocus
                 autoComplete="off"
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                className={`w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${
+                  pendingBarcode 
+                    ? isDarkMode ? 'bg-cyan-900/30 border-cyan-600 text-white' : 'bg-cyan-50 border-cyan-500'
+                    : isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'
+                }`}
               />
             </div>
             
-            <p className="text-xs text-gray-500 mt-2">
-              💡 Press Enter to search by barcode or IMEI. Product search is automatic as you type.
-            </p>
+            {pendingBarcode ? (
+              <p className={`text-xs mt-2 font-medium ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                📷 Barcode scanned: "{pendingBarcode}" — Press Enter again to confirm
+              </p>
+            ) : (
+              <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                💡 Scan barcode or type to search. Press Enter to confirm.
+              </p>
+            )}
 
             {filteredProducts.length > 0 && (
-              <div className="mt-2 border border-gray-200 rounded max-h-64 overflow-y-auto">
-                {filteredProducts.map((product) => (
+              <div className={`mt-3 border rounded-lg max-h-64 overflow-y-auto ${isDarkMode ? 'border-gray-700 bg-[#1a1a1a]' : 'border-gray-200 bg-white'}`}>
+                {filteredProducts.map((product, index) => (
                   <button
                     key={product.id}
-                    onClick={() => addToCart(product)}
-                    className="w-full p-2 text-left hover:bg-gray-50 transition-colors border-b border-gray-200 last:border-b-0 text-sm"
+                    onClick={() => {
+                      addToCart(product)
+                      setHighlightedIndex(-1)
+                    }}
+                    className={`w-full p-3 text-left transition-colors border-b last:border-b-0 ${
+                      index === highlightedIndex
+                        ? isDarkMode ? 'bg-cyan-900/50 border-gray-700' : 'bg-cyan-50 border-gray-200'
+                        : isDarkMode ? 'hover:bg-[#2a2a2a] border-gray-700' : 'hover:bg-gray-50 border-gray-200'
+                    }`}
                   >
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-medium text-sm text-gray-900">{product.name}</p>
-                        <p className="text-xs text-gray-600">
+                        <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product.name}</p>
+                        <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                           {product.sku} • Stock: {product.stock_quantity}
                         </p>
                       </div>
-                      <p className="font-medium text-sm">Rs. {(product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)}</p>
+                      <p className={`font-semibold ${isDarkMode ? 'text-gray-200' : ''}`}>Rs. {(product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)}</p>
                     </div>
                   </button>
                 ))}
@@ -978,129 +1075,177 @@ export default function POSPage() {
             )}
           </div>
 
-          {/* Customer Details Section */}
-          <div className="bg-white rounded border border-gray-200 mt-4">
-            <div className="p-3 bg-gray-50 border-b border-gray-200">
-              <h2 className="text-base font-bold text-gray-900">Customer Details (Optional)</h2>
-              <p className="text-xs text-gray-600 mt-1">Link this sale to a customer for tracking</p>
-            </div>
+          {/* Customer Details Section - Collapsible */}
+          <div className={`rounded-lg ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+            <button
+              type="button"
+              onClick={() => setIsCustomerSectionExpanded(!isCustomerSectionExpanded)}
+              className={`w-full p-5 flex justify-between items-center ${isDarkMode ? '' : 'bg-gray-50/50'} rounded-t-lg`}
+            >
+              <div className="text-left">
+                <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Customer Details (Optional)
+                  {(customerDetails.name || customerDetails.phone) && (
+                    <span className="ml-2 text-cyan-600 text-sm font-normal">
+                      • {customerDetails.name || customerDetails.phone}
+                    </span>
+                  )}
+                </h2>
+                <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {isCustomerSectionExpanded ? 'Click to collapse' : 'Click to add customer details'}
+                </p>
+              </div>
+              <svg
+                className={`w-5 h-5 transition-transform ${isCustomerSectionExpanded ? 'rotate-180' : ''} ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-            <div className="p-3 space-y-3">
-              {/* Customer Search/Name */}
-              <div className="relative" ref={customerSearchRef}>
-                <label className="block mb-1 text-xs font-medium text-gray-700">
-                  Customer Name
-                </label>
-                <input
-                  type="text"
-                  value={customerDetails.name}
-                  onChange={(e) => handleCustomerSearch(e.target.value)}
-                  onFocus={() => {
-                    if (customerSearchResults.length > 0) {
-                      setShowCustomerResults(true)
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
-                  placeholder="Search or enter new customer name"
-                />
-                
-                {/* Customer Search Results Dropdown */}
-                {showCustomerResults && customerSearchResults.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
-                    {customerSearchResults.map((customer, index) => (
-                      <button
-                        key={index}
-                        onClick={() => selectCustomer(customer)}
-                        className="w-full text-left px-3 py-2 hover:bg-cyan-50 border-b border-gray-200 last:border-b-0"
-                      >
-                        <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                        <div className="text-xs text-gray-600">{customer.phone}</div>
-                      </button>
-                    ))}
-                  </div>
+            {isCustomerSectionExpanded && (
+              <div className="p-5 space-y-4 border-t border-gray-200 dark:border-gray-700">
+                {/* Customer Search/Name */}
+                <div className="relative" ref={customerSearchRef}>
+                  <label className={`block mb-1 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Customer Name
+                  </label>
+                  <input
+                    type="text"
+                    value={customerDetails.name}
+                    onChange={(e) => handleCustomerSearch(e.target.value)}
+                    onFocus={() => {
+                      if (customerSearchResults.length > 0) {
+                        setShowCustomerResults(true)
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const phoneInput = document.getElementById('customer-phone-input')
+                        phoneInput?.focus()
+                      }
+                    }}
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
+                    placeholder="Search or enter new customer name"
+                  />
+                  
+                  {/* Customer Search Results Dropdown */}
+                  {showCustomerResults && customerSearchResults.length > 0 && (
+                    <div className={`absolute z-10 w-full mt-1 border rounded-lg shadow-lg max-h-48 overflow-y-auto ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600' : 'bg-white border-gray-300'}`}>
+                      {customerSearchResults.map((customer, index) => (
+                        <button
+                          key={index}
+                          onClick={() => selectCustomer(customer)}
+                          className={`w-full text-left px-3 py-2 border-b last:border-b-0 ${isDarkMode ? 'hover:bg-[#2a2a2a] border-gray-700' : 'hover:bg-cyan-50 border-gray-200'}`}
+                        >
+                          <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{customer.name}</div>
+                          <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{customer.phone}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Customer Phone */}
+                <div>
+                  <label className={`block mb-1 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Phone Number
+                  </label>
+                  <input
+                    id="customer-phone-input"
+                    type="text"
+                    value={customerDetails.phone}
+                    onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const cnicInput = document.getElementById('customer-cnic-input')
+                        cnicInput?.focus()
+                      }
+                    }}
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
+                    placeholder="e.g., 03001234567"
+                  />
+                </div>
+
+                {/* Customer CNIC */}
+                <div>
+                  <label className={`block mb-1 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    CNIC (Optional)
+                  </label>
+                  <input
+                    id="customer-cnic-input"
+                    type="text"
+                    value={customerDetails.cnic}
+                    onChange={(e) => setCustomerDetails({ ...customerDetails, cnic: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        // Collapse the section when done
+                        setIsCustomerSectionExpanded(false)
+                      }
+                    }}
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
+                    placeholder="e.g., 12345-1234567-1"
+                  />
+                </div>
+
+                {/* Clear Customer Button */}
+                {(customerDetails.name || customerDetails.phone || customerDetails.cnic) && (
+                  <button
+                    onClick={clearCustomer}
+                    className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-[#2a2a2a] border-gray-600' : 'text-gray-600 hover:bg-gray-100 border-gray-300'}`}
+                  >
+                    Clear Customer Details
+                  </button>
                 )}
               </div>
-
-              {/* Customer Phone */}
-              <div>
-                <label className="block mb-1 text-xs font-medium text-gray-700">
-                  Phone Number
-                </label>
-                <input
-                  type="text"
-                  value={customerDetails.phone}
-                  onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
-                  placeholder="e.g., 03001234567"
-                />
-              </div>
-
-              {/* Customer CNIC */}
-              <div>
-                <label className="block mb-1 text-xs font-medium text-gray-700">
-                  CNIC (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={customerDetails.cnic}
-                  onChange={(e) => setCustomerDetails({ ...customerDetails, cnic: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
-                  placeholder="e.g., 12345-1234567-1"
-                />
-              </div>
-
-              {/* Clear Customer Button */}
-              {(customerDetails.name || customerDetails.phone || customerDetails.cnic) && (
-                <button
-                  onClick={clearCustomer}
-                  className="w-full px-3 py-2 text-xs text-gray-600 hover:bg-gray-100 border border-gray-300 rounded transition-colors"
-                >
-                  Clear Customer Details
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Cart */}
-          <div className="bg-white rounded border border-gray-200 mt-4">
-            <div className="p-3 bg-cyan-50 border-b border-gray-200 flex justify-between items-center">
+          <div className={`rounded-lg ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+            <div className={`p-5 flex justify-between items-center ${isDarkMode ? '' : 'bg-cyan-50/50'}`}>
               <div className="flex items-center gap-2">
                 <ShoppingCart size={18} className="text-cyan-600" />
-                <h2 className="text-base font-bold text-gray-900">Cart</h2>
-                <span className="bg-cyan-600 text-white px-2 py-0.5 rounded text-xs">
+                <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Cart</h2>
+                <span className="bg-cyan-600 text-white px-2 py-0.5 rounded text-xs font-medium">
                   {cart.length}
                 </span>
               </div>
               {cart.length > 0 && (
                 <button
                   onClick={clearCart}
-                  className="text-xs text-gray-600 hover:bg-cyan-100 px-2 py-1 rounded transition-colors"
+                  className={`text-xs px-3 py-1.5 rounded-lg transition-colors font-medium ${isDarkMode ? 'text-gray-300 hover:bg-[#2a2a2a]' : 'text-gray-600 hover:bg-cyan-100'}`}
                 >
                   Clear All
                 </button>
               )}
             </div>
 
-            <div className="p-3">
+            <div className="p-5">
               {cart.length === 0 ? (
-                <p className="text-center py-8 text-sm text-gray-500">
+                <p className={`text-center py-12 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   Cart is empty. Search and add products.
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {cart.map((item) => (
                     <div
                       key={item.product.id}
-                      className="p-2 border border-gray-200 rounded"
+                      className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/20' : 'bg-gray-50'}`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{item.product.name}</p>
-                          <p className="text-xs text-gray-600">
+                          <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.product.name}</p>
+                          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             Rs. {(item.product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)} each
                           </p>
                           {item.product.is_phone && (
-                            <div className="mt-1">
+                            <div className="mt-2">
                               {item.imei_numbers && item.imei_numbers.length > 0 ? (
                                 <div className="text-xs">
                                   <span className="text-green-600 font-medium">✓ IMEI selected ({item.imei_numbers.length})</span>
@@ -1109,7 +1254,7 @@ export default function POSPage() {
                                       setCurrentIMEIProduct(item)
                                       setShowIMEIModal(true)
                                     }}
-                                    className="ml-2 text-blue-600 hover:underline"
+                                    className="ml-2 text-cyan-600 hover:underline"
                                   >
                                     Change
                                   </button>
@@ -1120,7 +1265,7 @@ export default function POSPage() {
                                     setCurrentIMEIProduct(item)
                                     setShowIMEIModal(true)
                                   }}
-                                  className="text-xs text-status-error font-medium hover:underline"
+                                  className="text-xs text-red-600 font-medium hover:underline"
                                 >
                                   ⚠ Select IMEI numbers
                                 </button>
@@ -1129,36 +1274,36 @@ export default function POSPage() {
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 border border-gray-300 rounded">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex items-center gap-1 border rounded-lg ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
                             <button
                               onClick={() =>
                                 updateQuantity(item.product.id, item.quantity - 1)
                               }
-                              className="p-1 hover:bg-gray-100 transition-colors"
+                              className={`p-1.5 transition-colors ${isDarkMode ? 'hover:bg-[#2a2a2a] text-gray-300' : 'hover:bg-gray-100'}`}
                             >
                               <Minus size={14} />
                             </button>
-                            <span className="font-medium w-8 text-center text-sm">
+                            <span className={`font-medium w-8 text-center ${isDarkMode ? 'text-white' : ''}`}>
                               {item.quantity}
                             </span>
                             <button
                               onClick={() =>
                                 updateQuantity(item.product.id, item.quantity + 1)
                               }
-                              className="p-1 hover:bg-gray-100 transition-colors"
+                              className={`p-1.5 transition-colors ${isDarkMode ? 'hover:bg-[#2a2a2a] text-gray-300' : 'hover:bg-gray-100'}`}
                             >
                               <Plus size={14} />
                             </button>
                           </div>
 
-                          <p className="font-medium w-20 text-right text-sm">
+                          <p className={`font-semibold w-20 text-right ${isDarkMode ? 'text-gray-200' : ''}`}>
                             Rs. {((item.product.aggregated_stock?.aggregated_selling_price || 0) * item.quantity).toFixed(2)}
                           </p>
 
                           <button
                             onClick={() => removeFromCart(item.product.id)}
-                            className="p-1 hover:bg-red-50 text-red-600 rounded transition-colors"
+                            className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -1174,42 +1319,43 @@ export default function POSPage() {
 
         {/* Payment Section */}
         <div className="lg:col-span-1">
-          <div className="bg-white p-4 rounded border border-gray-200 sticky top-4">
-            <h2 className="text-base font-bold text-gray-900 mb-4">Payment</h2>
+          <div className={`p-6 rounded-lg sticky top-4 ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+            <h2 className={`text-base font-bold mb-5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Payment</h2>
 
             {error && (
-              <div className="mb-3 p-2 bg-red-50 text-red-600 rounded text-xs border border-red-200">
+              <div className={`mb-4 p-3 rounded-lg text-sm ${isDarkMode ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}>
                 {error}
               </div>
             )}
 
-            <div className="mb-4">
-              <p className="text-xs text-gray-600 mb-1">Total Amount</p>
-              <p className="text-2xl font-bold text-gray-900">Rs. {total.toFixed(2)}</p>
-              <p className="text-xs text-orange-600 mt-1">
-                Min. Acceptable: Rs. {calculateLowestNegotiable().toFixed(2)}
-              </p>
+            <div className="mb-5">
+              <p className={`text-xs mb-2 font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Amount</p>
+              <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {total.toFixed(2)}</p>
             </div>
 
-            <div className="mb-3">
-              <label className="block mb-2 text-xs font-medium text-gray-700">Payment Method</label>
+            <div className="mb-4">
+              <label className={`block mb-2 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Payment Method</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setPaymentMethod('Cash')}
-                  className={`px-3 py-2 text-sm rounded border transition-colors ${
+                  className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
                     paymentMethod === 'Cash'
                       ? 'bg-cyan-600 text-white border-cyan-600'
-                      : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
+                      : isDarkMode 
+                        ? 'bg-[#1a1a1a] border-gray-600 hover:bg-[#2a2a2a] text-gray-300'
+                        : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
                   }`}
                 >
                   Cash
                 </button>
                 <button
                   onClick={() => setPaymentMethod('Digital')}
-                  className={`px-3 py-2 text-sm rounded border transition-colors ${
+                  className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
                     paymentMethod === 'Digital'
                       ? 'bg-cyan-600 text-white border-cyan-600'
-                      : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
+                      : isDarkMode 
+                        ? 'bg-[#1a1a1a] border-gray-600 hover:bg-[#2a2a2a] text-gray-300'
+                        : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
                   }`}
                 >
                   Digital
@@ -1217,8 +1363,8 @@ export default function POSPage() {
               </div>
             </div>
 
-            <div className="mb-3">
-              <label htmlFor="amountPaid" className="block mb-2 text-xs font-medium text-gray-700">
+            <div className="mb-4">
+              <label htmlFor="amountPaid" className={`block mb-2 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Amount Paid
               </label>
               <input
@@ -1228,13 +1374,13 @@ export default function POSPage() {
                 min="0"
                 value={amountPaid}
                 onChange={(e) => setAmountPaid(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
                 placeholder="0.00"
               />
             </div>
 
-            <div className="mb-3">
-              <label htmlFor="saleDescription" className="block mb-2 text-xs font-medium text-gray-700">
+            <div className="mb-4">
+              <label htmlFor="saleDescription" className={`block mb-2 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Sale Description {cart.length > 1 && <span className="text-red-600">*</span>}
               </label>
               <input
@@ -1242,20 +1388,20 @@ export default function POSPage() {
                 type="text"
                 value={saleDescription}
                 onChange={(e) => setSaleDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
                 placeholder={cart.length === 1 ? "Optional (will use product name)" : "Required for multiple items"}
               />
               {cart.length === 1 && !saleDescription && (
-                <p className="text-xs text-gray-500 mt-1">
+                <p className={`text-xs mt-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   Will default to: {cart[0].product.name}
                 </p>
               )}
             </div>
 
             {amountPaid && parseFloat(amountPaid) >= total && (
-              <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded">
-                <p className="text-xs text-gray-600 mb-1">Change</p>
-                <p className="text-xl font-bold text-gray-900">Rs. {change.toFixed(2)}</p>
+              <div className={`mb-4 p-4 border rounded-lg ${isDarkMode ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'}`}>
+                <p className={`text-xs mb-1 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Change</p>
+                <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {change.toFixed(2)}</p>
               </div>
             )}
 
@@ -1460,9 +1606,16 @@ export default function POSPage() {
                       setShowCustomerDropdown(true)
                     }
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      document.getElementById('khaata-phone-input')?.focus()
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                   placeholder="Enter or search customer name"
                   autoComplete="off"
+                  autoFocus
                 />
                 
                 {/* Customer Search Dropdown */}
@@ -1489,6 +1642,7 @@ export default function POSPage() {
                   Customer Phone <span className="text-red-600">*</span>
                 </label>
                 <input
+                  id="khaata-phone-input"
                   type="tel"
                   value={partialPaymentData.customerPhone}
                   onChange={(e) => {
@@ -1497,6 +1651,12 @@ export default function POSPage() {
                       customerPhone: e.target.value
                     })
                     setPartialPaymentError('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      document.getElementById('khaata-price-input')?.focus()
+                    }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                   placeholder="03xx-xxxxxxx"
@@ -1509,6 +1669,7 @@ export default function POSPage() {
                   Sale Price <span className="text-red-600">*</span>
                 </label>
                 <input
+                  id="khaata-price-input"
                   type="number"
                   step="0.01"
                   min="0"
@@ -1519,6 +1680,13 @@ export default function POSPage() {
                       salePrice: e.target.value
                     })
                     setPartialPaymentError('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      // Submit the form
+                      handlePartialPaymentSubmit()
+                    }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
                   placeholder="Enter sale price"

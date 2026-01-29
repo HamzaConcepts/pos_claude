@@ -536,13 +536,22 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 </label>
                 <select
                   id="category_id"
+                  autoFocus
                   value={formData.category_id}
                   onChange={(e) => handleCategoryChange(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault()
                       if (formData.category_id) {
-                        document.getElementById('subcategory_id')?.focus() || document.getElementById('name')?.focus()
+                        // Wait for subcategory to render before trying to focus it
+                        setTimeout(() => {
+                          const subcategoryEl = document.getElementById('subcategory_id')
+                          if (subcategoryEl) {
+                            subcategoryEl.focus()
+                          } else {
+                            document.getElementById('name')?.focus()
+                          }
+                        }, 50)
                       }
                     }
                   }}
@@ -697,6 +706,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   type="number"
                   step="0.01"
                   min="0"
+                  autoFocus
                   value={formData.cost_price}
                   onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
                   onKeyDown={(e) => {
@@ -797,6 +807,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   id="quantity"
                   type="number"
                   min="1"
+                  autoFocus
                   value={formData.quantity}
                   onChange={(e) => {
                     setFormData({ ...formData, quantity: e.target.value })
@@ -1055,19 +1066,23 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
           {/* Step 4: IMEI Numbers (only for phones) */}
           {step === 4 && isPhoneCategory && (
             <div className="space-y-4">
-              <h3 className="text-lg font-bold mb-4">IMEI Numbers</h3>
-              <p className="text-sm text-text-secondary mb-4">
-                Enter {formData.quantity} IMEI number(s) for this phone stock
-              </p>
+              <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-cyan-50 border-cyan-200'}`}>
+                <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>IMEI Numbers</h3>
+                <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Enter {formData.quantity} IMEI number(s) for this phone stock
+                </p>
+              </div>
 
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="space-y-3 max-h-96 overflow-y-auto">
                 {formData.imei_numbers.map((imei, index) => (
                   <div key={index} className="flex gap-2">
                     <div className="flex-1">
-                      <label className="block mb-1 text-sm font-medium">
+                      <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                         IMEI {index + 1}
                       </label>
                       <input
+                        id={index === 0 ? 'first-imei-input' : undefined}
+                        autoFocus={index === 0}
                         type="text"
                         value={imei}
                         onChange={(e) => updateIMEI(index, e.target.value)}
@@ -1085,11 +1100,11 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                             }
                           }
                         }}
-                        className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono ${
+                        className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500/20 font-mono text-lg ${
                           imeiErrors[index] && imei.trim().length > 0
                             ? 'border-red-500'
                             : isDarkMode
-                            ? 'bg-gray-700 border-gray-600 text-white'
+                            ? 'bg-[#1a1a1a] border-gray-600 text-white'
                             : 'bg-white border-gray-300'
                         }`}
                         disabled={loading}
@@ -1103,7 +1118,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         </p>
                       )}
                       {imei.trim().length > 0 && imei.trim().length < 15 && !imeiErrors[index] && (
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           {imei.trim().length}/15 digits
                         </p>
                       )}
@@ -1117,7 +1132,11 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       <button
                         type="button"
                         onClick={() => removeIMEIField(index)}
-                        className="mt-7 px-3 py-2 border-2 border-red-500 text-red-500 rounded hover:bg-red-50"
+                        className={`mt-7 px-3 py-2 border rounded-lg transition-colors ${
+                          isDarkMode 
+                            ? 'border-red-500/50 text-red-400 hover:bg-red-900/30' 
+                            : 'border-red-300 text-red-500 hover:bg-red-50'
+                        }`}
                         disabled={loading}
                       >
                         <X size={20} />
@@ -1131,7 +1150,11 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 <button
                   type="button"
                   onClick={addIMEIField}
-                  className="flex items-center gap-2 px-4 py-2 border-2 border-black rounded hover:bg-gray-100"
+                  className={`flex items-center gap-2 px-4 py-2.5 border rounded-lg transition-colors ${
+                    isDarkMode 
+                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                  }`}
                   disabled={loading}
                 >
                   <Plus size={20} />

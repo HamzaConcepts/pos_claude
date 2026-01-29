@@ -44,42 +44,39 @@ export async function GET(request: Request) {
 
     // Fetch recorder names separately
     if (data && data.length > 0) {
-      const recordedByIds = [...new Set(data.map(e => e.recorded_by).filter(Boolean))]
+      const managerIds = [...new Set(data.map(e => e.recorded_by).filter(Boolean))]
+      const cashierIds = [...new Set(data.map(e => e.recorded_by_cashier_id).filter(Boolean))]
       
-      if (recordedByIds.length > 0) {
-        // Separate UUIDs (managers) from integers (cashiers)
-        const managerIds = recordedByIds.filter(id => typeof id === 'string' && id.includes('-'))
-        const cashierIds = recordedByIds.filter(id => typeof id === 'number' || (typeof id === 'string' && !id.includes('-')))
+      const nameMap = new Map()
+      
+      // Fetch managers
+      if (managerIds.length > 0) {
+        const { data: managers } = await supabaseAdmin
+          .from('managers')
+          .select('id, full_name')
+          .in('id', managerIds)
         
-        const nameMap = new Map()
-        
-        // Fetch managers
-        if (managerIds.length > 0) {
-          const { data: managers } = await supabaseAdmin
-            .from('managers')
-            .select('id, full_name')
-            .in('id', managerIds)
-          
-          managers?.forEach(m => nameMap.set(m.id, m.full_name))
-        }
-        
-        // Fetch cashiers
-        if (cashierIds.length > 0) {
-          const { data: cashiers } = await supabaseAdmin
-            .from('cashier_accounts')
-            .select('id, full_name')
-            .in('id', cashierIds)
-          
-          cashiers?.forEach(c => nameMap.set(c.id, c.full_name))
-        }
-        
-        // Add recorder names to expenses
-        data.forEach(expense => {
-          if (expense.recorded_by) {
-            expense.recorded_by_name = nameMap.get(expense.recorded_by) || 'Unknown'
-          }
-        })
+        managers?.forEach(m => nameMap.set(`manager_${m.id}`, m.full_name))
       }
+      
+      // Fetch cashiers
+      if (cashierIds.length > 0) {
+        const { data: cashiers } = await supabaseAdmin
+          .from('cashier_accounts')
+          .select('id, full_name')
+          .in('id', cashierIds)
+        
+        cashiers?.forEach(c => nameMap.set(`cashier_${c.id}`, c.full_name))
+      }
+      
+      // Add recorder names to expenses
+      data.forEach(expense => {
+        if (expense.recorded_by) {
+          expense.recorded_by_name = nameMap.get(`manager_${expense.recorded_by}`) || 'Unknown'
+        } else if (expense.recorded_by_cashier_id) {
+          expense.recorded_by_name = nameMap.get(`cashier_${expense.recorded_by_cashier_id}`) || 'Unknown'
+        }
+      })
     }
 
     return NextResponse.json({
@@ -127,6 +124,19 @@ export async function POST(request: Request) {
       )
     }
 
+    // Determine if recorded_by is a manager (UUID) or cashier (integer)
+    let managerUuid = null
+    let cashierId = null
+    
+    if (recorded_by) {
+      // Check if it's a UUID (contains hyphens) or an integer
+      if (typeof recorded_by === 'string' && recorded_by.includes('-')) {
+        managerUuid = recorded_by
+      } else {
+        cashierId = parseInt(recorded_by)
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('expenses')
       .insert([
@@ -136,7 +146,8 @@ export async function POST(request: Request) {
           category,
           payment_method: payment_method || 'Cash',
           expense_date,
-          recorded_by: recorded_by || null,
+          recorded_by: managerUuid,
+          recorded_by_cashier_id: cashierId,
           store_id: parseInt(store_id),
         },
       ])

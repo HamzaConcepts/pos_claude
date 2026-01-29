@@ -435,7 +435,7 @@ export default function ExpensesPage() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <div className={`p-4 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Today's Expenses</span>
             <DollarSign className="text-red-600" size={16} />
@@ -445,7 +445,7 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        <div className={`p-4 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>This Month</span>
             <Calendar className="text-red-600" size={16} />
@@ -455,7 +455,7 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        <div className={`p-4 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>This Year</span>
             <TrendingUp className="text-red-600" size={16} />
@@ -465,7 +465,7 @@ export default function ExpensesPage() {
           </div>
         </div>
 
-        <div className={`p-4 rounded border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Expenses</span>
             <DollarSign className="text-red-600" size={16} />
@@ -477,7 +477,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Expenses List */}
-      <div className={`rounded border overflow-hidden ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className={`rounded border overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
         <div className={`p-4 border-b ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
           <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Recent Expenses</h2>
         </div>

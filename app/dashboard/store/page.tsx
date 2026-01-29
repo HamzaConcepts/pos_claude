@@ -112,8 +112,16 @@ export default function StorePage() {
   const [editingCashier, setEditingCashier] = useState<Cashier | null>(null)
   const [selectedCategoryForSub, setSelectedCategoryForSub] = useState<number | null>(null)
   
+  // Initial entries state
+  const [initialCustomers, setInitialCustomers] = useState<any[]>([])
+  const [initialSuppliers, setInitialSuppliers] = useState<any[]>([])
+  const [showInitialCustomerModal, setShowInitialCustomerModal] = useState(false)
+  const [showInitialSupplierModal, setShowInitialSupplierModal] = useState(false)
+  const [editingInitialCustomer, setEditingInitialCustomer] = useState<any>(null)
+  const [editingInitialSupplier, setEditingInitialSupplier] = useState<any>(null)
+  
   // Active tab
-  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'info' | 'cashiers' | 'suppliers' | 'initial-stock' | 'expenses'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'info' | 'cashiers' | 'suppliers' | 'initial-stock' | 'initial-customers' | 'initial-suppliers' | 'expenses'>('users')
 
   useEffect(() => {
     fetchAllData()
@@ -127,7 +135,9 @@ export default function StorePage() {
       fetchStoreInfo(),
       fetchCashiers(),
       fetchCashiersForUserTab(),
-      fetchSuppliers()
+      fetchSuppliers(),
+      fetchInitialCustomers(),
+      fetchInitialSuppliers()
     ])
   }
 
@@ -239,6 +249,42 @@ export default function StorePage() {
       }
     } catch (err) {
       console.error('Error fetching cashiers:', err)
+    }
+  }
+
+  const fetchInitialCustomers = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/initial-customers?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setInitialCustomers(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching initial customers:', err)
+    }
+  }
+
+  const fetchInitialSuppliers = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/initial-suppliers?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setInitialSuppliers(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching initial suppliers:', err)
     }
   }
 
@@ -431,11 +477,31 @@ export default function StorePage() {
             Initial Stock
           </button>
           <button
+            onClick={() => setActiveTab('initial-customers')}
+            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
+              activeTab === 'initial-customers'
+                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
+                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+            }`}>
+            <Users size={16} />
+            Initial Customers
+          </button>
+          <button
+            onClick={() => setActiveTab('initial-suppliers')}
+            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
+              activeTab === 'initial-suppliers'
+                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
+                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+            }`}>
+            <Users size={16} />
+            Initial Suppliers
+          </button>
+          <button
             onClick={() => setActiveTab('expenses')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'expenses'
                 ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : 'border-transparent hover:bg-gray-50 text-gray-600'
+                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
             }`}
           >
             <DollarSign size={16} />
@@ -726,6 +792,38 @@ export default function StorePage() {
         <InitialStockTab />
       )}
 
+      {/* Initial Customers Tab */}
+      {activeTab === 'initial-customers' && (
+        <InitialCustomersTab 
+          entries={initialCustomers}
+          onAddEntry={() => {
+            setEditingInitialCustomer(null)
+            setShowInitialCustomerModal(true)
+          }}
+          onEditEntry={(entry: any) => {
+            setEditingInitialCustomer(entry)
+            setShowInitialCustomerModal(true)
+          }}
+          onRefresh={fetchInitialCustomers}
+        />
+      )}
+
+      {/* Initial Suppliers Tab */}
+      {activeTab === 'initial-suppliers' && (
+        <InitialSuppliersTab 
+          entries={initialSuppliers}
+          onAddEntry={() => {
+            setEditingInitialSupplier(null)
+            setShowInitialSupplierModal(true)
+          }}
+          onEditEntry={(entry: any) => {
+            setEditingInitialSupplier(entry)
+            setShowInitialSupplierModal(true)
+          }}
+          onRefresh={fetchInitialSuppliers}
+        />
+      )}
+
       {/* Expenses Tab */}
       {activeTab === 'expenses' && (
         <div className="bg-white rounded border border-gray-200 p-6">
@@ -789,6 +887,30 @@ export default function StorePage() {
             setShowPaymentModal(false)
             setSelectedSupplierForPayment(null)
             if (refresh) fetchSuppliers()
+          }}
+        />
+      )}
+
+      {/* Initial Customer Modal */}
+      {showInitialCustomerModal && (
+        <InitialCustomerModal
+          entry={editingInitialCustomer}
+          onClose={(refresh?: boolean) => {
+            setShowInitialCustomerModal(false)
+            setEditingInitialCustomer(null)
+            if (refresh) fetchInitialCustomers()
+          }}
+        />
+      )}
+
+      {/* Initial Supplier Modal */}
+      {showInitialSupplierModal && (
+        <InitialSupplierModal
+          entry={editingInitialSupplier}
+          onClose={(refresh?: boolean) => {
+            setShowInitialSupplierModal(false)
+            setEditingInitialSupplier(null)
+            if (refresh) fetchInitialSuppliers()
           }}
         />
       )}
@@ -2068,3 +2190,607 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
   )
 }
 
+// Initial Customers Tab Component
+function InitialCustomersTab({ entries, onAddEntry, onEditEntry, onRefresh }: any) {
+  const [deleting, setDeleting] = useState<number | null>(null)
+
+  const handleDeleteEntry = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this initial customer entry?')) return
+
+    try {
+      setDeleting(id)
+      const response = await fetch(`/api/initial-customers?id=${id}`, { method: 'DELETE' })
+      const result = await response.json()
+
+      if (result.success) {
+        onRefresh()
+      } else {
+        alert(result.error || 'Failed to delete entry')
+      }
+    } catch (err) {
+      alert('Failed to delete entry')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const totalOwed = entries.reduce((sum: number, entry: any) => sum + (entry.amount_owed || 0), 0)
+
+  return (
+    <div>
+      <div className="bg-blue-50 border-2 border-blue-600 rounded p-4 mb-6">
+        <h3 className="font-bold text-blue-900 mb-2">📋 Initial Customer Entries (Migration)</h3>
+        <p className="text-sm text-blue-800 mb-2">
+          Use this section to record customers who owe you money when migrating from another system.
+        </p>
+        <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
+          <li><strong>These entries DO NOT affect profit/loss calculations</strong></li>
+          <li>This is for one-time migration of existing customer debts</li>
+          <li>Future customer credit through POS will be tracked separately</li>
+        </ul>
+      </div>
+
+      <div className="bg-white rounded border border-gray-200 overflow-hidden">
+        <div className="p-4 bg-gray-50 border-b-2 border-black flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-bold">Initial Customer Balances</h2>
+            <p className="text-sm text-gray-600">Total Owed: Rs. {totalOwed.toFixed(2)}</p>
+          </div>
+          <button
+            onClick={onAddEntry}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-sm"
+          >
+            <Plus size={16} />
+            Add Customer
+          </button>
+        </div>
+
+        <div className="p-4">
+          {entries.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Users size={48} className="mx-auto mb-3 opacity-50" />
+              <p className="text-sm">No initial customer entries added yet</p>
+              <p className="text-xs mt-1">Click "Add Customer" to record customers who owe money</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {entries.map((entry: any) => (
+                <div
+                  key={entry.id}
+                  className="p-4 border-2 border-gray-300 rounded hover:border-black transition-colors"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-900">{entry.customer_name}</h3>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                        {entry.customer_phone && (
+                          <div>
+                            <span className="text-gray-600">Phone:</span>
+                            <span className="ml-2 text-gray-900">{entry.customer_phone}</span>
+                          </div>
+                        )}
+                        {entry.customer_cnic && (
+                          <div>
+                            <span className="text-gray-600">CNIC:</span>
+                            <span className="ml-2 text-gray-900">{entry.customer_cnic}</span>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-600">Amount Owed:</span>
+                          <span className="ml-2 font-bold text-red-600">Rs. {entry.amount_owed.toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Added:</span>
+                          <span className="ml-2 text-gray-900">
+                            {new Date(entry.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      {entry.notes && (
+                        <p className="mt-2 text-sm text-gray-600 italic">{entry.notes}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={() => onEditEntry(entry)}
+                        className="p-2 text-cyan-600 hover:bg-cyan-50 rounded transition-colors"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEntry(entry.id)}
+                        disabled={deleting === entry.id}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Initial Suppliers Tab Component
+function InitialSuppliersTab({ entries, onAddEntry, onEditEntry, onRefresh }: any) {
+  const [deleting, setDeleting] = useState<number | null>(null)
+
+  const handleDeleteEntry = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this initial supplier entry?')) return
+
+    try {
+      setDeleting(id)
+      const response = await fetch(`/api/initial-suppliers?id=${id}`, { method: 'DELETE' })
+      const result = await response.json()
+
+      if (result.success) {
+        onRefresh()
+      } else {
+        alert(result.error || 'Failed to delete entry')
+      }
+    } catch (err) {
+      alert('Failed to delete entry')
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const totalOwed = entries.reduce((sum: number, entry: any) => sum + (entry.amount_owed || 0), 0)
+
+  return (
+    <div>
+      <div className="bg-blue-50 border-2 border-blue-600 rounded p-4 mb-6">
+        <h3 className="font-bold text-blue-900 mb-2">📦 Initial Supplier Entries (Migration)</h3>
+        <p className="text-sm text-blue-800 mb-2">
+          Use this section to record suppliers to whom you owe money when migrating from another system.
+        </p>
+        <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
+          <li><strong>These entries DO NOT affect profit/loss calculations</strong></li>
+          <li>This is for one-time migration of existing supplier debts</li>
+          <li>Future supplier credit through inventory restocking will be tracked separately</li>
+        </ul>
+      </div>
+
+      <div className="bg-white rounded border border-gray-200 overflow-hidden">
+        <div className="p-4 bg-gray-50 border-b-2 border-black flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-bold">Initial Supplier Balances</h2>
+            <p className="text-sm text-gray-600">Total Owed: Rs. {totalOwed.toFixed(2)}</p>
+          </div>
+          <button
+            onClick={onAddEntry}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-sm"
+          >
+            <Plus size={16} />
+            Add Supplier
+          </button>
+        </div>
+
+        <div className="p-4">
+          {entries.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Users size={48} className="mx-auto mb-3 opacity-50" />
+              <p className="text-sm">No initial supplier entries added yet</p>
+              <p className="text-xs mt-1">Click "Add Supplier" to record suppliers you owe money to</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {entries.map((entry: any) => (
+                <div
+                  key={entry.id}
+                  className="p-4 border-2 border-gray-300 rounded hover:border-black transition-colors"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-900">{entry.supplier_name}</h3>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                        {entry.contact_person && (
+                          <div>
+                            <span className="text-gray-600">Contact:</span>
+                            <span className="ml-2 text-gray-900">{entry.contact_person}</span>
+                          </div>
+                        )}
+                        {entry.supplier_phone && (
+                          <div>
+                            <span className="text-gray-600">Phone:</span>
+                            <span className="ml-2 text-gray-900">{entry.supplier_phone}</span>
+                          </div>
+                        )}
+                        {entry.supplier_email && (
+                          <div>
+                            <span className="text-gray-600">Email:</span>
+                            <span className="ml-2 text-gray-900">{entry.supplier_email}</span>
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-600">Amount Owed:</span>
+                          <span className="ml-2 font-bold text-red-600">Rs. {entry.amount_owed.toFixed(2)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Added:</span>
+                          <span className="ml-2 text-gray-900">
+                            {new Date(entry.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      {entry.address && (
+                        <div className="mt-2 text-sm">
+                          <span className="text-gray-600">Address:</span>
+                          <span className="ml-2 text-gray-900">{entry.address}</span>
+                        </div>
+                      )}
+                      {entry.notes && (
+                        <p className="mt-2 text-sm text-gray-600 italic">{entry.notes}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={() => onEditEntry(entry)}
+                        className="p-2 text-cyan-600 hover:bg-cyan-50 rounded transition-colors"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEntry(entry.id)}
+                        disabled={deleting === entry.id}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Initial Customer Modal Component
+function InitialCustomerModal({ entry, onClose }: { entry: any, onClose: (refresh?: boolean) => void }) {
+  const [formData, setFormData] = useState({
+    customer_name: entry?.customer_name || '',
+    customer_cnic: entry?.customer_cnic || '',
+    customer_phone: entry?.customer_phone || '',
+    amount_owed: entry?.amount_owed || '',
+    notes: entry?.notes || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (!formData.customer_name || !formData.amount_owed) {
+      setError('Customer name and amount owed are required')
+      return
+    }
+
+    const amount = parseFloat(formData.amount_owed)
+    if (isNaN(amount) || amount < 0) {
+      setError('Amount owed must be a positive number')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const storeId = getStoreId()
+      if (!storeId) throw new Error('Store ID not found')
+
+      const url = entry ? '/api/initial-customers' : '/api/initial-customers'
+      const method = entry ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: entry?.id,
+          store_id: storeId,
+          ...formData,
+          amount_owed: amount,
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        onClose(true)
+      } else {
+        setError(result.error || 'Failed to save entry')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-md">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200">
+          <h3 className="text-lg font-semibold">{entry ? 'Edit' : 'Add'} Initial Customer Entry</h3>
+          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Customer Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.customer_name}
+              onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
+              required
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Customer Phone</label>
+            <input
+              type="text"
+              value={formData.customer_phone}
+              onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Customer CNIC</label>
+            <input
+              type="text"
+              value={formData.customer_cnic}
+              onChange={(e) => setFormData({ ...formData, customer_cnic: e.target.value })}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="XXXXX-XXXXXXX-X"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Amount Owed <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.amount_owed}
+              onChange={(e) => setFormData({ ...formData, amount_owed: e.target.value })}
+              required
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="Any additional notes..."
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-4 border-t">
+            <button
+              type="button"
+              onClick={() => onClose()}
+              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-sm"
+            >
+              {saving ? 'Saving...' : entry ? 'Update Entry' : 'Add Entry'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// Initial Supplier Modal Component
+function InitialSupplierModal({ entry, onClose }: { entry: any, onClose: (refresh?: boolean) => void }) {
+  const [formData, setFormData] = useState({
+    supplier_name: entry?.supplier_name || '',
+    contact_person: entry?.contact_person || '',
+    supplier_phone: entry?.supplier_phone || '',
+    supplier_email: entry?.supplier_email || '',
+    address: entry?.address || '',
+    amount_owed: entry?.amount_owed || '',
+    notes: entry?.notes || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (!formData.supplier_name || !formData.amount_owed) {
+      setError('Supplier name and amount owed are required')
+      return
+    }
+
+    const amount = parseFloat(formData.amount_owed)
+    if (isNaN(amount) || amount < 0) {
+      setError('Amount owed must be a positive number')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const storeId = getStoreId()
+      if (!storeId) throw new Error('Store ID not found')
+
+      const url = '/api/initial-suppliers'
+      const method = entry ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: entry?.id,
+          store_id: storeId,
+          ...formData,
+          amount_owed: amount,
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        onClose(true)
+      } else {
+        setError(result.error || 'Failed to save entry')
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200 sticky top-0 bg-white">
+          <h3 className="text-lg font-semibold">{entry ? 'Edit' : 'Add'} Initial Supplier Entry</h3>
+          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Supplier Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.supplier_name}
+              onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
+              required
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Contact Person</label>
+            <input
+              type="text"
+              value={formData.contact_person}
+              onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Phone Number</label>
+            <input
+              type="text"
+              value={formData.supplier_phone}
+              onChange={(e) => setFormData({ ...formData, supplier_phone: e.target.value })}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input
+              type="email"
+              value={formData.supplier_email}
+              onChange={(e) => setFormData({ ...formData, supplier_email: e.target.value })}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Address</label>
+            <textarea
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              rows={2}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Amount Owed <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.amount_owed}
+              onChange={(e) => setFormData({ ...formData, amount_owed: e.target.value })}
+              required
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes</label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              placeholder="Any additional notes..."
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-4 border-t sticky bottom-0 bg-white">
+            <button
+              type="button"
+              onClick={() => onClose()}
+              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-sm"
+            >
+              {saving ? 'Saving...' : entry ? 'Update Entry' : 'Add Entry'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

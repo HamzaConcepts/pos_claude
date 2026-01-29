@@ -152,6 +152,8 @@ async function generateExpensesReport(storeId: string, filters: any) {
     .select('*')
     .eq('store_id', parseInt(storeId))
     .order('expense_date', { ascending: false })
+    // Exclude inventory purchase expenses - they're tracked through COGS
+    .not('category', 'in', '("new_product","inventory_restock")')
 
   if (filters.startDate) {
     query = query.gte('expense_date', filters.startDate)

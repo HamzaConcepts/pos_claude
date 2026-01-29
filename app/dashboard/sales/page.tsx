@@ -370,10 +370,10 @@ export default function SalesPage() {
       )}
 
       {/* Filters */}
-      <div className={`p-4 rounded border mb-5 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className={`p-4 rounded-lg mb-5 ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
         <div className="flex items-center gap-2 mb-4">
           <Filter size={18} className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
-          <h2 className={`font-semibold text-base ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Filters</h2>
+          <h2 className={`font-semibold text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Filters</h2>
           {(selectedCashier || selectedProduct || selectedPaymentMethod || selectedPaymentStatus || startDate || endDate) && (
             <button
               onClick={clearFilters}
@@ -387,11 +387,11 @@ export default function SalesPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {/* Cashier Filter */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cashier</label>
+            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Cashier</label>
             <select
               value={selectedCashier}
               onChange={(e) => setSelectedCashier(e.target.value)}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-gray-300' : 'border-gray-300'}`}
             >
               <option value="">All Cashiers</option>
               {cashiers.map((cashier) => (
@@ -450,23 +450,23 @@ export default function SalesPage() {
 
           {/* Start Date Filter */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Start Date</label>
+            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-gray-300' : 'border-gray-300'}`}
             />
           </div>
 
           {/* End Date Filter */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>End Date</label>
+            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-gray-300' : 'border-gray-300'}`}
             />
           </div>
         </div>
@@ -478,24 +478,24 @@ export default function SalesPage() {
       </div>
 
       {filteredSales.length === 0 ? (
-        <div className={`p-6 rounded border text-center ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`p-6 rounded border text-center ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
             {sales.length === 0 ? 'No sales found' : 'No sales match the selected filters'}
           </p>
         </div>
       ) : (
-        <div className={`rounded border overflow-hidden ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`rounded-lg overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className={`border-b ${isDarkMode ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+              <thead className={`${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-gray-50'}`}>
                 <tr>
-                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Description</th>
-                  <th className="px-3 py-2.5 text-left text-sm font-semibold hidden md:table-cell">Date</th>
-                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Cashier</th>
-                  <th className="px-3 py-2.5 text-right text-sm font-semibold">Total</th>
-                  <th className="px-3 py-2.5 text-center text-sm font-semibold hidden md:table-cell">Payment</th>
-                  <th className="px-3 py-2.5 text-center text-sm font-semibold hidden md:table-cell">Status</th>
-                  <th className="px-3 py-2.5 text-center text-sm font-semibold">Actions</th>
+                  <th className={`px-3 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Description</th>
+                  <th className={`px-3 py-3 text-left text-xs font-semibold hidden md:table-cell ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Date</th>
+                  <th className={`px-3 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Cashier</th>
+                  <th className={`px-3 py-3 text-right text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Total</th>
+                  <th className={`px-3 py-3 text-center text-xs font-semibold hidden md:table-cell ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Payment</th>
+                  <th className={`px-3 py-3 text-center text-xs font-semibold hidden md:table-cell ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Status</th>
+                  <th className={`px-3 py-3 text-center text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -512,18 +512,21 @@ export default function SalesPage() {
                       <tr
                         key={sale.id}
                         onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
-                        className={`cursor-pointer transition-all border-b border-gray-100 ${
-                          sale.payment_status === 'Partial' ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-600' :
-                          'bg-white hover:bg-gray-50'
+                        className={`cursor-pointer transition-all border-b ${
+                          isDarkMode ? 'border-gray-800' : 'border-gray-100'
+                        } ${
+                          sale.payment_status === 'Partial' 
+                            ? (isDarkMode ? 'bg-red-900/20 hover:bg-red-900/30 border-l-4 border-l-red-600' : 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-600')
+                            : (isDarkMode ? 'hover:bg-gray-800/50' : 'bg-white hover:bg-gray-50')
                         } ${isExpanded && sale.payment_status !== 'Partial' ? 'border-l-4 border-l-cyan-600' : ''}`}
                       >
                         <td className="px-3 py-2.5 text-sm">
                           <div className="flex items-center gap-2">
-                            {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                            <span className="font-normal text-gray-900">{sale.sale_description || sale.sale_number}</span>
+                            {isExpanded ? <ChevronUp size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} /> : <ChevronDown size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />}
+                            <span className={`font-normal ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.sale_description || sale.sale_number}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 hidden md:table-cell text-sm text-gray-600">
+                        <td className={`px-3 py-2.5 hidden md:table-cell text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                           {new Date(sale.sale_date).toLocaleString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -532,9 +535,9 @@ export default function SalesPage() {
                             minute: '2-digit'
                           })}
                         </td>
-                        <td className="px-3 py-2.5 text-sm text-gray-900">{sale.cashier_name || 'Unknown'}</td>
-                        <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900">
-                          ${sale.total_amount.toFixed(2)}
+                        <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.cashier_name || 'Unknown'}</td>
+                        <td className={`px-3 py-2.5 text-right font-semibold text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                          Rs. {sale.total_amount.toFixed(2)}
                         </td>
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">

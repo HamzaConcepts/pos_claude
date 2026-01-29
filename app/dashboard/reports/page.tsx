@@ -261,7 +261,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Quick Period Buttons */}
-      <div className={`mb-4 p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className={`mb-4 p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleQuickPeriodChange('today')}
@@ -420,7 +420,7 @@ export default function ReportsPage() {
 
       {/* Additional Filters - Compact */}
       {(filters.type === 'sales' || filters.type === 'expenses') && (
-        <div className={`mb-4 p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`mb-4 p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {(filters.type === 'sales' || filters.type === 'expenses') && (
               <div>
@@ -528,7 +528,7 @@ export default function ReportsPage() {
               {/* Cash Flow Summary */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Cash In Card */}
-                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash In (Sales)</h3>
                     <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-green-900/30' : 'bg-green-50'}`}>
@@ -558,7 +558,7 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Cash Out Card */}
-                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
                   <div className="flex items-center justify-between mb-2">
                     <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash Out (Expenses)</h3>
                     <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-red-900/30' : 'bg-red-50'}`}>
@@ -590,7 +590,7 @@ export default function ReportsPage() {
 
               {/* Net Position & Inventory */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
                   <h3 className={`text-xs font-semibold mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Net Profit</h3>
                   <div className={`text-xl font-bold ${reportData.profit?.netProfit >= 0 ? (isDarkMode ? 'text-cyan-400' : 'text-black') : (isDarkMode ? 'text-red-400' : 'text-red-600')}`}>
                     {formatCurrency(reportData.profit?.netProfit ?? 0)}
@@ -600,7 +600,7 @@ export default function ReportsPage() {
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
                   <h3 className={`text-xs font-semibold mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Stock Value</h3>
                   <div className={`text-xl font-bold ${isDarkMode ? 'text-cyan-400' : 'text-black'}`}>
                     {formatCurrency(reportData.inventory?.totalStockValue ?? 0)}
@@ -613,7 +613,7 @@ export default function ReportsPage() {
 
               {/* Cash Flow Chart */}
               {reportData.cashFlowTrend && reportData.cashFlowTrend.length > 0 && (
-                <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
                   <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>Cash Flow Trend</h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={reportData.cashFlowTrend}>
@@ -663,7 +663,7 @@ export default function ReportsPage() {
           {filters.type === 'profit' && <ProfitReport reportData={reportData} formatCurrency={formatCurrency} />}
         </div>
       ) : (
-        <div className={`text-center py-12 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`text-center py-12 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <FileText className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
           <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Select a period to view reports</p>
         </div>
@@ -671,3 +671,4 @@ export default function ReportsPage() {
     </div>
   )
 }
+

@@ -312,8 +312,8 @@ export default function InventoryPage() {
         <h1 className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Inventory Management</h1>
         
         <div className="flex flex-wrap gap-2">
-          <label className={`flex items-center gap-2 border px-3 py-2 rounded text-sm transition-colors cursor-pointer ${
-            isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-gray-300 hover:bg-gray-50'
+          <label className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors cursor-pointer ${
+            isDarkMode ? 'bg-gray-700/30 hover:bg-gray-700/50 text-gray-300' : 'bg-white border border-gray-300 hover:bg-gray-50 shadow-sm'
           }`}>
             <Package size={16} />
             {importing ? 'Importing...' : 'Import CSV'}
@@ -328,7 +328,7 @@ export default function InventoryPage() {
           
           <button
             onClick={() => setIsRestockModalOpen(true)}
-            className={`flex items-center gap-2 border px-3 py-2 rounded text-sm transition-colors ${isDarkMode ? 'bg-gray-800 border-gray-700 hover:bg-gray-700' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700/30 hover:bg-gray-700/50 text-gray-300' : 'bg-white border border-gray-300 hover:bg-gray-50 shadow-sm'}`}
           >
             <Package size={16} />
             Restock
@@ -336,7 +336,7 @@ export default function InventoryPage() {
           
           <button
             onClick={() => setIsAddStockModalOpen(true)}
-            className="flex items-center gap-2 bg-cyan-600 text-white px-3 py-2 rounded text-sm hover:bg-cyan-700 transition-colors"
+            className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2.5 rounded-lg hover:bg-cyan-700 transition-colors font-medium"
           >
             <Plus size={16} />
             Add Product
@@ -357,7 +357,7 @@ export default function InventoryPage() {
       )}
 
       {/* Filters */}
-      <div className={`p-3 rounded border mb-4 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className={`p-5 rounded-lg mb-6 ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {/* Search */}
           <div className="relative">
@@ -367,7 +367,7 @@ export default function InventoryPage() {
               placeholder="Search by name or SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'}`}
+              className={`w-full pl-9 pr-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
             />
           </div>
 
@@ -375,7 +375,7 @@ export default function InventoryPage() {
           <select
             value={categoryFilter}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className={`px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+            className={`px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white' : 'border-gray-300'}`}
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
@@ -388,11 +388,11 @@ export default function InventoryPage() {
             value={subcategoryFilter}
             onChange={(e) => setSubcategoryFilter(e.target.value)}
             disabled={!categoryFilter || subcategories.length === 0}
-            className={`px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${
+            className={`px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${
               !categoryFilter || subcategories.length === 0 
                 ? 'opacity-50 cursor-not-allowed' 
                 : ''
-            } ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+            } ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white' : 'border-gray-300'}`}
           >
             <option value="">All Subcategories</option>
             {subcategories.map((sub) => (
@@ -401,7 +401,7 @@ export default function InventoryPage() {
           </select>
 
           {/* Low Stock Filter */}
-          <label className={`flex items-center gap-2 px-3 py-2 border rounded text-sm cursor-pointer ${isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-50'}`}>
+          <label className={`flex items-center gap-2 px-3 py-2.5 border rounded-lg cursor-pointer ${isDarkMode ? 'border-gray-600 hover:bg-[#2a2a2a] text-gray-300' : 'border-gray-300 hover:bg-gray-50'}`}>
             <input
               type="checkbox"
               checked={showLowStock}
@@ -412,26 +412,26 @@ export default function InventoryPage() {
           </label>
 
           {/* Count */}
-          <div className="flex items-center justify-end text-xs text-gray-600">
+          <div className={`flex items-center justify-end text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
             Showing {filteredProducts.length} of {products.length} products
           </div>
         </div>
       </div>
 
       {/* Products Table */}
-      <div className={`rounded border overflow-hidden ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className={`rounded-lg overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className={`border-b ${isDarkMode ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+            <thead className={`${isDarkMode ? 'bg-gray-700/30 text-gray-300' : 'bg-gray-50/50 text-gray-700'}`}>
               <tr>
-                <th className="px-3 py-2.5 text-left text-sm font-semibold">SKU</th>
-                <th className="px-3 py-2.5 text-left text-sm font-semibold">Name</th>
-                <th className="px-3 py-2.5 text-left text-sm font-semibold hidden md:table-cell">Category</th>
-                <th className="px-3 py-2.5 text-right text-sm font-semibold hidden lg:table-cell">Min Price</th>
-                <th className="px-3 py-2.5 text-right text-sm font-semibold hidden lg:table-cell">Selling Price</th>
-                <th className="px-3 py-2.5 text-right text-sm font-semibold">Stock</th>
-                <th className="px-3 py-2.5 text-center text-sm font-semibold hidden md:table-cell">Status</th>
-                <th className="px-3 py-2.5 text-center text-sm font-semibold">Actions</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">SKU</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold hidden md:table-cell">Category</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold hidden lg:table-cell">Min Price</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold hidden lg:table-cell">Selling Price</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold">Stock</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold hidden md:table-cell">Status</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -607,7 +607,7 @@ export default function InventoryPage() {
                                       {(product as any).batches
                                         .sort((a: any, b: any) => new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime())
                                         .map((batch: any, index: number) => (
-                                          <div key={batch.id} className="p-3 bg-white rounded border border-gray-200 text-sm">
+                                          <div key={batch.id} className={`p-3 rounded border text-sm ${isDarkMode ? 'bg-gray-800/30 border-gray-700' : 'bg-white border-gray-200'}`}>
                                             <div className="flex justify-between items-start mb-2">
                                               <div>
                                                 <div className="font-medium text-sm text-gray-900">
@@ -669,7 +669,7 @@ export default function InventoryPage() {
                                 <div className="flex flex-col gap-2">
                                   <button
                                     onClick={() => handleViewHistory(product)}
-                                    className="flex items-center justify-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors text-sm"
+                                    className={`flex items-center justify-center gap-2 px-3 py-2 border rounded hover:bg-opacity-80 transition-colors text-sm ${isDarkMode ? 'bg-gray-700/30 border-gray-600 text-gray-300 hover:bg-gray-700/50' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
                                   >
                                     <History size={16} />
                                     <span>View History</span>

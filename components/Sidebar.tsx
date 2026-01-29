@@ -20,7 +20,15 @@ import {
   Moon,
   Sun,
   Settings,
-  UserCog
+  UserCog,
+  Home,
+  ShoppingBag,
+  Package2,
+  FileText,
+  DollarSign,
+  TrendingUp,
+  BookOpen,
+  PackageCheck
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase, hasPermission, type UserRole, getStoreId } from '@/lib/supabase'
@@ -44,6 +52,29 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
   const [selectedCashier, setSelectedCashier] = useState<Cashier | null>(null)
   const [showCashierDropdown, setShowCashierDropdown] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [storeName, setStoreName] = useState('POS System')
+
+  // Notify layout when sidebar is toggled
+  const toggleSidebar = () => {
+    const newState = !isCollapsed
+    setIsCollapsed(newState)
+    localStorage.setItem('sidebar_collapsed', newState.toString())
+    // Update CSS variable for smooth transition
+    document.documentElement.style.setProperty('--sidebar-width', newState ? '4rem' : '13rem')
+  }
+
+  // Load collapsed state from localStorage
+  useEffect(() => {
+    const savedCollapsed = localStorage.getItem('sidebar_collapsed')
+    if (savedCollapsed) {
+      const collapsed = savedCollapsed === 'true'
+      setIsCollapsed(collapsed)
+      document.documentElement.style.setProperty('--sidebar-width', collapsed ? '4rem' : '13rem')
+    } else {
+      document.documentElement.style.setProperty('--sidebar-width', '13rem')
+    }
+  }, [])
 
   // Load dark mode preference from localStorage
   useEffect(() => {
@@ -60,7 +91,27 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
       setSelectedCashier(JSON.parse(savedCashier))
     }
     fetchCashiers()
+    fetchStoreName()
   }, [])
+
+  const fetchStoreName = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const { data, error } = await supabase
+        .from('stores')
+        .select('store_name')
+        .eq('id', storeId)
+        .single()
+
+      if (data && !error) {
+        setStoreName(data.store_name)
+      }
+    } catch (err) {
+      console.error('Error fetching store name:', err)
+    }
+  }
 
   const fetchCashiers = async () => {
     try {
@@ -99,23 +150,28 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
   }
 
   const navItems = [
-    { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, permission: 'view_dashboard' },
-    { href: '/dashboard/pos', label: 'New Sale', icon: ShoppingCart, permission: 'process_sale' },
-    { href: '/dashboard/inventory', label: 'Products', icon: Package, permission: 'create_product' },
-    { href: '/dashboard/sales', label: 'Sales History', icon: Receipt, permission: 'view_sales' },
-    { href: '/dashboard/expenses', label: 'Expense Tracker', icon: Wallet, permission: 'add_expense' },
-    { href: '/dashboard/reports', label: 'Reports', icon: BarChart3, permission: 'view_dashboard' },
-    { href: '/dashboard/customer-ledger', label: 'Customer Ledger', icon: BookUser, permission: 'create_user' },
-    { href: '/dashboard/supplier-ledger', label: 'Supplier Ledger', icon: Truck, permission: 'create_user' },
+    { href: '/dashboard', label: 'Overview', icon: Home, permission: 'view_dashboard' },
+    { href: '/dashboard/pos', label: 'New Sale', icon: ShoppingBag, permission: 'process_sale' },
+    { href: '/dashboard/inventory', label: 'Products', icon: Package2, permission: 'create_product' },
+    { href: '/dashboard/sales', label: 'Sales History', icon: FileText, permission: 'view_sales' },
+    { href: '/dashboard/expenses', label: 'Expense Tracker', icon: DollarSign, permission: 'add_expense' },
+    { href: '/dashboard/reports', label: 'Reports', icon: TrendingUp, permission: 'view_dashboard' },
+    { href: '/dashboard/customer-ledger', label: 'Customer Ledger', icon: BookOpen, permission: 'create_user' },
+    { href: '/dashboard/supplier-ledger', label: 'Supplier Ledger', icon: PackageCheck, permission: 'create_user' },
     { href: '/dashboard/cashiers', label: 'Staff Performance', icon: UserCog, permission: 'create_user', managerOnly: true },
     { href: '/dashboard/store', label: 'Settings', icon: Settings, permission: 'create_user' },
   ]
 
   const handleLogout = async () => {
-    // Clear cashier session if exists
+    // Clear all session data
     localStorage.removeItem('user_session')
+    sessionStorage.removeItem('store_id')
+    sessionStorage.removeItem('user_type')
+    sessionStorage.removeItem('user_id')
+    
     // Logout from Supabase Auth (for managers)
     await supabase.auth.signOut()
+    
     router.push('/login')
   }
 
@@ -137,13 +193,23 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
         className={`
           hidden lg:flex
           fixed inset-y-0 left-0 z-40
-          w-52 flex-col
-          ${isDarkMode ? 'bg-gray-900 border-r border-gray-800' : 'bg-white border-r border-gray-200'}
+          flex-col transition-all duration-300
+          ${isCollapsed ? 'w-16' : 'w-52'}
+          ${isDarkMode ? 'bg-[#1a1a1a] border-r border-gray-700' : 'bg-white border-r border-gray-200'}
         `}
       >
         {/* Logo */}
-        <div className={`p-4 border-b ${isDarkMode ? 'border-gray-800' : 'border-gray-200'}`}>
-          <h1 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>POS System</h1>
+        <div className={`p-4 border-b flex items-center justify-between ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          {!isCollapsed && (
+            <h1 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{storeName}</h1>
+          )}
+          <button
+            onClick={toggleSidebar}
+            className={`p-1.5 rounded transition-colors ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <Menu size={18} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -223,22 +289,28 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={`
-                      flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-colors
+                      flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-colors relative group
                       ${isActive 
                         ? (isDarkMode 
-                            ? 'bg-cyan-900/30 text-cyan-400 border border-cyan-800' 
+                            ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-700' 
                             : 'bg-cyan-50 text-cyan-700 border border-cyan-200')
                         : (isDarkMode 
-                            ? 'text-gray-300 hover:bg-gray-800 hover:text-white' 
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900')
+                            ? 'text-gray-300 hover:bg-[#2a2a2a] hover:text-white' 
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900')
                       }
+                      ${isCollapsed ? 'justify-center' : ''}
                     `}
+                    title={isCollapsed ? item.label : ''}
                   >
-                    <Icon size={18} className={isActive 
-                      ? (isDarkMode ? 'text-cyan-400' : 'text-cyan-600')
-                      : (isDarkMode ? 'text-gray-400' : 'text-gray-500')
-                    } />
-                    <span>{item.label}</span>
+                    <Icon 
+                      size={18} 
+                      fill={isActive ? 'currentColor' : 'none'}
+                      className={isActive 
+                        ? (isDarkMode ? 'text-cyan-400' : 'text-cyan-600')
+                        : (isDarkMode ? 'text-gray-400 group-hover:text-white' : 'text-gray-500')
+                      } 
+                    />
+                    {!isCollapsed && <span>{item.label}</span>}
                   </Link>
                 </li>
               )
@@ -247,34 +319,38 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
         </nav>
 
         {/* User section */}
-        <div className={`p-3 border-t ${isDarkMode ? 'border-gray-800 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
+        <div className={`p-3 border-t ${isDarkMode ? 'border-gray-700 bg-[#151515]' : 'border-gray-200 bg-gray-50'}`}>
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleDarkMode}
-            className={`flex items-center gap-2 w-full px-3 py-2 mb-2 border rounded transition-colors text-sm font-medium ${
+            className={`flex items-center gap-2 w-full px-3 py-2 mb-2 border rounded transition-colors text-sm font-medium ${isCollapsed ? 'justify-center' : ''} ${
               isDarkMode 
-                ? 'bg-gray-700 hover:bg-gray-600 border-gray-600 text-gray-200' 
+                ? 'bg-[#0f0f0f] hover:bg-[#2a2a2a] border-gray-600 text-gray-200' 
                 : 'bg-white hover:bg-gray-100 border-gray-200 text-gray-700'
             }`}
+            title={isCollapsed ? (isDarkMode ? 'Light Mode' : 'Dark Mode') : ''}
           >
             {isDarkMode ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} className="text-blue-500" />}
-            <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+            {!isCollapsed && <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>}
           </button>
 
-          <div className="mb-2">
-            <p className={`font-medium text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{userName}</p>
-            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{userRole}</p>
-          </div>
+          {!isCollapsed && (
+            <div className="mb-2">
+              <p className={`font-medium text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{userName}</p>
+              <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{userRole}</p>
+            </div>
+          )}
           <button
             onClick={handleLogout}
-            className={`flex items-center gap-2 w-full px-3 py-2 border rounded transition-colors text-sm font-medium ${
+            className={`flex items-center gap-2 w-full px-3 py-2 border rounded transition-colors text-sm font-medium ${isCollapsed ? 'justify-center' : ''} ${
               isDarkMode 
-                ? 'bg-gray-700 hover:bg-red-900/20 border-gray-600 hover:border-red-800 text-gray-200 hover:text-red-400' 
+                ? 'bg-[#0f0f0f] hover:bg-red-900/20 border-gray-600 hover:border-red-800 text-gray-200 hover:text-red-400' 
                 : 'bg-white hover:bg-red-50 border-gray-200 hover:border-red-200 text-gray-700 hover:text-red-600'
             }`}
+            title={isCollapsed ? 'Logout' : ''}
           >
             <LogOut size={16} />
-            <span>Logout</span>
+            {!isCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>

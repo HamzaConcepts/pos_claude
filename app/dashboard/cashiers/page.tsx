@@ -128,7 +128,7 @@ export default function CashiersManagementPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <div className="bg-white border border-gray-200 rounded p-4">
+        <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-cyan-50 rounded">
               <Users size={18} className="text-cyan-600" />
@@ -138,7 +138,7 @@ export default function CashiersManagementPage() {
           <p className="text-2xl font-bold text-gray-900">{cashiers.filter(c => c.is_active).length}</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded p-4">
+        <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-green-50 rounded">
               <DollarSign size={18} className="text-green-600" />
@@ -148,7 +148,7 @@ export default function CashiersManagementPage() {
           <p className="text-2xl font-bold text-gray-900">${totalSalaries.toLocaleString()}</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded p-4">
+        <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-orange-50 rounded">
               <TrendingUp size={18} className="text-orange-600" />
@@ -158,7 +158,7 @@ export default function CashiersManagementPage() {
           <p className="text-2xl font-bold text-gray-900">${totalCommissions.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded p-4">
+        <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-cyan-50 rounded">
               <DollarSign size={18} className="text-cyan-600" />
@@ -170,7 +170,7 @@ export default function CashiersManagementPage() {
       </div>
 
       {/* Cashiers Table */}
-      <div className="bg-white border border-gray-200 rounded overflow-hidden">
+      <div className={`border rounded overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
         <div className="p-4 bg-gray-50 border-b border-gray-200">
           <h2 className="text-base font-bold text-gray-900">Performance for {new Date(selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
         </div>
