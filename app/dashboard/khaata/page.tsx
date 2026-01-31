@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserCircle, Building2, Search, Edit, Trash2, ChevronDown, ChevronRight, Package, DollarSign } from 'lucide-react'
+import { UserCircleIcon, BuildingsIcon, MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, PackageIcon, CurrencyDollarIcon } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
 import { getStoreId, getManagerId, getCashierId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
@@ -133,7 +133,6 @@ export default function KhaataPage() {
     try {
       setLoading(true)
       setError('')
-      console.log('[KHAATA] Fetching customers...')
       
       const storeId = getStoreId()
       if (!storeId) {
@@ -143,19 +142,14 @@ export default function KhaataPage() {
       }
       
       const response = await fetch(`/api/khaata-customers?store_id=${storeId}`)
-      console.log('[KHAATA] Response status:', response.status)
       const result = await response.json()
-      console.log('[KHAATA] Result:', result)
 
       if (result.success) {
         setCustomers(result.data)
-        console.log('[KHAATA] Customers loaded:', result.data.length)
       } else {
-        console.error('[KHAATA] Failed to fetch:', result.error)
         setError('Failed to fetch customers: ' + (result.error || 'Unknown error'))
       }
     } catch (err) {
-      console.error('[KHAATA] Exception:', err)
       setError('Failed to fetch customers: ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setLoading(false)
@@ -520,7 +514,7 @@ export default function KhaataPage() {
           }`}
         >
           <div className="flex items-center gap-2">
-            <UserCircle size={16} />
+            <UserCircleIcon size={16} />
             <span>Customers</span>
           </div>
         </button>
@@ -533,7 +527,7 @@ export default function KhaataPage() {
           }`}
         >
           <div className="flex items-center gap-2">
-            <Building2 size={16} />
+            <BuildingsIcon size={16} />
             <span>Suppliers</span>
           </div>
         </button>
@@ -545,7 +539,7 @@ export default function KhaataPage() {
           {/* Search Only (removed Add button since customers come from sales) */}
           <div className="flex gap-3 mb-5">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
                 placeholder="Search by name or phone..."
@@ -608,7 +602,7 @@ export default function KhaataPage() {
                           onClick={() => toggleCustomerExpansion(customer.customer_phone)}
                         >
                           <td className="px-3 py-2.5">
-                            {isExpanded ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+                            {isExpanded ? <CaretDownIcon size={16} className="text-gray-400" /> : <CaretRightIcon size={16} className="text-gray-400" />}
                           </td>
                           <td className="px-3 py-2.5 font-medium text-sm text-gray-900">{customer.customer_name}</td>
                           <td className="px-3 py-2.5 text-sm text-gray-900">{customer.customer_phone}</td>
@@ -637,7 +631,7 @@ export default function KhaataPage() {
                               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1 mx-auto"
                               disabled={customer.amount_remaining <= 0}
                             >
-                              <DollarSign size={14} />
+                              <CurrencyDollarIcon size={14} />
                               Pay Dues
                             </button>
                           </td>
@@ -680,7 +674,7 @@ export default function KhaataPage() {
                                   className="p-1.5 hover:bg-cyan-100 rounded transition-colors"
                                   title="Edit"
                                 >
-                                  <Edit size={16} />
+                                  <PencilSimpleIcon size={16} />
                                 </button>
                                 <button
                                   onClick={(e) => {
@@ -690,7 +684,7 @@ export default function KhaataPage() {
                                   className="p-1.5 hover:bg-red-100 rounded transition-colors text-status-error"
                                   title="Delete"
                                 >
-                                  <Trash2 size={16} />
+                                  <TrashIcon size={16} />
                                 </button>
                               </div>
                             </td>
@@ -727,7 +721,7 @@ export default function KhaataPage() {
           {/* Search */}
           <div className="flex gap-3 mb-5">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
                 placeholder="Search by supplier name or phone..."
@@ -761,7 +755,7 @@ export default function KhaataPage() {
             </div>
           ) : filteredSuppliers.length === 0 ? (
             <div className="text-center py-8 border border-dashed border-gray-300 rounded">
-              <Package className="mx-auto mb-4 text-gray-400" size={40} />
+              <PackageIcon className="mx-auto mb-4 text-gray-400" size={40} />
               <p className="text-gray-500 text-sm">
                 {searchTerm ? 'No suppliers found matching your search' : 'No pending payments to suppliers'}
               </p>
@@ -793,7 +787,7 @@ export default function KhaataPage() {
                           onClick={() => toggleSupplierExpansion(supplier.supplier_id)}
                         >
                           <td className="px-3 py-2.5">
-                            {isExpanded ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+                            {isExpanded ? <CaretDownIcon size={16} className="text-gray-400" /> : <CaretRightIcon size={16} className="text-gray-400" />}
                           </td>
                           <td className="px-3 py-2.5 font-medium text-sm text-gray-900">{supplier.supplier_name}</td>
                           <td className="px-3 py-2.5 text-sm text-gray-900">{supplier.supplier_phone}</td>
@@ -822,7 +816,7 @@ export default function KhaataPage() {
                               className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1 mx-auto"
                               disabled={supplier.amount_remaining <= 0}
                             >
-                              <DollarSign size={14} />
+                              <CurrencyDollarIcon size={14} />
                               Pay Dues
                             </button>
                           </td>
@@ -865,7 +859,7 @@ export default function KhaataPage() {
                                   className="p-1.5 hover:bg-cyan-100 rounded transition-colors"
                                   title="Edit"
                                 >
-                                  <Edit size={14} />
+                                  <PencilSimpleIcon size={14} />
                                 </button>
                                 <button
                                   onClick={(e) => {
@@ -875,7 +869,7 @@ export default function KhaataPage() {
                                   className="p-1.5 hover:bg-red-100 rounded transition-colors text-red-600"
                                   title="Delete"
                                 >
-                                  <Trash2 size={14} />
+                                  <TrashIcon size={14} />
                                 </button>
                               </div>
                             </td>

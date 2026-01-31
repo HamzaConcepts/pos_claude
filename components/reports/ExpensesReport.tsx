@@ -1,4 +1,4 @@
-import { TrendingDown, DollarSign, CreditCard } from 'lucide-react'
+import { TrendDownIcon, CurrencyDollarIcon, CreditCardIcon } from '@phosphor-icons/react'
 import { StatCard } from './StatCard'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -27,7 +27,7 @@ export function ExpensesReport({ reportData, formatCurrency }: ExpensesReportPro
           <div className="flex items-center justify-between mb-2">
             <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total Expenses</h3>
             <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <TrendingDown className={`w-4 h-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+              <TrendDownIcon className={`w-4 h-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
             </div>
           </div>
           <div className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
@@ -42,7 +42,7 @@ export function ExpensesReport({ reportData, formatCurrency }: ExpensesReportPro
           <div className="flex items-center justify-between mb-2">
             <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash Expenses</h3>
             <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <DollarSign className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+              <CurrencyDollarIcon className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
             </div>
           </div>
           <div className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
@@ -54,7 +54,7 @@ export function ExpensesReport({ reportData, formatCurrency }: ExpensesReportPro
           <div className="flex items-center justify-between mb-2">
             <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Digital Expenses</h3>
             <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <CreditCard className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+              <CreditCardIcon className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
           </div>
           <div className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>

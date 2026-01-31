@@ -128,6 +128,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create stock batch
+    const totalAmount = cost_price * quantity_purchased
+    const paidAmount = parseFloat(amount_paid.toString()) || 0
+    
     const { data: batch, error } = await supabaseAdmin
       .from('stock_batches')
       .insert({
@@ -144,6 +147,7 @@ export async function POST(request: NextRequest) {
         is_initial_stock, // Mark as initial stock (won't create expense via trigger)
         purchase_date: new Date().toISOString(),
         payment_method: validPaymentMethod, // Store payment method (validated)
+        amount_paid: paidAmount, // Amount actually paid to supplier
       })
       .select()
       .single()
@@ -154,8 +158,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle supplier payment tracking
-    const totalAmount = cost_price * quantity_purchased
-    const paidAmount = parseFloat(amount_paid.toString()) || 0
     const remaining = totalAmount - paidAmount
 
     // If payment is partial, create supplier_khaata record

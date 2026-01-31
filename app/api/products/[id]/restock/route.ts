@@ -109,11 +109,8 @@ export async function POST(
       .single()
 
     if (batchInsertError) {
-      console.error('Stock batch insert error:', batchInsertError)
       throw batchInsertError
     }
-
-    console.log('Successfully created stock batch:', batch.id)
 
     return NextResponse.json({
       success: true,

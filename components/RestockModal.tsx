@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Search } from 'lucide-react'
+import { XIcon, MagnifyingGlassIcon } from '@phosphor-icons/react'
 import type { ProductWithBackwardCompatibility, Supplier } from '@/lib/types'
 import { getStoreId } from '@/lib/supabase'
 
@@ -419,7 +419,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
               isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
             }`}
           >
-            <X size={24} />
+            <XIcon size={24} />
           </button>
         </div>
 
@@ -436,7 +436,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                 Search for a product to restock (includes inactive products)
               </p>
               <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary" size={20} />
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary" size={20} />
                 <input
                   type="text"
                   placeholder="Search by name or SKU..."
@@ -843,7 +843,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                                   : 'border-red-300 text-red-500 hover:bg-red-50'
                               }`}
                             >
-                              <X size={16} />
+                              <XIcon size={16} />
                             </button>
                           )}
                         </div>

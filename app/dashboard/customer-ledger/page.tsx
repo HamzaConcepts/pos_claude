@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UserCircle, Search, Edit, Trash2, ChevronDown, ChevronRight, DollarSign } from 'lucide-react'
+import { UserCircleIcon, MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, CurrencyDollarIcon } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
 import { getStoreId, isManager, getCashierId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
@@ -32,10 +32,21 @@ interface AggregatedCustomer {
   transactions: KhaataCustomer[]
 }
 
+interface InitialCustomer {
+  id: number
+  customer_name: string
+  customer_cnic: string | null
+  customer_phone: string | null
+  amount_owed: number
+  notes: string | null
+  created_at: string
+}
+
 export default function CustomerLedgerPage() {
   const router = useRouter()
   const isDarkMode = useDarkMode()
   const [customers, setCustomers] = useState<KhaataCustomer[]>([])
+  const [initialCustomers, setInitialCustomers] = useState<InitialCustomer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
@@ -65,6 +76,7 @@ export default function CustomerLedgerPage() {
 
   useEffect(() => {
     fetchCustomers()
+    fetchInitialCustomers()
   }, [])
 
   const fetchCustomers = async () => {
@@ -90,6 +102,22 @@ export default function CustomerLedgerPage() {
       setError('Failed to fetch customers')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchInitialCustomers = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/initial-customers?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setInitialCustomers(result.data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch initial customers:', err)
     }
   }
 
@@ -262,7 +290,7 @@ export default function CustomerLedgerPage() {
       {/* Search */}
       <div className="flex gap-3 mb-5">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
           <input
             type="text"
             placeholder="Search by name or phone..."
@@ -325,7 +353,7 @@ export default function CustomerLedgerPage() {
                       onClick={() => toggleCustomerExpansion(customer.customer_phone)}
                     >
                       <td className="px-3 py-2.5">
-                        {isExpanded ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+                        {isExpanded ? <CaretDownIcon size={16} className="text-gray-400" /> : <CaretRightIcon size={16} className="text-gray-400" />}
                       </td>
                       <td className="px-3 py-2.5 font-medium text-sm text-gray-900">{customer.customer_name}</td>
                       <td className="px-3 py-2.5 text-sm text-gray-900">{customer.customer_phone}</td>
@@ -354,7 +382,7 @@ export default function CustomerLedgerPage() {
                           className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1 mx-auto"
                           disabled={customer.amount_remaining <= 0}
                         >
-                          <DollarSign size={14} />
+                          <CurrencyDollarIcon size={14} />
                           Pay Dues
                         </button>
                       </td>
@@ -397,7 +425,7 @@ export default function CustomerLedgerPage() {
                               className="p-1.5 hover:bg-cyan-100 rounded transition-colors"
                               title="Edit"
                             >
-                              <Edit size={16} />
+                              <PencilSimpleIcon size={16} />
                             </button>
                             <button
                               onClick={(e) => {
@@ -407,7 +435,7 @@ export default function CustomerLedgerPage() {
                               className="p-1.5 hover:bg-red-100 rounded transition-colors text-status-error"
                               title="Delete"
                             >
-                              <Trash2 size={16} />
+                              <TrashIcon size={16} />
                             </button>
                           </div>
                         </td>
@@ -433,6 +461,67 @@ export default function CustomerLedgerPage() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {/* Initial Customers Section */}
+      {initialCustomers.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Initial Customers (Migration)</h2>
+            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Customers imported when you started using this POS system</p>
+          </div>
+          
+          <div className={`border rounded overflow-hidden ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <table className="w-full">
+              <thead>
+                <tr className={`border-b ${isDarkMode ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Customer Name</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Phone</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">CNIC</th>
+                  <th className="px-3 py-2.5 text-right text-sm font-semibold">Amount Owed</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Notes</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Added On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {initialCustomers.map((customer) => (
+                  <tr 
+                    key={customer.id}
+                    className={`border-b ${isDarkMode ? 'bg-gray-900 border-gray-700 hover:bg-gray-800' : 'bg-white border-gray-100 hover:bg-gray-50'}`}
+                  >
+                    <td className={`px-3 py-2.5 text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {customer.customer_name}
+                    </td>
+                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {customer.customer_phone || '-'}
+                    </td>
+                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {customer.customer_cnic || '-'}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-right font-semibold text-orange-600">
+                      ${customer.amount_owed.toFixed(2)}
+                    </td>
+                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {customer.notes || '-'}
+                    </td>
+                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {new Date(customer.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-orange-600 text-white font-semibold">
+                  <td colSpan={3} className="px-3 py-2.5 text-sm">TOTAL INITIAL BALANCE</td>
+                  <td className="px-3 py-2.5 text-right text-sm">
+                    ${initialCustomers.reduce((sum, c) => sum + c.amount_owed, 0).toFixed(2)}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { DollarSign, TrendingUp, Calendar, Plus, X, Edit, Trash2, AlertCircle } from 'lucide-react'
+import { CurrencyDollarIcon, TrendUpIcon, CalendarIcon, PlusIcon, XIcon, PencilSimpleIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { supabase, getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useDarkMode } from '@/hooks/useDarkMode'
@@ -48,6 +48,32 @@ const EXPENSE_CATEGORIES = [
   'Miscellaneous'
 ]
 
+// Format category for display - convert database values to user-friendly labels
+const formatCategory = (category: string): string => {
+  const categoryMap: Record<string, string> = {
+    'new_product': 'New Product',
+    'inventory_restock': 'Restock',
+  }
+  return categoryMap[category] || category
+}
+
+// Get appropriate styling for category badge
+const getCategoryStyle = (category: string, isDark: boolean): string => {
+  if (category === 'new_product') {
+    return isDark 
+      ? 'bg-green-900/30 border-green-700 text-green-400' 
+      : 'bg-green-100 border-green-300 text-green-700'
+  }
+  if (category === 'inventory_restock') {
+    return isDark 
+      ? 'bg-blue-900/30 border-blue-700 text-blue-400' 
+      : 'bg-blue-100 border-blue-300 text-blue-700'
+  }
+  return isDark 
+    ? 'bg-gray-800 border-gray-600 text-gray-300' 
+    : 'bg-gray-100 border-gray-200 text-gray-700'
+}
+
 export default function ExpensesPage() {
   const router = useRouter()
   const isDarkMode = useDarkMode()
@@ -86,6 +112,7 @@ export default function ExpensesPage() {
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0])
   const [submitting, setSubmitting] = useState(false)
+  const [selectedCashier, setSelectedCashier] = useState<any>(null)
 
   useEffect(() => {
     // Check roles
@@ -98,7 +125,19 @@ export default function ExpensesPage() {
     fetchCurrentUser()
     fetchExpenses()
     fetchPredefinedExpenses()
+    loadSelectedCashier()
   }, [])
+
+  const loadSelectedCashier = () => {
+    const savedCashier = localStorage.getItem('selected_cashier')
+    if (savedCashier) {
+      try {
+        setSelectedCashier(JSON.parse(savedCashier))
+      } catch (err) {
+        console.error('Failed to parse saved cashier:', err)
+      }
+    }
+  }
 
   const fetchCurrentUser = async () => {
     // Check for cashier session first
@@ -190,6 +229,12 @@ export default function ExpensesPage() {
       return
     }
 
+    // Validate cashier selection for cashier accounts
+    if (userIsCashier && !userIsManager && !selectedCashier) {
+      setError('Please select which staff member is recording this expense')
+      return
+    }
+
     setSubmitting(true)
     setError('')
 
@@ -211,6 +256,8 @@ export default function ExpensesPage() {
           payment_method: paymentMethod,
           expense_date: expenseDate,
           recorded_by: userId,
+          recorded_by_cashier_id: selectedCashier?.id || null,
+          recorded_by_name: selectedCashier?.full_name || null,
           store_id: storeId
         })
       })
@@ -422,7 +469,7 @@ export default function ExpensesPage() {
           onClick={() => setShowAddModal(true)}
           className="px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors flex items-center gap-2"
         >
-          <Plus size={16} />
+          <PlusIcon size={16} />
           Add Expense
         </button>
       </div>
@@ -438,7 +485,7 @@ export default function ExpensesPage() {
         <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Today's Expenses</span>
-            <DollarSign className="text-red-600" size={16} />
+            <CurrencyDollarIcon className="text-red-600" size={16} />
           </div>
           <div className="text-lg font-semibold text-red-600">
             ${stats.today.toFixed(2)}
@@ -448,7 +495,7 @@ export default function ExpensesPage() {
         <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>This Month</span>
-            <Calendar className="text-red-600" size={16} />
+            <CalendarIcon className="text-red-600" size={16} />
           </div>
           <div className="text-lg font-semibold text-red-600">
             ${stats.month.toFixed(2)}
@@ -458,7 +505,7 @@ export default function ExpensesPage() {
         <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>This Year</span>
-            <TrendingUp className="text-red-600" size={16} />
+            <TrendUpIcon className="text-red-600" size={16} />
           </div>
           <div className="text-lg font-semibold text-red-600">
             ${stats.year.toFixed(2)}
@@ -468,7 +515,7 @@ export default function ExpensesPage() {
         <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Expenses</span>
-            <DollarSign className="text-red-600" size={16} />
+            <CurrencyDollarIcon className="text-red-600" size={16} />
           </div>
           <div className="text-lg font-semibold text-red-600">
             ${stats.total.toFixed(2)}
@@ -522,8 +569,8 @@ export default function ExpensesPage() {
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-sm">
-                      <span className="inline-block px-2 py-1 bg-gray-100 border border-gray-200 rounded text-xs text-gray-700">
-                        {expense.category}
+                      <span className={`inline-block px-2 py-1 border rounded text-xs ${getCategoryStyle(expense.category, isDarkMode)}`}>
+                        {formatCategory(expense.category)}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-sm text-gray-900">
@@ -548,7 +595,7 @@ export default function ExpensesPage() {
                           className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors"
                           title="Edit Expense"
                         >
-                          <Edit size={14} />
+                          <PencilSimpleIcon size={14} />
                           Edit
                         </button>
                         {/* Manager only: Delete button */}
@@ -561,7 +608,7 @@ export default function ExpensesPage() {
                             className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                             title="Delete Expense"
                           >
-                            <Trash2 size={14} />
+                            <TrashIcon size={14} />
                             Delete
                           </button>
                         )}
@@ -575,7 +622,7 @@ export default function ExpensesPage() {
                             className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
                             title="Mark for Review"
                           >
-                            <AlertCircle size={14} />
+                            <WarningCircleIcon size={14} />
                             Review
                           </button>
                         )}
@@ -589,7 +636,7 @@ export default function ExpensesPage() {
                             className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 border border-yellow-300 rounded hover:bg-yellow-200 transition-colors"
                             title="View marked expense details"
                           >
-                            <AlertCircle size={14} />
+                            <WarningCircleIcon size={14} />
                             Marked
                           </button>
                         )}
@@ -617,7 +664,7 @@ export default function ExpensesPage() {
                 }}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <X size={20} />
+                <XIcon size={20} />
               </button>
             </div>
 
@@ -776,7 +823,7 @@ export default function ExpensesPage() {
                 }}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <X size={20} />
+                <XIcon size={20} />
               </button>
             </div>
 
@@ -877,7 +924,7 @@ export default function ExpensesPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Trash2 size={20} className="text-red-600" />
+              <TrashIcon size={20} className="text-red-600" />
               Delete Expense
             </h2>
 
@@ -904,7 +951,7 @@ export default function ExpensesPage() {
               </div>
               <div className="mb-2">
                 <span className="font-semibold text-gray-700">Category:</span>{' '}
-                <span className="text-gray-900">{deletingExpense.category}</span>
+                <span className="text-gray-900">{formatCategory(deletingExpense.category)}</span>
               </div>
               <div>
                 <span className="font-semibold text-gray-700">Date:</span>{' '}
@@ -945,7 +992,7 @@ export default function ExpensesPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <AlertCircle size={20} className="text-yellow-600" />
+              <WarningCircleIcon size={20} className="text-yellow-600" />
               Mark Expense for Review
             </h2>
 
@@ -972,7 +1019,7 @@ export default function ExpensesPage() {
               </div>
               <div className="mb-2">
                 <span className="font-semibold text-gray-700">Category:</span>{' '}
-                <span className="text-gray-900">{reviewingExpense.category}</span>
+                <span className="text-gray-900">{formatCategory(reviewingExpense.category)}</span>
               </div>
               <div>
                 <span className="font-semibold text-gray-700">Date:</span>{' '}
@@ -1026,7 +1073,7 @@ export default function ExpensesPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <AlertCircle size={20} className="text-yellow-600" />
+              <WarningCircleIcon size={20} className="text-yellow-600" />
               Marked for Review
             </h2>
 
@@ -1047,7 +1094,7 @@ export default function ExpensesPage() {
               </div>
               <div className="mb-2">
                 <span className="font-semibold text-gray-700">Category:</span>{' '}
-                <span className="text-gray-900">{viewingMarkedExpense.category}</span>
+                <span className="text-gray-900">{formatCategory(viewingMarkedExpense.category)}</span>
               </div>
               <div className="mb-2">
                 <span className="font-semibold text-gray-700">Date:</span>{' '}
@@ -1095,7 +1142,7 @@ export default function ExpensesPage() {
                   </>
                 ) : (
                   <>
-                    <X size={14} />
+                    <XIcon size={14} />
                     Unmark
                   </>
                 )}
@@ -1116,7 +1163,7 @@ export default function ExpensesPage() {
                     </>
                   ) : (
                     <>
-                      <Trash2 size={14} />
+                      <TrashIcon size={14} />
                       Delete
                     </>
                   )}

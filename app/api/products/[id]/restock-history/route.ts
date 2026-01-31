@@ -39,18 +39,14 @@ export async function GET(
       .order('purchase_date', { ascending: false })
 
     if (error) {
-      console.error('Restock history fetch error:', error)
       throw error
     }
-
-    console.log(`Found ${batches?.length || 0} stock batches for product ${productId}`)
 
     return NextResponse.json({
       success: true,
       data: batches || [],
     })
   } catch (error: any) {
-    console.error('Restock history error:', error)
     return NextResponse.json(
       {
         success: false,

@@ -1,4 +1,4 @@
-import { DollarSign, TrendingDown, TrendingUp, Package, Wallet } from 'lucide-react'
+import { CurrencyDollarIcon, TrendDownIcon, TrendUpIcon, PackageIcon, WalletIcon } from '@phosphor-icons/react'
 import { StatCard } from './StatCard'
 
 interface SummaryReportProps {
@@ -14,21 +14,21 @@ export function SummaryReport({ reportData, formatCurrency }: SummaryReportProps
       <StatCard
         title="Total Revenue"
         value={formatCurrency(reportData.sales?.totalRevenue ?? 0)}
-        icon={<DollarSign />}
+        icon={<CurrencyDollarIcon />}
         trend={reportData.sales?.totalSales ?? 0}
         trendLabel="sales"
       />
       <StatCard
         title="Total Expenses"
         value={formatCurrency(reportData.expenses?.totalAmount ?? 0)}
-        icon={<TrendingDown />}
+        icon={<TrendDownIcon />}
         trend={reportData.expenses?.totalExpenses ?? 0}
         trendLabel="expenses"
       />
       <StatCard
         title="Net Profit"
         value={formatCurrency(reportData.profit?.netProfit ?? 0)}
-        icon={<TrendingUp />}
+        icon={<TrendUpIcon />}
         trend={reportData.profit?.profitMargin ?? 0}
         trendLabel="% margin"
         isProfit
@@ -36,14 +36,14 @@ export function SummaryReport({ reportData, formatCurrency }: SummaryReportProps
       <StatCard
         title="Cash Present"
         value={formatCurrency(reportData.cashPresent ?? 0)}
-        icon={<Wallet />}
+        icon={<WalletIcon />}
         trend={reportData.sales?.totalCash ?? 0}
         trendLabel="cash in"
       />
       <StatCard
         title="Stock Value"
         value={formatCurrency(reportData.inventory?.totalStockValue ?? 0)}
-        icon={<Package />}
+        icon={<PackageIcon />}
         trend={reportData.inventory?.totalRemaining ?? 0}
         trendLabel="items"
       />

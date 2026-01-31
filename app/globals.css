@@ -142,3 +142,63 @@ a {
     @apply bg-cyan-50 text-cyan-700 border border-cyan-200;
   }
 }
+
+/* Print Styles for Receipts */
+@media print {
+  /* Hide everything except receipt */
+  body * {
+    visibility: hidden;
+  }
+  
+  #receipt, #receipt * {
+    visibility: visible;
+  }
+  
+  #receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Remove header and footer from print */
+  @page {
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Hide print-hidden elements */
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  /* Ensure text colors for print */
+  #receipt p, #receipt span, #receipt div, #receipt td, #receipt th {
+    color: black !important;
+  }
+  
+  /* Thermal receipt specific print styles */
+  .thermal-print {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    font-size: 12px !important;
+  }
+}
+
+/* Thermal Print Page Size */
+@media print {
+  @page thermal {
+    size: 80mm auto;
+    margin: 2mm;
+  }
+  
+  .thermal-receipt {
+    page: thermal;
+    width: 76mm;
+    font-family: 'Courier New', monospace;
+  }
+}

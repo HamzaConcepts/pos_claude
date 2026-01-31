@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, DollarSign, TrendingUp, Calendar } from 'lucide-react'
+import { UsersIcon, CurrencyDollarIcon, TrendUpIcon, CalendarIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
 
@@ -107,7 +107,7 @@ export default function CashiersManagementPage() {
           <p className="text-sm text-gray-600">View cashier performance, salaries, and commissions</p>
         </div>
         <div className="flex items-center gap-2">
-          <Calendar size={18} className="text-gray-500" />
+          <CalendarIcon size={18} className="text-gray-500" />
           <label htmlFor="month-selector" className="sr-only">Select Month</label>
           <input
             id="month-selector"
@@ -131,7 +131,7 @@ export default function CashiersManagementPage() {
         <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-cyan-50 rounded">
-              <Users size={18} className="text-cyan-600" />
+              <UsersIcon size={18} className="text-cyan-600" />
             </div>
             <p className="text-gray-600 text-sm font-medium">Active Cashiers</p>
           </div>
@@ -141,7 +141,7 @@ export default function CashiersManagementPage() {
         <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-green-50 rounded">
-              <DollarSign size={18} className="text-green-600" />
+              <CurrencyDollarIcon size={18} className="text-green-600" />
             </div>
             <p className="text-gray-600 text-sm font-medium">Total Salaries</p>
           </div>
@@ -151,7 +151,7 @@ export default function CashiersManagementPage() {
         <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-orange-50 rounded">
-              <TrendingUp size={18} className="text-orange-600" />
+              <TrendUpIcon size={18} className="text-orange-600" />
             </div>
             <p className="text-gray-600 text-sm font-medium">Total Commissions</p>
           </div>
@@ -161,7 +161,7 @@ export default function CashiersManagementPage() {
         <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-cyan-50 rounded">
-              <DollarSign size={18} className="text-cyan-600" />
+              <CurrencyDollarIcon size={18} className="text-cyan-600" />
             </div>
             <p className="text-gray-600 text-sm font-medium">Total Payroll</p>
           </div>
@@ -177,7 +177,7 @@ export default function CashiersManagementPage() {
 
         {cashiers.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            <Users size={40} className="mx-auto mb-2 opacity-50" />
+            <UsersIcon size={40} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No cashiers found</p>
             <p className="text-xs mt-1">Add cashiers in the Settings page</p>
           </div>

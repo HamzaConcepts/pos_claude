@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar, User, DollarSign, CreditCard, ChevronDown, ChevronUp, Package, Filter, FileText, Edit, X, Printer, Trash2, AlertCircle } from 'lucide-react'
+import { CalendarIcon, UserIcon, CurrencyDollarIcon, CreditCardIcon, CaretDownIcon, CaretUpIcon, PackageIcon, FunnelIcon, FileTextIcon, PencilSimpleIcon, XIcon, PrinterIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { generateSalesPDF } from '@/lib/pdf-generator'
 import { getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import PrintReceiptButton from '@/components/PrintReceiptButton'
 
 
 export default function SalesPage() {
@@ -358,7 +359,7 @@ export default function SalesPage() {
           onClick={() => setShowPdfModal(true)}
           className="px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors flex items-center gap-2"
         >
-          <FileText size={16} />
+          <FileTextIcon size={16} />
           Sales Record
         </button>
       </div>
@@ -372,7 +373,7 @@ export default function SalesPage() {
       {/* Filters */}
       <div className={`p-4 rounded-lg mb-5 ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
         <div className="flex items-center gap-2 mb-4">
-          <Filter size={18} className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+          <FunnelIcon size={18} className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
           <h2 className={`font-semibold text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Filters</h2>
           {(selectedCashier || selectedProduct || selectedPaymentMethod || selectedPaymentStatus || startDate || endDate) && (
             <button
@@ -522,7 +523,7 @@ export default function SalesPage() {
                       >
                         <td className="px-3 py-2.5 text-sm">
                           <div className="flex items-center gap-2">
-                            {isExpanded ? <ChevronUp size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} /> : <ChevronDown size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />}
+                            {isExpanded ? <CaretUpIcon size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} /> : <CaretDownIcon size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />}
                             <span className={`font-normal ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.sale_description || sale.sale_number}</span>
                           </div>
                         </td>
@@ -542,9 +543,9 @@ export default function SalesPage() {
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">
                             {sale.payment_method === 'Cash' ? (
-                              <DollarSign size={14} />
+                              <CurrencyDollarIcon size={14} />
                             ) : (
-                              <CreditCard size={14} />
+                              <CreditCardIcon size={14} />
                             )}
                             {sale.payment_method}
                           </span>
@@ -573,7 +574,7 @@ export default function SalesPage() {
                               className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors"
                               title="Edit Sale"
                             >
-                              <Edit size={14} />
+                              <PencilSimpleIcon size={14} />
                               Edit
                             </button>
                             <button
@@ -584,9 +585,15 @@ export default function SalesPage() {
                               className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
                               title="Show Receipt"
                             >
-                              <FileText size={14} />
+                              <FileTextIcon size={14} />
                               Receipt
                             </button>
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <PrintReceiptButton
+                                saleId={sale.id}
+                                variant="small"
+                              />
+                            </div>
                             {/* Manager only: Delete button */}
                             {userIsManager && (
                               <button
@@ -598,7 +605,7 @@ export default function SalesPage() {
                                 className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                                 title="Delete Sale"
                               >
-                                <Trash2 size={14} />
+                                <TrashIcon size={14} />
                                 Delete
                               </button>
                             )}
@@ -613,14 +620,14 @@ export default function SalesPage() {
                                 className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
                                 title="Mark for Review"
                               >
-                                <AlertCircle size={14} />
+                                <WarningCircleIcon size={14} />
                                 Review
                               </button>
                             )}
                             {/* Show indicator if already marked for review */}
                             {sale.marked_for_review && (
                               <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 border border-yellow-300 rounded">
-                                <AlertCircle size={14} />
+                                <WarningCircleIcon size={14} />
                                 Marked
                               </span>
                             )}
@@ -652,9 +659,9 @@ export default function SalesPage() {
                                     <span className="text-gray-600">Payment:</span>
                                     <span className="ml-2 inline-flex items-center gap-1 text-gray-900">
                                       {sale.payment_method === 'Cash' ? (
-                                        <DollarSign size={12} />
+                                        <CurrencyDollarIcon size={12} />
                                       ) : (
-                                        <CreditCard size={12} />
+                                        <CreditCardIcon size={12} />
                                       )}
                                       {sale.payment_method}
                                     </span>
@@ -744,7 +751,7 @@ export default function SalesPage() {
                               {/* Sale Items */}
                               <div className="mb-3">
                                 <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-2">
-                                  <Package size={16} className="text-gray-600" />
+                                  <PackageIcon size={16} className="text-gray-600" />
                                   Sale Items ({sale.sale_items?.length || 0})
                                 </div>
                                 <div className="border border-gray-200 rounded overflow-hidden">
@@ -783,7 +790,7 @@ export default function SalesPage() {
                               {(sale as any).payments && (sale as any).payments.length > 0 && (
                                 <div className="mb-3">
                                   <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-2">
-                                    <DollarSign size={16} className="text-gray-600" />
+                                    <CurrencyDollarIcon size={16} className="text-gray-600" />
                                     Payment History ({(sale as any).payments.length})
                                   </div>
                                   <div className="border border-gray-200 rounded overflow-hidden">
@@ -811,9 +818,9 @@ export default function SalesPage() {
                                             <td className="px-3 py-2 text-gray-900">
                                               <span className="inline-flex items-center gap-1">
                                                 {payment.payment_method === 'Cash' ? (
-                                                  <DollarSign size={12} />
+                                                  <CurrencyDollarIcon size={12} />
                                                 ) : (
-                                                  <CreditCard size={12} />
+                                                  <CreditCardIcon size={12} />
                                                 )}
                                                 {payment.payment_method}
                                               </span>
@@ -862,7 +869,7 @@ export default function SalesPage() {
                 }}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <X size={20} />
+                <XIcon size={20} />
               </button>
             </div>
 
@@ -1117,7 +1124,7 @@ export default function SalesPage() {
                 }}
                 className="text-gray-500 hover:text-gray-700"
               >
-                <X size={20} />
+                <XIcon size={20} />
               </button>
             </div>
 
@@ -1268,13 +1275,12 @@ export default function SalesPage() {
 
             {/* Modal Actions (print:hidden) */}
             <div className="flex gap-3 p-4 border-t border-gray-200 print:hidden">
-              <button
-                onClick={handlePrintReceipt}
-                className="flex-1 flex items-center justify-center gap-2 bg-cyan-600 text-white px-4 py-2.5 rounded text-sm hover:bg-cyan-700 transition-colors"
-              >
-                <Printer size={18} />
-                Print Receipt
-              </button>
+              <PrintReceiptButton
+                sale={receiptSale}
+                showFormatOptions={true}
+                defaultFormat="pdf"
+                className="flex-1"
+              />
               <button
                 onClick={() => {
                   setShowReceiptModal(false)
@@ -1294,7 +1300,7 @@ export default function SalesPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Trash2 size={20} className="text-red-600" />
+              <TrashIcon size={20} className="text-red-600" />
               Delete Sale
             </h2>
 
@@ -1366,7 +1372,7 @@ export default function SalesPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <AlertCircle size={20} className="text-yellow-600" />
+              <WarningCircleIcon size={20} className="text-yellow-600" />
               Mark Sale for Review
             </h2>
 

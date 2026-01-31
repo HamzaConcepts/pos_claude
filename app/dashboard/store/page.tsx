@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, Shield, User, Clock, CheckCircle, XCircle, Store, Tag, Grid, Plus, Edit2, Trash2, X, DollarSign } from 'lucide-react'
+import { UsersIcon, ShieldIcon, UserIcon, ClockIcon, CheckCircleIcon, XCircleIcon, StorefrontIcon, TagIcon, GridFourIcon, PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, CurrencyDollarIcon, ReceiptIcon, FileTextIcon, PrinterIcon, UserPlusIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import AddStockModal from '@/components/AddStockModal'
 import PredefinedExpensesManager from '@/components/PredefinedExpensesManager'
@@ -120,8 +120,13 @@ export default function StorePage() {
   const [editingInitialCustomer, setEditingInitialCustomer] = useState<any>(null)
   const [editingInitialSupplier, setEditingInitialSupplier] = useState<any>(null)
   
-  // Active tab
-  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'info' | 'cashiers' | 'suppliers' | 'initial-stock' | 'initial-customers' | 'initial-suppliers' | 'expenses'>('users')
+  // Active tab - Simplified structure
+  const [activeTab, setActiveTab] = useState<'team' | 'products' | 'partners' | 'settings'>('team')
+  // Sub-tabs for each main tab
+  const [teamSubTab, setTeamSubTab] = useState<'users' | 'cashiers'>('users')
+  const [productsSubTab, setProductsSubTab] = useState<'categories' | 'initial-stock'>('categories')
+  const [partnersSubTab, setPartnersSubTab] = useState<'initial-suppliers' | 'initial-customers'>('initial-suppliers')
+  const [settingsSubTab, setSettingsSubTab] = useState<'info' | 'expenses'>('info')
 
   useEffect(() => {
     fetchAllData()
@@ -379,11 +384,11 @@ export default function StorePage() {
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'Manager':
-        return <Shield size={14} />
+        return <ShieldIcon size={14} />
       case 'Cashier':
-        return <User size={14} />
+        return <UserIcon size={14} />
       default:
-        return <User size={14} />
+        return <UserIcon size={14} />
     }
   }
 
@@ -413,112 +418,154 @@ export default function StorePage() {
         </div>
       )}
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation - Simplified with 4 main tabs */}
       <div className={`mb-5 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex gap-1">
           <button
-            onClick={() => setActiveTab('users')}
+            onClick={() => setActiveTab('team')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
-              activeTab === 'users'
+              activeTab === 'team'
                 ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
                 : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
             }`}>
-            <Users size={16} />
-            Users
+            <UsersIcon size={16} />
+            Team
           </button>
           <button
-            onClick={() => setActiveTab('categories')}
+            onClick={() => setActiveTab('products')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
-              activeTab === 'categories'
+              activeTab === 'products'
                 ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
                 : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
             }`}>
-            <Grid size={16} />
-            Categories
+            <GridFourIcon size={16} />
+            Products
           </button>
           <button
-            onClick={() => setActiveTab('info')}
+            onClick={() => setActiveTab('partners')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
-              activeTab === 'info'
+              activeTab === 'partners'
                 ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
                 : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
             }`}>
-            <Store size={16} />
-            Store Info
+            <UserPlusIcon size={16} />
+            Partners
           </button>
           <button
-            onClick={() => setActiveTab('cashiers')}
+            onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
-              activeTab === 'cashiers'
+              activeTab === 'settings'
                 ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
                 : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
             }`}>
-            <User size={16} />
-            Cashiers
-          </button>
-          <button
-            onClick={() => setActiveTab('suppliers')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
-              activeTab === 'suppliers'
-                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
-            }`}>
-            <Users size={16} />
-            Suppliers
-          </button>
-          <button
-            onClick={() => setActiveTab('initial-stock')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
-              activeTab === 'initial-stock'
-                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
-            }`}>
-            <Plus size={16} />
-            Initial Stock
-          </button>
-          <button
-            onClick={() => setActiveTab('initial-customers')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
-              activeTab === 'initial-customers'
-                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
-            }`}>
-            <Users size={16} />
-            Initial Customers
-          </button>
-          <button
-            onClick={() => setActiveTab('initial-suppliers')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
-              activeTab === 'initial-suppliers'
-                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
-            }`}>
-            <Users size={16} />
-            Initial Suppliers
-          </button>
-          <button
-            onClick={() => setActiveTab('expenses')}
-            className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
-              activeTab === 'expenses'
-                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
-            }`}
-          >
-            <DollarSign size={16} />
-            Expenses
+            <StorefrontIcon size={16} />
+            Settings
           </button>
         </div>
       </div>
 
-      {/* Users Tab */}
-      {activeTab === 'users' && (
+      {/* Sub-tab Navigation */}
+      {activeTab === 'team' && (
+        <div className={`mb-4 flex gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <button
+            onClick={() => setTeamSubTab('users')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              teamSubTab === 'users'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+            }`}>
+            Users
+          </button>
+          <button
+            onClick={() => setTeamSubTab('cashiers')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              teamSubTab === 'cashiers'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+            }`}>
+            Cashiers
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'products' && (
+        <div className={`mb-4 flex gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <button
+            onClick={() => setProductsSubTab('categories')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              productsSubTab === 'categories'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+            }`}>
+            Categories
+          </button>
+          <button
+            onClick={() => setProductsSubTab('initial-stock')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              productsSubTab === 'initial-stock'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+            }`}>
+            Initial Stock
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'partners' && (
+        <div className={`mb-4 flex gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <button
+            onClick={() => setPartnersSubTab('initial-suppliers')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              partnersSubTab === 'initial-suppliers'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+            }`}>
+            Initial Suppliers
+          </button>
+          <button
+            onClick={() => setPartnersSubTab('initial-customers')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              partnersSubTab === 'initial-customers'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+            }`}>
+            Initial Customers
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className={`mb-4 flex gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          <button
+            onClick={() => setSettingsSubTab('info')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              settingsSubTab === 'info'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+            }`}>
+            Store Info
+          </button>
+          <button
+            onClick={() => setSettingsSubTab('expenses')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              settingsSubTab === 'expenses'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+            }`}>
+            Expense Types
+          </button>
+        </div>
+      )}
+
+      {/* Team Tab - Users */}
+      {activeTab === 'team' && teamSubTab === 'users' && (
         <div>
           {/* Pending Join Requests */}
           {joinRequests.length > 0 && (
             <div className="mb-5 bg-white rounded border border-gray-200 overflow-hidden">
               <div className="p-3 bg-yellow-50 border-b border-yellow-200">
                 <div className="flex items-center gap-2">
-                  <Clock className="text-yellow-600" size={16} />
+                  <ClockIcon className="text-yellow-600" size={16} />
                   <h2 className="text-base font-semibold text-gray-900">Pending Join Requests ({joinRequests.length})</h2>
                 </div>
               </div>
@@ -543,7 +590,7 @@ export default function StorePage() {
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
                               request.user_type === 'Manager' ? 'bg-cyan-600 text-white' : 'bg-gray-500 text-white'
                             }`}>
-                              {request.user_type === 'Manager' ? <Shield size={10} /> : <User size={10} />}
+                              {request.user_type === 'Manager' ? <ShieldIcon size={10} /> : <UserIcon size={10} />}
                               {request.user_type}
                             </span>
                             <span className="text-xs text-gray-600">
@@ -565,7 +612,7 @@ export default function StorePage() {
                         disabled={processing === request.id}
                         className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        <CheckCircle size={14} />
+                        <CheckCircleIcon size={14} />
                         {processing === request.id ? 'Processing...' : 'Approve'}
                       </button>
                       <button
@@ -573,7 +620,7 @@ export default function StorePage() {
                         disabled={processing === request.id}
                         className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        <XCircle size={14} />
+                        <XCircleIcon size={14} />
                         {processing === request.id ? 'Processing...' : 'Reject'}
                       </button>
                     </div>
@@ -587,7 +634,7 @@ export default function StorePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
             <div className="bg-white p-4 rounded border border-gray-200">
               <div className="flex items-center gap-2 mb-1.5">
-                <Shield className="text-cyan-600" size={18} />
+                <ShieldIcon className="text-cyan-600" size={18} />
                 <span className="text-sm font-medium text-gray-700">Managers</span>
               </div>
               <p className="text-2xl font-bold text-gray-900">
@@ -597,7 +644,7 @@ export default function StorePage() {
 
             <div className="bg-white p-4 rounded border border-gray-200">
               <div className="flex items-center gap-2 mb-1.5">
-                <User className="text-cyan-600" size={18} />
+                <UserIcon className="text-cyan-600" size={18} />
                 <span className="text-sm font-medium text-gray-700">Cashiers</span>
               </div>
               <p className="text-2xl font-bold text-gray-900">
@@ -694,7 +741,7 @@ export default function StorePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <Shield size={14} />
+                  <ShieldIcon size={14} />
                   <span className="font-bold">Manager</span>
                 </div>
                 <ul className="text-text-secondary space-y-0.5 ml-5">
@@ -706,7 +753,7 @@ export default function StorePage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <User size={14} />
+                  <UserIcon size={14} />
                   <span className="font-bold">Cashier</span>
                 </div>
                 <ul className="text-text-secondary space-y-0.5 ml-5">
@@ -720,8 +767,8 @@ export default function StorePage() {
         </div>
       )}
 
-      {/* Categories Tab */}
-      {activeTab === 'categories' && (
+      {/* Products Tab - Categories */}
+      {activeTab === 'products' && productsSubTab === 'categories' && (
         <CategoriesTab
           categories={categories}
           onAddCategory={() => {
@@ -746,13 +793,13 @@ export default function StorePage() {
         />
       )}
 
-      {/* Store Info Tab */}
-      {activeTab === 'info' && (
+      {/* Settings Tab - Store Info */}
+      {activeTab === 'settings' && settingsSubTab === 'info' && (
         <StoreInfoTab storeInfo={storeInfo} onRefresh={fetchStoreInfo} />
       )}
 
-      {/* Cashiers Tab */}
-      {activeTab === 'cashiers' && (
+      {/* Team Tab - Cashiers */}
+      {activeTab === 'team' && teamSubTab === 'cashiers' && (
         <CashiersTab 
           cashiers={cashiers} 
           onAddCashier={() => {
@@ -767,33 +814,13 @@ export default function StorePage() {
         />
       )}
 
-      {/* Suppliers Tab */}
-      {activeTab === 'suppliers' && (
-        <SuppliersTab 
-          suppliers={suppliers} 
-          onAddSupplier={() => {
-            setEditingSupplier(null)
-            setShowSupplierModal(true)
-          }}
-          onEditSupplier={(supplier: Supplier) => {
-            setEditingSupplier(supplier)
-            setShowSupplierModal(true)
-          }}
-          onRecordPayment={(supplier: Supplier) => {
-            setSelectedSupplierForPayment(supplier)
-            setShowPaymentModal(true)
-          }}
-          onRefresh={fetchSuppliers}
-        />
-      )}
-
-      {/* Initial Stock Tab */}
-      {activeTab === 'initial-stock' && (
+      {/* Products Tab - Initial Stock */}
+      {activeTab === 'products' && productsSubTab === 'initial-stock' && (
         <InitialStockTab />
       )}
 
-      {/* Initial Customers Tab */}
-      {activeTab === 'initial-customers' && (
+      {/* Partners Tab - Initial Customers */}
+      {activeTab === 'partners' && partnersSubTab === 'initial-customers' && (
         <InitialCustomersTab 
           entries={initialCustomers}
           onAddEntry={() => {
@@ -808,8 +835,8 @@ export default function StorePage() {
         />
       )}
 
-      {/* Initial Suppliers Tab */}
-      {activeTab === 'initial-suppliers' && (
+      {/* Partners Tab - Initial Suppliers */}
+      {activeTab === 'partners' && partnersSubTab === 'initial-suppliers' && (
         <InitialSuppliersTab 
           entries={initialSuppliers}
           onAddEntry={() => {
@@ -824,9 +851,9 @@ export default function StorePage() {
         />
       )}
 
-      {/* Expenses Tab */}
-      {activeTab === 'expenses' && (
-        <div className="bg-white rounded border border-gray-200 p-6">
+      {/* Settings Tab - Expense Types */}
+      {activeTab === 'settings' && settingsSubTab === 'expenses' && (
+        <div className={`rounded border p-6 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <PredefinedExpensesManager />
         </div>
       )}
@@ -967,14 +994,14 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
           onClick={onAddCategory}
           className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors text-sm font-medium"
         >
-          <Plus size={16} />
+          <PlusIcon size={16} />
           Add Category
         </button>
       </div>
 
       {categories.length === 0 ? (
         <div className="bg-white rounded border border-gray-200 p-8 text-center">
-          <Tag size={40} className="mx-auto mb-3 text-gray-400" />
+          <TagIcon size={40} className="mx-auto mb-3 text-gray-400" />
           <p className="text-text-secondary text-sm mb-3">No categories yet</p>
           <button
             onClick={onAddCategory}
@@ -989,7 +1016,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
             <div key={category.id} className="bg-white rounded border border-gray-200 overflow-hidden">
               <div className="p-3 bg-gray-100 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <Tag size={17} />
+                  <TagIcon size={17} />
                   <h3 className="font-bold text-sm">{category.name}</h3>
                   {category.requires_imei && (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
@@ -1005,7 +1032,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
                     onClick={() => onAddSubcategory(category.id)}
                     className="flex items-center gap-1 px-2.5 py-1 bg-white border border-black rounded hover:bg-gray-50 transition-colors text-xs"
                   >
-                    <Plus size={12} />
+                    <PlusIcon size={12} />
                     Add Subcategory
                   </button>
                   <button
@@ -1013,7 +1040,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
                     className="p-1.5 hover:bg-gray-200 rounded transition-colors"
                     title="Edit category"
                   >
-                    <Edit2 size={14} />
+                    <PencilSimpleIcon size={14} />
                   </button>
                   <button
                     onClick={() => handleDeleteCategory(category.id)}
@@ -1021,7 +1048,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
                     className="p-1.5 hover:bg-red-100 text-red-600 rounded transition-colors disabled:opacity-50"
                     title="Delete category"
                   >
-                    <Trash2 size={14} />
+                    <TrashIcon size={14} />
                   </button>
                 </div>
               </div>
@@ -1046,14 +1073,14 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
                             className="p-1 hover:bg-gray-300 rounded transition-colors"
                             title="Edit subcategory"
                           >
-                            <Edit2 size={12} />
+                            <PencilSimpleIcon size={12} />
                           </button>
                           <button
                             onClick={() => handleDeleteSubcategory(sub.id)}
                             className="p-1 hover:bg-red-100 text-red-600 rounded transition-colors"
                             title="Delete subcategory"
                           >
-                            <Trash2 size={12} />
+                            <TrashIcon size={12} />
                           </button>
                         </div>
                       </div>
@@ -1076,9 +1103,15 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
   const [saving, setSaving] = useState(false)
   const [cashiers, setCashiers] = useState<any[]>([])
   const [loadingCashiers, setLoadingCashiers] = useState(true)
+  const [receiptType, setReceiptType] = useState<'pdf' | 'thermal'>('pdf')
 
   useEffect(() => {
     fetchCashiers()
+    // Load receipt type from localStorage
+    const savedReceiptType = localStorage.getItem('pos_receipt_type')
+    if (savedReceiptType === 'thermal' || savedReceiptType === 'pdf') {
+      setReceiptType(savedReceiptType)
+    }
   }, [])
 
   const fetchCashiers = async () => {
@@ -1130,105 +1163,167 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
 
   return (
     <div>
-      <div className="bg-white rounded border border-gray-200 p-4">
-        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <Store size={20} />
-          Store Information
-        </h2>
+      {/* Grid Layout for Store Information and Receipt Settings */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        {/* Store Information Card */}
+        <div className="bg-white rounded border border-gray-200 p-4">
+          <h2 className="text-base font-bold mb-3 flex items-center gap-2">
+            <StorefrontIcon size={18} />
+            Store Information
+          </h2>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Store Name</label>
-            <div className="p-3 bg-gray-100 rounded border border-gray-300 text-sm">
-              {storeInfo?.store_name || 'Not set'}
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">Store Name</label>
+              <div className="p-2 bg-gray-100 rounded border border-gray-300 text-sm">
+                {storeInfo?.store_name || 'Not set'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">Auto-Generated Store Code (3-Digit)</label>
+              <div className="p-2 bg-gray-100 rounded border border-gray-300">
+                <span className="font-mono font-bold">{storeInfo?.store_code || 'Not set'}</span>
+              </div>
+              <p className="text-xs text-text-secondary mt-1">Automatically generated</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">Custom Store Code</label>
+              {editing ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={storeCode}
+                    onChange={(e) => setStoreCode(e.target.value)}
+                    className="flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm"
+                    placeholder="Enter custom store code"
+                    maxLength={20}
+                  />
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="px-3 py-1.5 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-xs"
+                  >
+                    {saving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditing(false)
+                      setStoreCode(storeInfo?.store_code || '')
+                    }}
+                    className="px-3 py-1.5 border border-gray-200 rounded hover:bg-gray-100 text-xs"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-2 bg-gray-100 rounded border border-gray-300">
+                  <span className="text-sm font-mono">{storeInfo?.store_code || 'Not set'}</span>
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center gap-1 px-2 py-1 bg-white border border-black rounded hover:bg-gray-50 text-xs"
+                  >
+                    <PencilSimpleIcon size={12} />
+                    Edit
+                  </button>
+                </div>
+              )}
             </div>
           </div>
+        </div>
+
+        {/* Receipt Settings Card */}
+        <div className="bg-white rounded border border-gray-200 p-4">
+          <h2 className="text-base font-bold mb-3 flex items-center gap-2">
+            <ReceiptIcon size={18} />
+            Receipt Settings
+          </h2>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Auto-Generated Store Code (3-Digit)</label>
-            <div className="p-3 bg-gray-100 rounded border border-gray-300">
-              <span className="font-mono font-bold text-lg">{storeInfo?.store_code || 'Not set'}</span>
+            <label className="block text-xs font-medium mb-2 text-gray-600">Receipt Type</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  setReceiptType('pdf')
+                  localStorage.setItem('pos_receipt_type', 'pdf')
+                }}
+                className={`p-3 rounded border-2 transition-all ${
+                  receiptType === 'pdf'
+                    ? 'border-cyan-600 bg-cyan-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <FileTextIcon size={24} className={receiptType === 'pdf' ? 'text-cyan-600' : 'text-gray-500'} />
+                  <span className={`font-medium text-sm ${receiptType === 'pdf' ? 'text-cyan-600' : 'text-gray-700'}`}>
+                    PDF
+                  </span>
+                  <span className="text-xs text-gray-500 text-center">
+                    A4/Letter
+                  </span>
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  setReceiptType('thermal')
+                  localStorage.setItem('pos_receipt_type', 'thermal')
+                }}
+                className={`p-3 rounded border-2 transition-all ${
+                  receiptType === 'thermal'
+                    ? 'border-cyan-600 bg-cyan-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <PrinterIcon size={24} className={receiptType === 'thermal' ? 'text-cyan-600' : 'text-gray-500'} />
+                  <span className={`font-medium text-sm ${receiptType === 'thermal' ? 'text-cyan-600' : 'text-gray-700'}`}>
+                    Thermal
+                  </span>
+                  <span className="text-xs text-gray-500 text-center">
+                    58mm/80mm
+                  </span>
+                </div>
+              </button>
             </div>
-            <p className="text-xs text-text-secondary mt-1">This code is automatically generated and cannot be changed</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Custom Store Code (Optional)</label>
-            {editing ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={storeCode}
-                  onChange={(e) => setStoreCode(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded text-sm"
-                  placeholder="Enter custom store code"
-                  maxLength={20}
-                />
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-sm"
-                >
-                  {saving ? 'Saving...' : 'Save'}
-                </button>
-                <button
-                  onClick={() => {
-                    setEditing(false)
-                    setStoreCode(storeInfo?.store_code || '')
-                  }}
-                  className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between p-3 bg-gray-100 rounded border border-gray-300">
-                <span className="text-sm font-mono">{storeInfo?.store_code || 'Not set'}</span>
-                <button
-                  onClick={() => setEditing(true)}
-                  className="flex items-center gap-1 px-3 py-1 bg-white border border-black rounded hover:bg-gray-50 text-sm"
-                >
-                  <Edit2 size={14} />
-                  Edit
-                </button>
-              </div>
-            )}
-            <p className="text-xs text-text-secondary mt-1">An additional custom identifier for your store</p>
+            <p className="text-xs text-text-secondary mt-2">
+              Select receipt format for your printer type.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Cashiers Information Card */}
-      <div className="bg-white rounded border border-gray-200 p-4 mt-4">
-        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <User size={20} />
+      {/* Cashiers Information Card - Full Width */}
+      <div className="bg-white rounded border border-gray-200 p-4">
+        <h2 className="text-base font-bold mb-3 flex items-center gap-2">
+          <UserIcon size={18} />
           Cashiers Information
         </h2>
 
-        <div className="space-y-4">
-          <div className="p-4 bg-gray-50 rounded border border-gray-300">
-            <div className="flex items-center justify-between mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Summary Card */}
+          <div className="p-3 bg-gray-50 rounded border border-gray-300">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Cashiers</p>
-                <p className="text-2xl font-bold">{cashiers.length}</p>
+                <p className="text-xs text-gray-600">Total Cashiers</p>
+                <p className="text-xl font-bold">{cashiers.length}</p>
               </div>
-              <div className="w-12 h-12 bg-cyan-600 text-white rounded-full flex items-center justify-center">
-                <User size={24} />
+              <div className="w-10 h-10 bg-cyan-600 text-white rounded-full flex items-center justify-center">
+                <UserIcon size={20} />
               </div>
             </div>
-            <p className="text-xs text-gray-500">Active cashier accounts in this store</p>
           </div>
 
-          {loadingCashiers ? (
-            <div className="text-center py-4 text-gray-500">Loading cashiers...</div>
-          ) : cashiers.length > 0 ? (
-            <div>
-              <p className="text-sm font-medium mb-2 text-gray-700">Cashier List:</p>
-              <div className="space-y-2">
+          {/* Cashier List - spans 2 columns */}
+          <div className="md:col-span-2">
+            {loadingCashiers ? (
+              <div className="text-center py-4 text-gray-500 text-sm">Loading cashiers...</div>
+            ) : cashiers.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {cashiers.map((cashier: any) => (
-                  <div key={cashier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  <div key={cashier.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 bg-gray-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                         {cashier.full_name.charAt(0).toUpperCase()}
                       </div>
                       <div>
@@ -1237,20 +1332,19 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-gray-500">Commission</p>
                       <p className="text-sm font-medium">{cashier.commission_rate}%</p>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <User size={40} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No cashiers added yet</p>
-              <p className="text-xs mt-1">Go to Cashiers tab to add cashiers</p>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-6 text-gray-500">
+                <UserIcon size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No cashiers added yet</p>
+                <p className="text-xs mt-1">Go to Team → Cashiers tab</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1307,7 +1401,7 @@ function CategoryModal({ category, onClose }: any) {
         <div className="p-3 bg-gray-50 border-b border-gray-200 text-gray-900 flex justify-between items-center">
           <h2 className="text-lg font-bold">{category ? 'Edit Category' : 'Add Category'}</h2>
           <button onClick={() => onClose(false)} className="hover:bg-gray-800 p-1 rounded">
-            <X size={20} />
+            <XIcon size={20} />
           </button>
         </div>
 
@@ -1433,7 +1527,7 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
         <div className="p-3 bg-gray-50 border-b border-gray-200 text-gray-900 flex justify-between items-center">
           <h2 className="text-lg font-bold">{subcategory ? 'Edit Subcategory' : 'Add Subcategory'}</h2>
           <button onClick={() => onClose(false)} className="hover:bg-gray-800 p-1 rounded">
-            <X size={20} />
+            <XIcon size={20} />
           </button>
         </div>
 
@@ -1523,7 +1617,7 @@ function InitialStockTab() {
       <div className="bg-white border border-gray-200 rounded p-6">
         <div className="text-center">
           <div className="mb-4">
-            <Plus size={48} className="mx-auto text-gray-400 mb-2" />
+            <PlusIcon size={48} className="mx-auto text-gray-400 mb-2" />
             <h3 className="text-lg font-bold mb-2">Add Initial Stock</h3>
             <p className="text-sm text-gray-600 mb-4">
               Click below to add products and their initial quantities to your inventory
@@ -1601,7 +1695,7 @@ function CashiersTab({ cashiers, onAddCashier, onEditCashier, onRefresh }: any) 
           onClick={onAddCashier}
           className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-sm"
         >
-          <Plus size={16} />
+          <PlusIcon size={16} />
           Add Cashier
         </button>
       </div>
@@ -1609,7 +1703,7 @@ function CashiersTab({ cashiers, onAddCashier, onEditCashier, onRefresh }: any) 
       <div className="p-4">
         {cashiers.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            <User size={48} className="mx-auto mb-3 opacity-50" />
+            <UserIcon size={48} className="mx-auto mb-3 opacity-50" />
             <p className="text-sm">No cashiers added yet</p>
             <p className="text-xs mt-1">Click "Add Cashier" to add your first cashier</p>
           </div>
@@ -1641,7 +1735,7 @@ function CashiersTab({ cashiers, onAddCashier, onEditCashier, onRefresh }: any) 
                     className="p-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded transition-colors"
                     title="Edit Cashier"
                   >
-                    <Edit2 size={16} />
+                    <PencilSimpleIcon size={16} />
                   </button>
                   <button
                     onClick={() => handleDeleteCashier(cashier.id)}
@@ -1649,7 +1743,7 @@ function CashiersTab({ cashiers, onAddCashier, onEditCashier, onRefresh }: any) 
                     className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                     title="Delete Cashier"
                   >
-                    <Trash2 size={16} />
+                    <TrashIcon size={16} />
                   </button>
                 </div>
               </div>
@@ -1719,7 +1813,7 @@ function CashierModal({ cashier, onClose }: { cashier: Cashier | null, onClose: 
         <div className="p-4 border-b-2 border-black flex justify-between items-center">
           <h2 className="text-lg font-bold">{cashier ? 'Edit Cashier' : 'Add Cashier'}</h2>
           <button onClick={() => onClose()} className="text-gray-500 hover:text-black">
-            <X size={20} />
+            <XIcon size={20} />
           </button>
         </div>
 
@@ -1831,7 +1925,7 @@ function SuppliersTab({ suppliers, onAddSupplier, onEditSupplier, onRecordPaymen
             onClick={onAddSupplier}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-sm"
           >
-            <Plus size={16} />
+            <PlusIcon size={16} />
             Add Supplier
           </button>
         </div>
@@ -1880,7 +1974,7 @@ function SuppliersTab({ suppliers, onAddSupplier, onEditSupplier, onRecordPaymen
                           className="p-1.5 text-green-600 hover:bg-green-50 rounded"
                           title="Record Payment"
                         >
-                          <DollarSign size={16} />
+                          <CurrencyDollarIcon size={16} />
                         </button>
                       )}
                       <button
@@ -1888,7 +1982,7 @@ function SuppliersTab({ suppliers, onAddSupplier, onEditSupplier, onRecordPaymen
                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
                         title="Edit"
                       >
-                        <Edit2 size={16} />
+                        <PencilSimpleIcon size={16} />
                       </button>
                     </div>
                   </td>
@@ -1956,7 +2050,7 @@ function SupplierModal({ supplier, onClose }: { supplier: any, onClose: (refresh
         <div className="flex justify-between items-center p-5 border-b border-gray-200">
           <h3 className="text-lg font-semibold">{supplier ? 'Edit Supplier' : 'Add New Supplier'}</h3>
           <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
-            <X size={20} />
+            <XIcon size={20} />
           </button>
         </div>
 
@@ -2105,7 +2199,7 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
         <div className="flex justify-between items-center p-5 border-b border-gray-200">
           <h3 className="text-lg font-semibold">Record Payment</h3>
           <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
-            <X size={20} />
+            <XIcon size={20} />
           </button>
         </div>
 
@@ -2240,7 +2334,7 @@ function InitialCustomersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
             onClick={onAddEntry}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-sm"
           >
-            <Plus size={16} />
+            <PlusIcon size={16} />
             Add Customer
           </button>
         </div>
@@ -2248,7 +2342,7 @@ function InitialCustomersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
         <div className="p-4">
           {entries.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              <Users size={48} className="mx-auto mb-3 opacity-50" />
+              <UsersIcon size={48} className="mx-auto mb-3 opacity-50" />
               <p className="text-sm">No initial customer entries added yet</p>
               <p className="text-xs mt-1">Click "Add Customer" to record customers who owe money</p>
             </div>
@@ -2295,14 +2389,14 @@ function InitialCustomersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
                         onClick={() => onEditEntry(entry)}
                         className="p-2 text-cyan-600 hover:bg-cyan-50 rounded transition-colors"
                       >
-                        <Edit2 size={18} />
+                        <PencilSimpleIcon size={18} />
                       </button>
                       <button
                         onClick={() => handleDeleteEntry(entry.id)}
                         disabled={deleting === entry.id}
                         className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                       >
-                        <Trash2 size={18} />
+                        <TrashIcon size={18} />
                       </button>
                     </div>
                   </div>
@@ -2366,7 +2460,7 @@ function InitialSuppliersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
             onClick={onAddEntry}
             className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-sm"
           >
-            <Plus size={16} />
+            <PlusIcon size={16} />
             Add Supplier
           </button>
         </div>
@@ -2374,7 +2468,7 @@ function InitialSuppliersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
         <div className="p-4">
           {entries.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              <Users size={48} className="mx-auto mb-3 opacity-50" />
+              <UsersIcon size={48} className="mx-auto mb-3 opacity-50" />
               <p className="text-sm">No initial supplier entries added yet</p>
               <p className="text-xs mt-1">Click "Add Supplier" to record suppliers you owe money to</p>
             </div>
@@ -2433,14 +2527,14 @@ function InitialSuppliersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
                         onClick={() => onEditEntry(entry)}
                         className="p-2 text-cyan-600 hover:bg-cyan-50 rounded transition-colors"
                       >
-                        <Edit2 size={18} />
+                        <PencilSimpleIcon size={18} />
                       </button>
                       <button
                         onClick={() => handleDeleteEntry(entry.id)}
                         disabled={deleting === entry.id}
                         className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
                       >
-                        <Trash2 size={18} />
+                        <TrashIcon size={18} />
                       </button>
                     </div>
                   </div>
@@ -2521,7 +2615,7 @@ function InitialCustomerModal({ entry, onClose }: { entry: any, onClose: (refres
         <div className="flex justify-between items-center p-5 border-b border-gray-200">
           <h3 className="text-lg font-semibold">{entry ? 'Edit' : 'Add'} Initial Customer Entry</h3>
           <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
-            <X size={20} />
+            <XIcon size={20} />
           </button>
         </div>
 
@@ -2683,7 +2777,7 @@ function InitialSupplierModal({ entry, onClose }: { entry: any, onClose: (refres
         <div className="flex justify-between items-center p-5 border-b border-gray-200 sticky top-0 bg-white">
           <h3 className="text-lg font-semibold">{entry ? 'Edit' : 'Add'} Initial Supplier Entry</h3>
           <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
-            <X size={20} />
+            <XIcon size={20} />
           </button>
         </div>
 

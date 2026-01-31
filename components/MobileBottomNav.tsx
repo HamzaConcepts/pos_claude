@@ -2,15 +2,15 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  DollarSign, 
-  FileText, 
-  BookOpen, 
-  Users,
-  Store
-} from 'lucide-react'
+  HouseIcon, 
+  ShoppingCartIcon, 
+  PackageIcon, 
+  CurrencyDollarIcon, 
+  FileTextIcon, 
+  BookOpenIcon, 
+  UsersIcon,
+  StorefrontIcon
+} from '@phosphor-icons/react'
 import { useState, useEffect } from 'react'
 import { hasPermission, type UserRole } from '@/lib/supabase'
 
@@ -43,14 +43,14 @@ export default function MobileBottomNav({ userRole }: { userRole: UserRole }) {
   }, [])
 
   const navItems: NavItem[] = [
-    { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, permission: 'view_dashboard' },
-    { href: '/dashboard/pos', label: 'POS', icon: ShoppingCart, permission: 'process_sale' },
-    { href: '/dashboard/inventory', label: 'Products', icon: Package, permission: 'create_product' },
-    { href: '/dashboard/sales', label: 'Sales', icon: DollarSign, permission: 'view_sales' },
-    { href: '/dashboard/expenses', label: 'Expenses', icon: FileText, permission: 'add_expense' },
-    { href: '/dashboard/khaata', label: 'Ledger', icon: BookOpen, permission: 'create_user' },
-    { href: '/dashboard/cashiers', label: 'Staff', icon: Users, permission: 'create_user', managerOnly: true },
-    { href: '/dashboard/store', label: 'Settings', icon: Store, permission: 'create_user' },
+    { href: '/dashboard', label: 'Overview', icon: HouseIcon, permission: 'view_dashboard' },
+    { href: '/dashboard/pos', label: 'POS', icon: ShoppingCartIcon, permission: 'process_sale' },
+    { href: '/dashboard/inventory', label: 'Products', icon: PackageIcon, permission: 'create_product' },
+    { href: '/dashboard/sales', label: 'Sales', icon: CurrencyDollarIcon, permission: 'view_sales' },
+    { href: '/dashboard/expenses', label: 'Expenses', icon: FileTextIcon, permission: 'add_expense' },
+    { href: '/dashboard/khaata', label: 'Ledger', icon: BookOpenIcon, permission: 'create_user' },
+    { href: '/dashboard/cashiers', label: 'Staff', icon: UsersIcon, permission: 'create_user', managerOnly: true },
+    { href: '/dashboard/store', label: 'Settings', icon: StorefrontIcon, permission: 'create_user' },
   ]
 
   const filteredNavItems = navItems.filter(item => {
@@ -86,7 +86,7 @@ export default function MobileBottomNav({ userRole }: { userRole: UserRole }) {
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50')
               }`}
             >
-              <Icon size={20} />
+              <Icon size={20} weight={isActive ? 'duotone' : 'regular'} />
               <span className="text-[10px] font-medium truncate max-w-full">{item.label}</span>
             </button>
           )

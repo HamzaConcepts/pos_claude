@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FileText, Download, Calendar, Filter, ChevronDown, ChevronUp, TrendingUp, TrendingDown, DollarSign, CreditCard } from 'lucide-react'
+import { FileTextIcon, DownloadSimpleIcon, CalendarIcon, FunnelIcon, CaretDownIcon, CaretUpIcon, TrendUpIcon, TrendDownIcon, CurrencyDollarIcon, CreditCardIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { SummaryReport } from '@/components/reports/SummaryReport'
@@ -312,7 +312,7 @@ export default function ReportsPage() {
             }`}
           >
             More
-            {showCustomDates ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {showCustomDates ? <CaretUpIcon className="w-4 h-4" /> : <CaretDownIcon className="w-4 h-4" />}
           </button>
         </div>
 
@@ -497,7 +497,7 @@ export default function ReportsPage() {
                 : 'border-gray-300 hover:bg-gray-50'
             }`}
           >
-            <Download className="w-3 h-3" />
+            <DownloadSimpleIcon className="w-3 h-3" />
             CSV
           </button>
           <button
@@ -508,7 +508,7 @@ export default function ReportsPage() {
                 : 'border-gray-300 hover:bg-gray-50'
             }`}
           >
-            <FileText className="w-3 h-3" />
+            <FileTextIcon className="w-3 h-3" />
             PDF
           </button>
         </div>
@@ -532,7 +532,7 @@ export default function ReportsPage() {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash In (Sales)</h3>
                     <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-green-900/30' : 'bg-green-50'}`}>
-                      <TrendingUp className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                      <TrendUpIcon className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                     </div>
                   </div>
                   <div className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
@@ -562,7 +562,7 @@ export default function ReportsPage() {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash Out (Expenses)</h3>
                     <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-red-900/30' : 'bg-red-50'}`}>
-                      <TrendingDown className={`w-4 h-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+                      <TrendDownIcon className={`w-4 h-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
                     </div>
                   </div>
                   <div className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
@@ -664,7 +664,7 @@ export default function ReportsPage() {
         </div>
       ) : (
         <div className={`text-center py-12 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
-          <FileText className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+          <FileTextIcon className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
           <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Select a period to view reports</p>
         </div>
       )}

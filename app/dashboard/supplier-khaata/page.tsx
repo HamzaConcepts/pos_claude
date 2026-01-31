@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, Edit, Trash2, ChevronDown, ChevronRight, Package } from 'lucide-react'
+import { MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, PackageIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
 
@@ -228,7 +228,7 @@ export default function SupplierKhaataPage() {
         {/* Search Bar */}
         <div className="mb-5">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
               placeholder="Search by supplier name or phone..."
@@ -254,7 +254,7 @@ export default function SupplierKhaataPage() {
           </div>
         ) : filteredSuppliers.length === 0 ? (
           <div className="text-center py-12 border border-dashed border-gray-300 rounded">
-            <Package className="mx-auto mb-4 text-gray-400" size={48} />
+            <PackageIcon className="mx-auto mb-4 text-gray-400" size={48} />
             <p className="text-sm text-gray-600">
               {searchTerm ? 'No suppliers found matching your search' : 'No pending payments to suppliers'}
             </p>
@@ -298,7 +298,7 @@ export default function SupplierKhaataPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {isExpanded ? <ChevronDown className="text-gray-400" size={16} /> : <ChevronRight className="text-gray-400" size={16} />}
+                          {isExpanded ? <CaretDownIcon className="text-gray-400" size={16} /> : <CaretRightIcon className="text-gray-400" size={16} />}
                         </td>
                       </tr>
 
@@ -343,7 +343,7 @@ export default function SupplierKhaataPage() {
                                 className="p-1.5 border border-gray-300 rounded hover:bg-cyan-100 transition-colors"
                                 title="Edit Payment"
                               >
-                                <Edit className="text-gray-700" size={14} />
+                                <PencilSimpleIcon className="text-gray-700" size={14} />
                               </button>
                               <button
                                 onClick={(e) => {
@@ -353,7 +353,7 @@ export default function SupplierKhaataPage() {
                                 className="p-1.5 border border-red-300 text-red-600 rounded hover:bg-red-50 transition-colors"
                                 title="Delete"
                               >
-                                <Trash2 size={14} />
+                                <TrashIcon size={14} />
                               </button>
                             </div>
                           </td>

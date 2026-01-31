@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Printer } from 'lucide-react'
+import { XIcon, PrinterIcon } from '@phosphor-icons/react'
 import type { ProductWithBackwardCompatibility, ProductIMEI } from '@/lib/types'
 import { getStoreId } from '@/lib/supabase'
 
@@ -230,7 +230,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <Printer className="w-6 h-6" />
+            <PrinterIcon className="w-6 h-6" />
             <h2 className="text-xl font-bold">Print Product Labels</h2>
           </div>
           <button
@@ -240,7 +240,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
               backgroundColor: isDarkMode ? '#333' : '#f3f4f6',
             }}
           >
-            <X className="w-5 h-5" />
+            <XIcon className="w-5 h-5" />
           </button>
         </div>
 
@@ -376,7 +376,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
-                <Printer className="w-4 h-4" />
+                <PrinterIcon className="w-4 h-4" />
                 Print Labels
               </span>
             )}

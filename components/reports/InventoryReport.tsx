@@ -1,4 +1,4 @@
-import { Package, DollarSign, ShoppingCart } from 'lucide-react'
+import { PackageIcon, CurrencyDollarIcon, ShoppingCartIcon } from '@phosphor-icons/react'
 import { StatCard } from './StatCard'
 
 interface InventoryReportProps {
@@ -15,24 +15,24 @@ export function InventoryReport({ reportData, formatCurrency }: InventoryReportP
         <StatCard
           title="Total Stock In"
           value={((reportData.summary?.totalStockIn ?? 0)).toString()}
-          icon={<Package />}
+          icon={<PackageIcon />}
           trendLabel="units"
         />
         <StatCard
           title="Stock Value"
           value={formatCurrency(reportData.summary?.totalStockValue ?? 0)}
-          icon={<DollarSign />}
+          icon={<CurrencyDollarIcon />}
         />
         <StatCard
           title="Remaining"
           value={((reportData.summary?.totalRemaining ?? 0)).toString()}
-          icon={<Package />}
+          icon={<PackageIcon />}
           trendLabel="units"
         />
         <StatCard
           title="Sold"
           value={((reportData.summary?.totalSold ?? 0)).toString()}
-          icon={<ShoppingCart />}
+          icon={<ShoppingCartIcon />}
           trendLabel="units"
         />
       </div>

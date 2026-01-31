@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeftIcon } from '@phosphor-icons/react'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
               href="/login"
               className="flex items-center justify-center gap-2 w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition-colors"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeftIcon size={20} />
               Back to Login
             </Link>
           </div>

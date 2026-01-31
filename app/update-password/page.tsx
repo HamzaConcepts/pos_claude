@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Eye, EyeOff } from 'lucide-react'
+import { EyeIcon, EyeSlashIcon } from '@phosphor-icons/react'
 
 export default function UpdatePasswordPage() {
   const router = useRouter()
@@ -128,7 +128,7 @@ export default function UpdatePasswordPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-black"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}
                 </button>
               </div>
               <p className="text-xs text-text-secondary mt-1">Minimum 6 characters</p>
@@ -153,7 +153,7 @@ export default function UpdatePasswordPage() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary hover:text-black"
                 >
-                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showConfirmPassword ? <EyeSlashIcon size={20} /> : <EyeIcon size={20} />}
                 </button>
               </div>
             </div>

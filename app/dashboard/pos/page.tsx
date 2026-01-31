@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { Search, Plus, Minus, Trash2, ShoppingCart, Printer } from 'lucide-react'
+import { MagnifyingGlassIcon, PlusIcon, MinusIcon, TrashIcon, ShoppingCartIcon, PrinterIcon, CaretDownIcon, CaretUpIcon } from '@phosphor-icons/react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import { supabase, getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import IMEISelectionModal from '@/components/IMEISelectionModal'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import PrintReceiptButton from '@/components/PrintReceiptButton'
 
 interface CartItem {
   product: ProductWithBackwardCompatibility
@@ -63,7 +64,6 @@ export default function POSPage() {
   const [barcodeBuffer, setBarcodeBuffer] = useState('')
   const [lastKeyTime, setLastKeyTime] = useState(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const [pendingBarcode, setPendingBarcode] = useState('') // Barcode waiting for user confirmation
 
   // Arrow key navigation for product dropdown
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
@@ -71,21 +71,22 @@ export default function POSPage() {
   // Collapsible customer details section
   const [isCustomerSectionExpanded, setIsCustomerSectionExpanded] = useState(false)
 
+  // Receipt type setting (loaded from localStorage)
+  const [receiptType, setReceiptType] = useState<'pdf' | 'thermal'>('pdf')
+
   // Barcode scanner detection - scanners type fast and send Enter
-  // Now requires double Enter: first from scanner (fills field), second from user (confirms)
+  // Auto-select product when barcode is scanned (no confirmation needed)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle Enter key here to prevent scanner's Enter from triggering actions
+      // When Enter is pressed and we have a barcode buffer, search for product
       if (e.key === 'Enter' && barcodeBuffer.length > 0) {
         e.preventDefault()
         e.stopPropagation()
-        // First Enter from scanner: show barcode in search field, wait for confirmation
-        setSearchTerm(barcodeBuffer)
-        setPendingBarcode(barcodeBuffer)
+        // Immediately search for the barcode
+        const barcode = barcodeBuffer
         setBarcodeBuffer('')
         setLastKeyTime(0)
-        // Focus the search input so user can press Enter again to confirm
-        setTimeout(() => searchInputRef.current?.focus(), 10)
+        handleBarcodeScanned(barcode)
         return
       }
     }
@@ -143,6 +144,11 @@ export default function POSPage() {
     fetchCurrentUser()
     loadSelectedCashier()
     fetchAllCustomers()
+    // Load receipt type from localStorage
+    const savedReceiptType = localStorage.getItem('pos_receipt_type')
+    if (savedReceiptType === 'thermal' || savedReceiptType === 'pdf') {
+      setReceiptType(savedReceiptType)
+    }
   }, [])
 
   const fetchAllCustomers = async () => {
@@ -177,8 +183,6 @@ export default function POSPage() {
       const storeId = getStoreId()
       if (!storeId) return
 
-      console.log('[POS] Barcode scanned:', barcode)
-
       // Search for product by barcode or IMEI
       const response = await fetch(`/api/products?store_id=${storeId}&barcode=${encodeURIComponent(barcode)}`)
       const result = await response.json()
@@ -205,13 +209,11 @@ export default function POSPage() {
             setCart([...cart, cartItem])
           }
           
-          console.log('[POS] ✓ Phone added with IMEI:', barcode)
           setError(`✓ Found by IMEI: ${product.name}`)
           setTimeout(() => setError(''), 2000)
         } else {
           // Regular product - add to cart
           addToCart(product)
-          console.log('[POS] ✓ Product added:', product.name)
           setError(`✓ Found by barcode: ${product.name}`)
           setTimeout(() => setError(''), 2000)
         }
@@ -219,12 +221,10 @@ export default function POSPage() {
         // Clear search
         setSearchTerm('')
       } else {
-        console.log('[POS] ✗ Product not found for barcode/IMEI:', barcode)
         setError(`Product not found for barcode: ${barcode}`)
         setTimeout(() => setError(''), 3000)
       }
     } catch (err) {
-      console.error('[POS] Barcode scan error:', err)
       setError('Failed to scan barcode')
       setTimeout(() => setError(''), 3000)
     }
@@ -270,9 +270,8 @@ export default function POSPage() {
       try {
         const cashier = JSON.parse(savedCashier)
         setSelectedCashierFromSidebar(cashier)
-        console.log('[POS] Loaded selected cashier:', cashier)
       } catch (err) {
-        console.error('Failed to parse saved cashier:', err)
+        // Failed to parse saved cashier
       }
     }
   }
@@ -280,7 +279,6 @@ export default function POSPage() {
   // Listen for cashier selection changes from sidebar
   useEffect(() => {
     const handleCashierChange = () => {
-      console.log('[POS] Cashier selection changed, reloading...')
       loadSelectedCashier()
     }
 
@@ -488,13 +486,6 @@ export default function POSPage() {
   }
 
   const handleProcessSale = async () => {
-    console.log('[POS] === CONFIRM SALE BUTTON PRESSED ===')
-    console.log('[POS] Cart:', JSON.stringify(cart.map(item => ({
-      product_id: item.product.id,
-      product_name: item.product.name,
-      quantity: item.quantity
-    })), null, 2))
-    
     if (cart.length === 0) {
       setError('Cart is empty')
       return
@@ -515,8 +506,6 @@ export default function POSPage() {
     const total = calculateTotal()
     const lowestNegotiable = calculateLowestNegotiable()
     const paid = parseFloat(amountPaid) || 0
-    
-    console.log('[POS] Payment details:', { total, lowestNegotiable, paid })
 
     // If entered amount >= total: confirm payment
     if (paid >= total) {
@@ -680,8 +669,6 @@ export default function POSPage() {
         customer_phone: customerDetails.phone.trim() || null,
         customer_cnic: customerDetails.cnic.trim() || null,
       }
-      
-      console.log('[POS] Sending sale data to API:', JSON.stringify(saleData, null, 2))
 
       const response = await fetch('/api/sales', {
         method: 'POST',
@@ -692,11 +679,8 @@ export default function POSPage() {
       })
 
       const result = await response.json()
-      
-      console.log('[POS] API Response:', JSON.stringify(result, null, 2))
 
       if (result.success) {
-        console.log('[POS] Sale successful!')
         setLastSale(result.data)
         setShowReceipt(true)
         setCart([])
@@ -773,192 +757,391 @@ export default function POSPage() {
   }
 
   if (showReceipt && lastSale) {
-    return (
-      <div className={`max-w-2xl mx-auto p-4 ${isDarkMode ? 'bg-[#0f0f0f]' : ''}`}>
-        <div className={`p-6 rounded border ${isDarkMode ? 'border border-gray-700' : 'bg-white border-gray-200'}`} id="receipt">
-          <div className="text-center mb-5">
-            <h1 className={`text-2xl font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>POS System</h1>
-            <h2 className={`text-lg ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Sales Receipt</h2>
+    // Thermal Receipt - Compact format for 58mm/80mm thermal printers
+    const ThermalReceipt = () => (
+      <div className="thermal-receipt max-w-[300px] mx-auto font-mono text-xs" id="receipt">
+        <div className="p-2 bg-white text-black">
+          {/* Header */}
+          <div className="text-center border-b border-dashed border-black pb-2 mb-2">
+            <p className="font-bold text-base">POS SYSTEM</p>
+            <p className="text-xs">Sales Receipt</p>
           </div>
 
-          <div className="mb-5 border-t border-b border-gray-200 py-4">
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-xs text-gray-600">Sale Number</p>
-                <p className="font-mono font-semibold text-gray-900">{lastSale.sale_number}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Date</p>
-                <p className="font-medium text-gray-900">
-                  {new Date(lastSale.sale_date).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Cashier</p>
-                <p className="font-medium text-gray-900">{lastSale.cashier_name || 'Unknown'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Payment Method</p>
-                <p className="font-medium text-gray-900">{lastSale.payment_method}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Payment Status</p>
-                <p className={`font-medium ${lastSale.payment_status === 'Partial' ? 'text-red-600' : 'text-gray-900'}`}>
-                  {lastSale.payment_status}
-                  {lastSale.payment_status === 'Partial' && ' ⚠️'}
-                </p>
-              </div>
-            </div>
+          {/* Sale Info */}
+          <div className="border-b border-dashed border-black pb-2 mb-2">
+            <table className="w-full text-xs">
+              <tbody>
+                <tr>
+                  <td className="py-0.5">Sale#:</td>
+                  <td className="text-right font-bold py-0.5">{lastSale.sale_number}</td>
+                </tr>
+                <tr>
+                  <td className="py-0.5">Date:</td>
+                  <td className="text-right py-0.5">{new Date(lastSale.sale_date).toLocaleString('en-US', { 
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                  })}</td>
+                </tr>
+                <tr>
+                  <td className="py-0.5">Cashier:</td>
+                  <td className="text-right py-0.5">{lastSale.cashier_name || '-'}</td>
+                </tr>
+                <tr>
+                  <td className="py-0.5">Payment:</td>
+                  <td className="text-right py-0.5">{lastSale.payment_method}</td>
+                </tr>
+                {lastSale.payment_status === 'Partial' && (
+                  <tr className="font-bold">
+                    <td className="py-0.5">Status:</td>
+                    <td className="text-right py-0.5">PARTIAL ⚠</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-            {/* Show customer info (for regular sales with customer details) */}
-            {(lastSale.customer_name || lastSale.customer_phone || lastSale.customer_cnic) && (
-              <div className={`mt-4 p-3 rounded border ${isDarkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-blue-50 border-blue-200'}`}>
-                <p className={`font-semibold mb-2 text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>
-                  👤 Customer Information
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-sm">
+          {/* Customer Info */}
+          {(lastSale.customer_name || lastSale.customer_phone) && (
+            <div className="border-b border-dashed border-black pb-2 mb-2">
+              <p className="font-bold">Customer:</p>
+              {lastSale.customer_name && <p>{lastSale.customer_name}</p>}
+              {lastSale.customer_phone && <p>Ph: {lastSale.customer_phone}</p>}
+            </div>
+          )}
+
+          {/* Partial Payment Customer */}
+          {lastSale.partial_payment_customers?.[0] && (
+            <div className="border-b border-dashed border-black pb-2 mb-2">
+              <p className="font-bold">⚠ CREDIT SALE:</p>
+              <p>{lastSale.partial_payment_customers[0].customer_name}</p>
+              <p>Ph: {lastSale.partial_payment_customers[0].customer_phone}</p>
+              <p className="font-bold">
+                Due: Rs.{lastSale.partial_payment_customers[0].amount_remaining.toFixed(0)}
+              </p>
+            </div>
+          )}
+
+          {/* Items */}
+          <div className="border-b border-dashed border-black pb-2 mb-2">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-black">
+                  <th className="text-left py-1">Item</th>
+                  <th className="text-right py-1">Amt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lastSale.sale_items?.map((item: any, idx: number) => (
+                  <tr key={item.id || idx}>
+                    <td className="py-1">
+                      <div className="truncate max-w-[200px]">
+                        {item.product_name || item.products?.name || 'Item'}
+                      </div>
+                      <div className="text-[10px] text-gray-600">
+                        {item.quantity} × Rs.{item.unit_price.toFixed(0)}
+                      </div>
+                    </td>
+                    <td className="text-right py-1 font-bold align-top">
+                      {item.subtotal.toFixed(0)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Totals */}
+          <table className="w-full text-xs">
+            <tbody>
+              {lastSale.discount_value > 0 && lastSale.discount_type !== 'none' && (
+                <>
+                  <tr>
+                    <td className="py-0.5">Subtotal:</td>
+                    <td className="text-right py-0.5">
+                      Rs.{(
+                        lastSale.discount_type === 'percentage'
+                          ? lastSale.total_amount / (1 - lastSale.discount_value / 100)
+                          : lastSale.total_amount + lastSale.discount_value
+                      ).toFixed(0)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-0.5">Discount:</td>
+                    <td className="text-right py-0.5">
+                      -{(
+                        lastSale.discount_type === 'percentage'
+                          ? (lastSale.total_amount / (1 - lastSale.discount_value / 100)) * (lastSale.discount_value / 100)
+                          : lastSale.discount_value
+                      ).toFixed(0)}
+                    </td>
+                  </tr>
+                </>
+              )}
+              <tr className="font-bold text-sm border-t border-black">
+                <td className="py-1">TOTAL:</td>
+                <td className="text-right py-1">Rs.{lastSale.total_amount.toFixed(0)}</td>
+              </tr>
+              <tr>
+                <td className="py-0.5">Paid:</td>
+                <td className="text-right py-0.5">Rs.{lastSale.amount_paid.toFixed(0)}</td>
+              </tr>
+              {lastSale.payment_status === 'Partial' ? (
+                <tr className="font-bold">
+                  <td className="py-0.5">DUE:</td>
+                  <td className="text-right py-0.5">Rs.{lastSale.amount_due.toFixed(0)}</td>
+                </tr>
+              ) : (
+                <tr>
+                  <td className="py-0.5">Change:</td>
+                  <td className="text-right py-0.5">Rs.{(lastSale.amount_paid - lastSale.total_amount).toFixed(0)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* Partial Warning */}
+          {lastSale.payment_status === 'Partial' && (
+            <div className="mt-2 p-1 bg-black text-white text-center font-bold text-xs">
+              ⚠ AMOUNT DUE ⚠
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="text-center mt-3 pt-2 border-t border-dashed border-black">
+            <p className="font-bold">Thank you!</p>
+            <p className="text-[10px] mt-1">
+              {new Date().toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+
+    // PDF Receipt - Standard format for A4/Letter printers
+    const PDFReceipt = () => (
+      <div className="max-w-md mx-auto" id="receipt">
+        <div className="p-6 bg-white text-black">
+          <div className="text-center mb-4 pb-4 border-b-2 border-black">
+            <h1 className="text-2xl font-bold">POS System</h1>
+            <p className="text-sm">Sales Receipt</p>
+          </div>
+
+          <table className="w-full text-sm mb-4">
+            <tbody>
+              <tr>
+                <td className="py-1 text-gray-600">Sale Number:</td>
+                <td className="py-1 text-right font-mono font-bold">{lastSale.sale_number}</td>
+              </tr>
+              <tr>
+                <td className="py-1 text-gray-600">Date:</td>
+                <td className="py-1 text-right">{new Date(lastSale.sale_date).toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td className="py-1 text-gray-600">Cashier:</td>
+                <td className="py-1 text-right">{lastSale.cashier_name || 'Unknown'}</td>
+              </tr>
+              <tr>
+                <td className="py-1 text-gray-600">Payment:</td>
+                <td className="py-1 text-right">{lastSale.payment_method}</td>
+              </tr>
+              <tr>
+                <td className="py-1 text-gray-600">Status:</td>
+                <td className={`py-1 text-right font-bold ${lastSale.payment_status === 'Partial' ? 'text-red-600' : ''}`}>
+                  {lastSale.payment_status}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Customer Info */}
+          {(lastSale.customer_name || lastSale.customer_phone || lastSale.customer_cnic) && (
+            <div className="mb-4 p-3 bg-gray-100 border border-gray-300">
+              <p className="font-bold mb-2 text-sm">Customer Information</p>
+              <table className="w-full text-sm">
+                <tbody>
                   {lastSale.customer_name && (
-                    <div>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-blue-700'}`}>Name</p>
-                      <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-blue-900'}`}>{lastSale.customer_name}</p>
-                    </div>
+                    <tr>
+                      <td className="py-0.5 text-gray-600">Name:</td>
+                      <td className="py-0.5 text-right">{lastSale.customer_name}</td>
+                    </tr>
                   )}
                   {lastSale.customer_phone && (
-                    <div>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-blue-700'}`}>Phone</p>
-                      <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-blue-900'}`}>{lastSale.customer_phone}</p>
-                    </div>
+                    <tr>
+                      <td className="py-0.5 text-gray-600">Phone:</td>
+                      <td className="py-0.5 text-right">{lastSale.customer_phone}</td>
+                    </tr>
                   )}
                   {lastSale.customer_cnic && (
-                    <div className="col-span-2">
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-blue-700'}`}>CNIC</p>
-                      <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-blue-900'}`}>{lastSale.customer_cnic}</p>
-                    </div>
+                    <tr>
+                      <td className="py-0.5 text-gray-600">CNIC:</td>
+                      <td className="py-0.5 text-right">{lastSale.customer_cnic}</td>
+                    </tr>
                   )}
-                </div>
-              </div>
-            )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-            {/* Show customer info for partial payments */}
-            {lastSale.partial_payment_customers && lastSale.partial_payment_customers.length > 0 && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
-                <p className="font-semibold text-red-900 mb-2 flex items-center gap-2 text-sm">
-                  <span>⚠️</span> PARTIAL PAYMENT CUSTOMER
-                </p>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <p className="text-xs text-red-700">Name</p>
-                    <p className="font-medium text-red-900">{lastSale.partial_payment_customers[0].customer_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-red-700">Phone</p>
-                    <p className="font-medium text-red-900">{lastSale.partial_payment_customers[0].customer_phone}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-xs text-red-700">Amount Remaining</p>
-                    <p className="font-bold text-red-900 text-base">
-                      ${lastSale.partial_payment_customers[0].amount_remaining.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Partial Payment Customer */}
+          {lastSale.partial_payment_customers?.[0] && (
+            <div className="mb-4 p-3 bg-red-50 border-2 border-red-500">
+              <p className="font-bold mb-2 text-sm text-red-700">⚠ PARTIAL PAYMENT</p>
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr>
+                    <td className="py-0.5">Name:</td>
+                    <td className="py-0.5 text-right">{lastSale.partial_payment_customers[0].customer_name}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-0.5">Phone:</td>
+                    <td className="py-0.5 text-right">{lastSale.partial_payment_customers[0].customer_phone}</td>
+                  </tr>
+                  <tr className="font-bold text-red-700">
+                    <td className="py-0.5">Amount Due:</td>
+                    <td className="py-0.5 text-right">Rs. {lastSale.partial_payment_customers[0].amount_remaining.toFixed(2)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
 
-          <table className="w-full mb-5">
-            <thead className="border-b border-gray-300">
-              <tr className="text-sm">
-                <th className="text-left py-2 text-gray-700">Item</th>
-                <th className="text-right py-2 text-gray-700">Qty</th>
-                <th className="text-right py-2 text-gray-700">Price</th>
-                <th className="text-right py-2 text-gray-700">Total</th>
+          {/* Items Table */}
+          <table className="w-full text-sm mb-4 border-collapse">
+            <thead>
+              <tr className="border-b-2 border-black">
+                <th className="text-left py-2">Item</th>
+                <th className="text-center py-2 w-16">Qty</th>
+                <th className="text-right py-2 w-24">Price</th>
+                <th className="text-right py-2 w-24">Total</th>
               </tr>
             </thead>
             <tbody>
               {lastSale.sale_items?.map((item: any) => (
-                <tr key={item.id} className="border-b border-gray-200">
-                  <td className="py-2 text-sm text-gray-900">{item.product_name || item.products?.name || 'Unknown Product'}</td>
-                  <td className="text-right text-sm text-gray-900">{item.quantity}</td>
-                  <td className="text-right text-sm text-gray-900">${item.unit_price.toFixed(2)}</td>
-                  <td className="text-right font-medium text-sm text-gray-900">
-                    ${item.subtotal.toFixed(2)}
-                  </td>
+                <tr key={item.id} className="border-b border-gray-300">
+                  <td className="py-2">{item.product_name || item.products?.name || 'Unknown'}</td>
+                  <td className="text-center py-2">{item.quantity}</td>
+                  <td className="text-right py-2">Rs.{item.unit_price.toFixed(2)}</td>
+                  <td className="text-right py-2 font-medium">Rs.{item.subtotal.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          <div className="border-t border-gray-300 pt-4">
-            {lastSale.discount_value > 0 && lastSale.discount_type !== 'none' && (
-              <>
-                <div className="flex justify-between mb-2 text-sm">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span className="text-gray-900">
-                    ${(
-                      lastSale.discount_type === 'percentage'
-                        ? lastSale.total_amount / (1 - lastSale.discount_value / 100)
-                        : lastSale.total_amount + lastSale.discount_value
-                    ).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between mb-2 text-green-600 text-sm">
-                  <span>
-                    Discount ({lastSale.discount_type === 'percentage' ? `${lastSale.discount_value}%` : 'Amount'}):
-                  </span>
-                  <span>
-                    -${(
-                      lastSale.discount_type === 'percentage'
-                        ? (lastSale.total_amount / (1 - lastSale.discount_value / 100)) * (lastSale.discount_value / 100)
-                        : lastSale.discount_value
-                    ).toFixed(2)}
-                  </span>
-                </div>
-              </>
-            )}
-            <div className="flex justify-between text-lg font-bold mb-2 text-gray-900">
-              <span>Total:</span>
-              <span>Rs. {lastSale.total_amount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between mb-2 text-sm">
-              <span className="text-gray-600">Amount Paid:</span>
-              <span className="text-gray-900">Rs. {lastSale.amount_paid.toFixed(2)}</span>
-            </div>
-            {lastSale.payment_status === 'Partial' ? (
-              <div className="flex justify-between text-base font-medium text-red-600">
-                <span>Amount Due:</span>
-                <span>${lastSale.amount_due.toFixed(2)}</span>
-              </div>
-            ) : (
-              <div className="flex justify-between text-base font-medium text-gray-900">
-                <span>Change:</span>
-                <span>${(lastSale.amount_paid - lastSale.total_amount).toFixed(2)}</span>
-              </div>
-            )}
-            
-            {/* Additional warning for partial payment */}
-            {lastSale.payment_status === 'Partial' && (
-              <div className="mt-4 p-3 bg-red-600 text-white rounded font-semibold text-center text-sm">
-                ⚠️ OUTSTANDING BALANCE DUE ⚠️
-              </div>
-            )}
+          {/* Totals */}
+          <div className="border-t-2 border-black pt-3">
+            <table className="w-full text-sm">
+              <tbody>
+                {lastSale.discount_value > 0 && lastSale.discount_type !== 'none' && (
+                  <>
+                    <tr>
+                      <td className="py-1">Subtotal:</td>
+                      <td className="py-1 text-right">
+                        Rs.{(
+                          lastSale.discount_type === 'percentage'
+                            ? lastSale.total_amount / (1 - lastSale.discount_value / 100)
+                            : lastSale.total_amount + lastSale.discount_value
+                        ).toFixed(2)}
+                      </td>
+                    </tr>
+                    <tr className="text-green-700">
+                      <td className="py-1">
+                        Discount ({lastSale.discount_type === 'percentage' ? `${lastSale.discount_value}%` : 'Amount'}):
+                      </td>
+                      <td className="py-1 text-right">
+                        -Rs.{(
+                          lastSale.discount_type === 'percentage'
+                            ? (lastSale.total_amount / (1 - lastSale.discount_value / 100)) * (lastSale.discount_value / 100)
+                            : lastSale.discount_value
+                        ).toFixed(2)}
+                      </td>
+                    </tr>
+                  </>
+                )}
+                <tr className="text-lg font-bold border-t border-black">
+                  <td className="py-2">Total:</td>
+                  <td className="py-2 text-right">Rs. {lastSale.total_amount.toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td className="py-1">Amount Paid:</td>
+                  <td className="py-1 text-right">Rs. {lastSale.amount_paid.toFixed(2)}</td>
+                </tr>
+                {lastSale.payment_status === 'Partial' ? (
+                  <tr className="font-bold text-red-600">
+                    <td className="py-1">Amount Due:</td>
+                    <td className="py-1 text-right">Rs. {lastSale.amount_due.toFixed(2)}</td>
+                  </tr>
+                ) : (
+                  <tr>
+                    <td className="py-1">Change:</td>
+                    <td className="py-1 text-right">Rs. {(lastSale.amount_paid - lastSale.total_amount).toFixed(2)}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
 
-          <div className="mt-5 text-center text-sm text-gray-600">
-            <p>Thank you for your business!</p>
+          {/* Partial Warning */}
+          {lastSale.payment_status === 'Partial' && (
+            <div className="mt-4 p-2 bg-red-600 text-white text-center font-bold">
+              ⚠ OUTSTANDING BALANCE DUE ⚠
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="text-center mt-4 pt-4 border-t border-gray-300">
+            <p className="font-medium">Thank you for your business!</p>
           </div>
         </div>
+      </div>
+    )
 
-        <div className="flex gap-3 mt-5 print:hidden">
+    return (
+      <div className={isDarkMode ? 'bg-[#0f0f0f]' : ''}>
+        {/* Receipt Type Toggle - Print hidden */}
+        <div className="flex justify-center gap-2 mb-4 print:hidden">
           <button
-            onClick={handlePrintReceipt}
-            className="flex-1 flex items-center justify-center gap-2 bg-cyan-600 text-white px-4 py-2.5 rounded text-sm hover:bg-cyan-700 transition-colors"
+            onClick={() => setReceiptType('pdf')}
+            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+              receiptType === 'pdf'
+                ? 'bg-cyan-600 text-white'
+                : isDarkMode
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
           >
-            <Printer size={18} />
-            Print Receipt
+            PDF Receipt
           </button>
           <button
+            onClick={() => setReceiptType('thermal')}
+            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+              receiptType === 'thermal'
+                ? 'bg-cyan-600 text-white'
+                : isDarkMode
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Thermal Receipt
+          </button>
+        </div>
+
+        {/* Render Selected Receipt Type */}
+        {receiptType === 'thermal' ? <ThermalReceipt /> : <PDFReceipt />}
+
+        {/* Action Buttons */}
+        <div className={`flex gap-3 mt-5 print:hidden ${receiptType === 'thermal' ? 'max-w-[280px] mx-auto' : 'max-w-2xl mx-auto px-4'}`}>
+          <PrintReceiptButton
+            sale={lastSale}
+            showFormatOptions={true}
+            defaultFormat={receiptType}
+            className="flex-1"
+          />
+          <button
             onClick={handleNewSale}
-            className="flex-1 bg-white border border-gray-300 px-4 py-2.5 rounded text-sm hover:bg-gray-50 transition-colors"
+            className={`flex-1 px-4 py-2.5 rounded text-sm transition-colors ${
+              isDarkMode
+                ? 'bg-gray-700 text-white border border-gray-600 hover:bg-gray-600'
+                : 'bg-white border border-gray-300 hover:bg-gray-50'
+            }`}
           >
             New Sale
           </button>
@@ -981,7 +1164,7 @@ export default function POSPage() {
           {/* Search */}
           <div className={`p-5 rounded-lg ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
             <div className="relative">
-              <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
+              <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -989,10 +1172,6 @@ export default function POSPage() {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value)
-                  // Clear pending barcode if user modifies the text
-                  if (pendingBarcode && e.target.value !== pendingBarcode) {
-                    setPendingBarcode('')
-                  }
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') {
@@ -1013,37 +1192,26 @@ export default function POSPage() {
                       // Select highlighted product
                       addToCart(filteredProducts[highlightedIndex])
                       setHighlightedIndex(-1)
-                      setPendingBarcode('')
                     } else if (searchTerm.trim().length > 0) {
                       // User pressed Enter - process as barcode/IMEI
                       handleBarcodeScanned(searchTerm.trim())
-                      setPendingBarcode('')
                     }
                   } else if (e.key === 'Escape') {
                     setFilteredProducts([])
                     setHighlightedIndex(-1)
-                    setPendingBarcode('')
                   }
                 }}
                 autoFocus
                 autoComplete="off"
                 className={`w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${
-                  pendingBarcode 
-                    ? isDarkMode ? 'bg-cyan-900/30 border-cyan-600 text-white' : 'bg-cyan-50 border-cyan-500'
-                    : isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'
+                  isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'
                 }`}
               />
             </div>
             
-            {pendingBarcode ? (
-              <p className={`text-xs mt-2 font-medium ${isDarkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>
-                📷 Barcode scanned: "{pendingBarcode}" — Press Enter again to confirm
-              </p>
-            ) : (
-              <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                💡 Scan barcode or type to search. Press Enter to confirm.
-              </p>
-            )}
+            <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              💡 Scan barcode or type to search. Use ↑↓ arrows to navigate, Enter to select.
+            </p>
 
             {filteredProducts.length > 0 && (
               <div className={`mt-3 border rounded-lg max-h-64 overflow-y-auto ${isDarkMode ? 'border-gray-700 bg-[#1a1a1a]' : 'border-gray-200 bg-white'}`}>
@@ -1210,7 +1378,7 @@ export default function POSPage() {
           <div className={`rounded-lg ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
             <div className={`p-5 flex justify-between items-center ${isDarkMode ? '' : 'bg-cyan-50/50'}`}>
               <div className="flex items-center gap-2">
-                <ShoppingCart size={18} className="text-cyan-600" />
+                <ShoppingCartIcon size={18} className="text-cyan-600" />
                 <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Cart</h2>
                 <span className="bg-cyan-600 text-white px-2 py-0.5 rounded text-xs font-medium">
                   {cart.length}
@@ -1282,7 +1450,7 @@ export default function POSPage() {
                               }
                               className={`p-1.5 transition-colors ${isDarkMode ? 'hover:bg-[#2a2a2a] text-gray-300' : 'hover:bg-gray-100'}`}
                             >
-                              <Minus size={14} />
+                              <MinusIcon size={14} />
                             </button>
                             <span className={`font-medium w-8 text-center ${isDarkMode ? 'text-white' : ''}`}>
                               {item.quantity}
@@ -1293,7 +1461,7 @@ export default function POSPage() {
                               }
                               className={`p-1.5 transition-colors ${isDarkMode ? 'hover:bg-[#2a2a2a] text-gray-300' : 'hover:bg-gray-100'}`}
                             >
-                              <Plus size={14} />
+                              <PlusIcon size={14} />
                             </button>
                           </div>
 
@@ -1305,7 +1473,7 @@ export default function POSPage() {
                             onClick={() => removeFromCart(item.product.id)}
                             className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
                           >
-                            <Trash2 size={16} />
+                            <TrashIcon size={16} />
                           </button>
                         </div>
                       </div>

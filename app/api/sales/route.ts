@@ -213,9 +213,6 @@ export async function POST(request: Request) {
       customer_cnic
     } = body
 
-    console.log('[SALES API] Received cashier_id:', cashier_id, 'Type:', typeof cashier_id)
-    console.log('[SALES API] Received cashier_ref_id:', cashier_ref_id)
-
     // Determine the authenticated user for payment recording
     // cashier_id can be:
     // - UUID string (manager from Supabase Auth)
@@ -225,7 +222,6 @@ export async function POST(request: Request) {
 
     // Check if we have a valid cashier_id
     if (!cashier_id && !cashier_ref_id) {
-      console.error('[SALES API] ❌ No user authentication provided')
       return NextResponse.json(
         {
           success: false,
@@ -249,7 +245,6 @@ export async function POST(request: Request) {
       isManagerUser = false
       const parsedId = parseInt(authIdStr)
       if (isNaN(parsedId)) {
-        console.error('[SALES API] ❌ Invalid cashier ID:', authIdStr)
         return NextResponse.json(
           {
             success: false,
@@ -261,8 +256,6 @@ export async function POST(request: Request) {
       }
       paymentRecorderId = parsedId
     }
-
-    console.log('[SALES API] Payment recorder - isManager:', isManagerUser, 'recorderId:', paymentRecorderId)
 
     // Validation
     if (!items || items.length === 0) {
@@ -303,8 +296,6 @@ export async function POST(request: Request) {
     const saleItems = []
 
     for (const item of items) {
-      console.log(`[SALES API] Processing item: product_id=${item.product_id}, quantity=${item.quantity}`)
-      
       // First, get the product details with aggregated stock
       const { data: product, error: productError } = await supabaseAdmin
         .from('products')
@@ -327,10 +318,7 @@ export async function POST(request: Request) {
         .eq('store_id', parseInt(store_id))
         .single()
 
-      console.log(`[SALES API] Product query result:`, { product, productError })
-
       if (productError || !product) {
-        console.error(`[SALES API] ❌ Product not found: ${item.product_id}`, productError)
         return NextResponse.json(
           {
             success: false,
@@ -352,10 +340,7 @@ export async function POST(request: Request) {
         .order('purchase_date', { ascending: true })
         .order('id', { ascending: true })
 
-      console.log(`[SALES API] Batches query result:`, { batches, batchError })
-
       if (batchError || !batches || batches.length === 0) {
-        console.error(`[SALES API] ❌ No stock available for product ${product.name}`, batchError)
         return NextResponse.json(
           {
             success: false,
@@ -558,14 +543,11 @@ export async function POST(request: Request) {
         paymentData.cashier_id = paymentRecorderId
       }
       
-      console.log('[SALES API] Payment data:', JSON.stringify(paymentData, null, 2))
-      
       const { error: paymentError } = await supabaseAdmin
         .from('payments')
         .insert([paymentData])
 
       if (paymentError) {
-        console.error('Error creating payment record:', paymentError)
         throw paymentError
       }
     }

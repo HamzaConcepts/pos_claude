@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { XIcon } from '@phosphor-icons/react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import { getStoreId } from '@/lib/supabase'
 
@@ -133,7 +133,7 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
               isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
             }`}
           >
-            <X size={24} />
+            <XIcon size={24} />
           </button>
         </div>
 

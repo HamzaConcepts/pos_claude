@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { XIcon } from '@phosphor-icons/react'
 
 interface Batch {
   id: number
@@ -138,7 +138,7 @@ export default function BatchEditModal({ batch, onClose }: BatchEditModalProps) 
               isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
             }`}
           >
-            <X size={24} />
+            <XIcon size={24} />
           </button>
         </div>
 

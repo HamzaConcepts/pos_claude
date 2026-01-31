@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Clock, Package } from 'lucide-react'
+import { XIcon, ClockIcon, PackageIcon } from '@phosphor-icons/react'
 
 interface RestockHistoryModalProps {
   productId: number
@@ -88,7 +88,7 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
               isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
             }`}
           >
-            <X size={24} />
+            <XIcon size={24} />
           </button>
         </div>
 
@@ -103,7 +103,7 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
             </div>
           ) : history.length === 0 ? (
             <div className="text-center py-12 text-text-secondary">
-              <Package size={48} className="mx-auto mb-4 opacity-50" />
+              <PackageIcon size={48} className="mx-auto mb-4 opacity-50" />
               <p>No restock history found for this product</p>
             </div>
           ) : (
@@ -127,14 +127,14 @@ export default function RestockHistoryModal({ productId, productName, onClose }:
                           ? 'bg-black text-white' 
                           : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
                         }`}>
-                          <Package size={20} />
+                          <PackageIcon size={20} />
                         </div>
                         <div>
                           <div className="font-mono text-sm font-bold">
                             {record.batch_number || 'No Batch Number'}
                           </div>
                           <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
-                            <Clock size={12} />
+                            <ClockIcon size={12} />
                             {new Date(record.purchase_date).toLocaleString('en-US', {
                               month: 'short',
                               day: 'numeric',

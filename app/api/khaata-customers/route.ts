@@ -14,7 +14,6 @@ const supabaseAdmin = createClient(
 
 export async function GET(request: Request) {
   try {
-    console.log('[KHAATA API] GET request received')
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const storeId = searchParams.get('store_id')
@@ -29,11 +28,12 @@ export async function GET(request: Request) {
       )
     }
 
+    // Use explicit foreign key hint to avoid ambiguity
     let query = supabaseAdmin
       .from('partial_payment_customers')
       .select(`
         *,
-        sales (
+        sales!partial_payment_customers_sale_id_fkey (
           sale_description
         )
       `)
@@ -44,9 +44,7 @@ export async function GET(request: Request) {
       query = query.or(`customer_name.ilike.%${search}%,customer_phone.ilike.%${search}%`)
     }
 
-    console.log('[KHAATA API] Executing query...')
     const { data, error } = await query
-    console.log('[KHAATA API] Query result:', { dataCount: data?.length, error })
 
     if (error) {
       console.error('[KHAATA API] Supabase error:', error)
@@ -59,11 +57,17 @@ export async function GET(request: Request) {
       )
     }
 
-    console.log('[KHAATA API] Returning success with', data?.length, 'customers')
-    return NextResponse.json({
-      success: true,
-      data: data || [],
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        data: data || [],
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+        },
+      }
+    )
   } catch (error: any) {
     console.error('[KHAATA API] Exception:', error)
     return NextResponse.json(

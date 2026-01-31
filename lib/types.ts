@@ -251,3 +251,70 @@ export interface DashboardStats {
   topProducts: Array<{ product_name: string; revenue: number }>
   salesTrend: Array<{ date: string; revenue: number }>
 }
+
+// ===== Receipt Printing Types =====
+
+export type ReceiptFormat = 'pdf' | 'thermal'
+export type ThermalPaperWidth = '58mm' | '80mm'
+
+export interface ReceiptSettings {
+  id: number
+  store_id: number
+  // Store/Business Information
+  business_name: string
+  business_address: string | null
+  business_phone: string | null
+  business_email: string | null
+  tax_id: string | null
+  logo_url: string | null
+  // Receipt Preferences
+  default_format: ReceiptFormat
+  thermal_paper_width: ThermalPaperWidth
+  auto_print: boolean
+  show_logo: boolean
+  show_tax_id: boolean
+  // Footer Messages
+  thank_you_message: string
+  return_policy: string | null
+  // Created/Updated
+  created_at: string
+  updated_at: string
+}
+
+export interface ReceiptData {
+  // Sale Info
+  sale_number: string
+  sale_date: string
+  cashier_name: string | null
+  payment_method: 'Cash' | 'Digital'
+  payment_status: 'Paid' | 'Partial' | 'Pending'
+  // Amounts
+  subtotal: number
+  discount_type: 'percentage' | 'amount' | 'none'
+  discount_value: number
+  total_amount: number
+  amount_paid: number
+  amount_due: number
+  change_given: number
+  // Items
+  items: ReceiptItem[]
+  // Customer Info (optional)
+  customer_name?: string | null
+  customer_phone?: string | null
+  customer_cnic?: string | null
+  // Partial Payment Customer
+  partial_customer?: {
+    name: string
+    phone: string
+    amount_remaining: number
+  } | null
+  // Store Settings
+  settings: ReceiptSettings
+}
+
+export interface ReceiptItem {
+  name: string
+  quantity: number
+  unit_price: number
+  subtotal: number
+}

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { Search, Plus, Edit, Trash2, AlertTriangle, Package, History, ChevronDown, ChevronUp, Printer } from 'lucide-react'
+import { MagnifyingGlassIcon, PlusIcon, PencilSimpleIcon, TrashIcon, WarningIcon, PackageIcon, ClockCounterClockwiseIcon, CaretDownIcon, CaretUpIcon, PrinterIcon } from '@phosphor-icons/react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import AddStockModal from '@/components/AddStockModal'
 import ProductModal from '@/components/ProductModal'
@@ -315,7 +315,7 @@ export default function InventoryPage() {
           <label className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors cursor-pointer ${
             isDarkMode ? 'bg-gray-700/30 hover:bg-gray-700/50 text-gray-300' : 'bg-white border border-gray-300 hover:bg-gray-50 shadow-sm'
           }`}>
-            <Package size={16} />
+            <PackageIcon size={16} />
             {importing ? 'Importing...' : 'Import CSV'}
             <input
               type="file"
@@ -330,7 +330,7 @@ export default function InventoryPage() {
             onClick={() => setIsRestockModalOpen(true)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700/30 hover:bg-gray-700/50 text-gray-300' : 'bg-white border border-gray-300 hover:bg-gray-50 shadow-sm'}`}
           >
-            <Package size={16} />
+            <PackageIcon size={16} />
             Restock
           </button>
           
@@ -338,7 +338,7 @@ export default function InventoryPage() {
             onClick={() => setIsAddStockModalOpen(true)}
             className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2.5 rounded-lg hover:bg-cyan-700 transition-colors font-medium"
           >
-            <Plus size={16} />
+            <PlusIcon size={16} />
             Add Product
           </button>
         </div>
@@ -361,7 +361,7 @@ export default function InventoryPage() {
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {/* Search */}
           <div className="relative">
-            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
+            <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
             <input
               type="text"
               placeholder="Search by name or SKU..."
@@ -493,7 +493,7 @@ export default function InventoryPage() {
                         <td className="px-3 py-3 text-center hidden md:table-cell">
                           {isLowStock(product) ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded font-medium">
-                              <AlertTriangle size={12} />
+                              <WarningIcon size={12} />
                               Low Stock
                             </span>
                           ) : (
@@ -507,7 +507,7 @@ export default function InventoryPage() {
                               className="p-1 hover:bg-gray-200 rounded transition-colors"
                               title={isExpanded ? 'Collapse' : 'Expand'}
                             >
-                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              {isExpanded ? <CaretUpIcon size={16} /> : <CaretDownIcon size={16} />}
                             </button>
                             <button
                               onClick={(e) => {
@@ -518,7 +518,7 @@ export default function InventoryPage() {
                               className="p-1 hover:bg-blue-100 rounded text-blue-600 transition-colors"
                               title="Print Labels"
                             >
-                              <Printer size={16} />
+                              <PrinterIcon size={16} />
                             </button>
                             <button
                               onClick={(e) => {
@@ -528,7 +528,7 @@ export default function InventoryPage() {
                               className="p-1 hover:bg-gray-200 rounded transition-colors"
                               title="Edit"
                             >
-                              <Edit size={16} />
+                              <PencilSimpleIcon size={16} />
                             </button>
                             <button
                               onClick={(e) => {
@@ -538,7 +538,7 @@ export default function InventoryPage() {
                               className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
                               title="Delete"
                             >
-                              <Trash2 size={16} />
+                              <TrashIcon size={16} />
                             </button>
                           </div>
                         </td>
@@ -625,7 +625,7 @@ export default function InventoryPage() {
                                                 className="p-1 hover:bg-gray-200 rounded transition-colors"
                                                 title="Edit prices"
                                               >
-                                                <Edit size={14} />
+                                                <PencilSimpleIcon size={14} />
                                               </button>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -671,14 +671,14 @@ export default function InventoryPage() {
                                     onClick={() => handleViewHistory(product)}
                                     className={`flex items-center justify-center gap-2 px-3 py-2 border rounded hover:bg-opacity-80 transition-colors text-sm ${isDarkMode ? 'bg-gray-700/30 border-gray-600 text-gray-300 hover:bg-gray-700/50' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
                                   >
-                                    <History size={16} />
+                                    <ClockCounterClockwiseIcon size={16} />
                                     <span>View History</span>
                                   </button>
                                   <button
                                     onClick={() => handleEdit(product)}
                                     className="flex items-center justify-center gap-2 px-3 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors text-sm"
                                   >
-                                    <Edit size={16} />
+                                    <PencilSimpleIcon size={16} />
                                     <span>Edit Product</span>
                                   </button>
                                 </div>

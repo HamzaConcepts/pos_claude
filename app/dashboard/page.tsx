@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AlertTriangle, TrendingUp, DollarSign, ShoppingBag, Package, RefreshCw } from 'lucide-react'
+import { WarningIcon, TrendUpIcon, CurrencyDollarIcon, ShoppingBagIcon, PackageIcon, ArrowsClockwiseIcon } from '@phosphor-icons/react'
 import Link from 'next/link'
 import type { DashboardStats } from '@/lib/types'
 import { getStoreId } from '@/lib/supabase'
@@ -55,20 +55,16 @@ export default function DashboardPage() {
       let retries = 0
       
       while (!storeId && retries < 5) {
-        console.log(`[DASHBOARD PAGE] Waiting for store_id... attempt ${retries + 1}`)
         await new Promise(resolve => setTimeout(resolve, 300))
         storeId = getStoreId()
         retries++
       }
       
       if (!storeId) {
-        console.log('[DASHBOARD PAGE] No store ID found after retries, redirecting to login')
         setError('No store ID found. Please login again.')
         router.push('/login')
         return
       }
-
-      console.log('[DASHBOARD PAGE] Store ID found:', storeId)
       
       const response = await fetch(`/api/dashboard/stats?store_id=${storeId}`, {
         cache: 'no-store',
@@ -126,7 +122,7 @@ export default function DashboardPage() {
           disabled={refreshing}
           className="flex items-center gap-2 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors disabled:bg-gray-400"
         >
-          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+          <ArrowsClockwiseIcon size={16} className={refreshing ? 'animate-spin' : ''} />
           <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
         </button>
       </div>
@@ -137,7 +133,7 @@ export default function DashboardPage() {
         <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
           <div className="flex items-center gap-2.5 mb-2">
             <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-cyan-500/20' : 'bg-cyan-50'}`}>
-              <DollarSign size={18} className="text-cyan-600" />
+              <CurrencyDollarIcon size={18} className="text-cyan-600" />
             </div>
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Revenue</p>
           </div>
@@ -149,7 +145,7 @@ export default function DashboardPage() {
         <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
           <div className="flex items-center gap-2.5 mb-2">
             <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-500/20' : 'bg-orange-50'}`}>
-              <TrendingUp size={18} className="text-orange-600" />
+              <TrendUpIcon size={18} className="text-orange-600" />
             </div>
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>COGS</p>
           </div>
@@ -161,7 +157,7 @@ export default function DashboardPage() {
         <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
           <div className="flex items-center gap-2.5 mb-2">
             <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-green-500/20' : 'bg-green-50'}`}>
-              <TrendingUp size={18} className="text-green-600" />
+              <TrendUpIcon size={18} className="text-green-600" />
             </div>
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Gross Profit</p>
           </div>
@@ -175,7 +171,7 @@ export default function DashboardPage() {
         <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
           <div className="flex items-center gap-2.5 mb-2">
             <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-red-500/20' : 'bg-red-50'}`}>
-              <TrendingUp size={18} className="text-red-600" />
+              <TrendUpIcon size={18} className="text-red-600" />
             </div>
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Expenses</p>
           </div>
@@ -187,7 +183,7 @@ export default function DashboardPage() {
         <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
           <div className="flex items-center gap-2.5 mb-2">
             <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-500/20' : 'bg-blue-50'}`}>
-              <TrendingUp size={18} className="text-blue-600" />
+              <TrendUpIcon size={18} className="text-blue-600" />
             </div>
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Net Profit</p>
           </div>
@@ -203,7 +199,7 @@ export default function DashboardPage() {
         <div className={`rounded-lg p-4 transition-colors ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
           <div className="flex items-center gap-2.5 mb-2">
             <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-500/20' : 'bg-purple-50'}`}>
-              <ShoppingBag size={18} className="text-purple-600" />
+              <ShoppingBagIcon size={18} className="text-purple-600" />
             </div>
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Orders This Month</p>
           </div>
@@ -237,7 +233,7 @@ export default function DashboardPage() {
       {stats.lowStockCount > 0 && (
         <div className={`p-4 rounded-lg mb-6 flex items-center justify-between ${isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50 shadow-sm'}`}>
           <div className="flex items-center gap-2">
-            <AlertTriangle size={18} className={isDarkMode ? 'text-orange-400' : 'text-orange-600'} />
+            <WarningIcon size={18} className={isDarkMode ? 'text-orange-400' : 'text-orange-600'} />
             <span className={`text-sm font-medium ${isDarkMode ? 'text-orange-300' : 'text-orange-800'}`}>
               {stats.lowStockCount} {stats.lowStockCount === 1 ? 'product is' : 'products are'} running low on stock
             </span>
@@ -374,7 +370,7 @@ export default function DashboardPage() {
                   <div key={product.id} className={`flex items-center justify-between p-2.5 rounded-lg ${isDarkMode ? 'bg-orange-500/10' : 'bg-orange-50'}`}>
                     <div className="flex items-center gap-2.5 flex-1 min-w-0">
                       <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-orange-500/20' : 'bg-orange-100'}`}>
-                        <Package size={16} className="text-orange-600" />
+                        <PackageIcon size={16} className="text-orange-600" />
                       </div>
                       <div className="min-w-0">
                         <p className={`font-medium text-xs truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{product.name}</p>

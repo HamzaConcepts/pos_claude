@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, Edit, Trash2, ChevronDown, ChevronRight, Package, DollarSign } from 'lucide-react'
+import { MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, PackageIcon, CurrencyDollarIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
 
@@ -48,9 +48,22 @@ interface AggregatedSupplier {
   transactions: SupplierKhaata[]
 }
 
+interface InitialSupplier {
+  id: number
+  supplier_name: string
+  contact_person: string | null
+  supplier_phone: string | null
+  supplier_email: string | null
+  address: string | null
+  amount_owed: number
+  notes: string | null
+  created_at: string
+}
+
 export default function SupplierKhaataPage() {
   const isDarkMode = useDarkMode()
   const [suppliers, setSuppliers] = useState<SupplierKhaata[]>([])
+  const [initialSuppliers, setInitialSuppliers] = useState<InitialSupplier[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showEditModal, setShowEditModal] = useState(false)
@@ -74,6 +87,7 @@ export default function SupplierKhaataPage() {
 
   useEffect(() => {
     fetchSuppliers()
+    fetchInitialSuppliers()
   }, [])
 
   const fetchSuppliers = async () => {
@@ -100,6 +114,22 @@ export default function SupplierKhaataPage() {
       setError('Failed to fetch supplier khaata: ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchInitialSuppliers = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/initial-suppliers?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setInitialSuppliers(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch initial suppliers:', err)
     }
   }
 
@@ -281,7 +311,7 @@ export default function SupplierKhaataPage() {
         {/* Search Bar */}
         <div className="mb-5">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input
               type="text"
               placeholder="Search by supplier name or phone..."
@@ -307,7 +337,7 @@ export default function SupplierKhaataPage() {
           </div>
         ) : filteredSuppliers.length === 0 ? (
           <div className="text-center py-12 border border-dashed border-gray-300 rounded">
-            <Package className="mx-auto mb-4 text-gray-400" size={48} />
+            <PackageIcon className="mx-auto mb-4 text-gray-400" size={48} />
             <p className="text-sm text-gray-600">
               {searchTerm ? 'No suppliers found matching your search' : 'No pending payments to suppliers'}
             </p>
@@ -364,11 +394,11 @@ export default function SupplierKhaataPage() {
                                 className="px-3 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 flex items-center gap-1"
                                 title="Pay Dues"
                               >
-                                <DollarSign size={14} />
+                                <CurrencyDollarIcon size={14} />
                                 Pay Dues
                               </button>
                             )}
-                            {isExpanded ? <ChevronDown className="text-gray-400" size={16} /> : <ChevronRight className="text-gray-400" size={16} />}
+                            {isExpanded ? <CaretDownIcon className="text-gray-400" size={16} /> : <CaretRightIcon className="text-gray-400" size={16} />}
                           </div>
                         </td>
                       </tr>
@@ -414,7 +444,7 @@ export default function SupplierKhaataPage() {
                                 className="p-1.5 border border-gray-300 rounded hover:bg-cyan-100 transition-colors"
                                 title="Edit Payment"
                               >
-                                <Edit className="text-gray-700" size={14} />
+                                <PencilSimpleIcon className="text-gray-700" size={14} />
                               </button>
                               <button
                                 onClick={(e) => {
@@ -424,7 +454,7 @@ export default function SupplierKhaataPage() {
                                 className="p-1.5 border border-red-300 text-red-600 rounded hover:bg-red-50 transition-colors"
                                 title="Delete"
                               >
-                                <Trash2 size={14} />
+                                <TrashIcon size={14} />
                               </button>
                             </div>
                           </td>
@@ -437,6 +467,67 @@ export default function SupplierKhaataPage() {
             </table>
           </div>
         )}
+
+      {/* Initial Suppliers Section */}
+      {initialSuppliers.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-4">
+            <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Initial Suppliers (Migration)</h2>
+            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Suppliers imported when you started using this POS system</p>
+          </div>
+          
+          <div className={`border rounded overflow-hidden ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <table className="w-full">
+              <thead>
+                <tr className={`border-b ${isDarkMode ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Supplier Name</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Contact Person</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Phone</th>
+                  <th className="px-3 py-2.5 text-right text-sm font-semibold">Amount Owed</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Notes</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Added On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {initialSuppliers.map((supplier) => (
+                  <tr 
+                    key={supplier.id}
+                    className={`border-b ${isDarkMode ? 'bg-gray-900 border-gray-700 hover:bg-gray-800' : 'bg-white border-gray-100 hover:bg-gray-50'}`}
+                  >
+                    <td className={`px-3 py-2.5 text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {supplier.supplier_name}
+                    </td>
+                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {supplier.contact_person || '-'}
+                    </td>
+                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      {supplier.supplier_phone || '-'}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-right font-semibold text-orange-600">
+                      ${supplier.amount_owed.toFixed(2)}
+                    </td>
+                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {supplier.notes || '-'}
+                    </td>
+                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {new Date(supplier.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-orange-600 text-white font-semibold">
+                  <td colSpan={3} className="px-3 py-2.5 text-sm">TOTAL INITIAL BALANCE</td>
+                  <td className="px-3 py-2.5 text-right text-sm">
+                    ${initialSuppliers.reduce((sum, s) => sum + s.amount_owed, 0).toFixed(2)}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Edit Payment Modal */}
       {showEditModal && selectedRecord && (

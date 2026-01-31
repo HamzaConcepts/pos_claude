@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Plus, Search, AlertCircle } from 'lucide-react'
+import { XIcon, PlusIcon, MagnifyingGlassIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 
 interface Category {
@@ -501,7 +501,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
             }`}
             disabled={loading}
           >
-            <X size={24} />
+            <XIcon size={24} />
           </button>
         </div>
 
@@ -548,6 +548,9 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                           const subcategoryEl = document.getElementById('subcategory_id')
                           if (subcategoryEl) {
                             subcategoryEl.focus()
+                          } else if (!isPhoneCategory) {
+                            // No subcategory, go to barcode for non-phone categories
+                            document.getElementById('barcode')?.focus()
                           } else {
                             document.getElementById('name')?.focus()
                           }
@@ -583,7 +586,12 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
-                        document.getElementById('name')?.focus()
+                        // Move to barcode field for non-phone, otherwise to name
+                        if (!isPhoneCategory) {
+                          document.getElementById('barcode')?.focus()
+                        } else {
+                          document.getElementById('name')?.focus()
+                        }
                       }
                     }}
                     className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
@@ -600,6 +608,37 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       </option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {/* Barcode field - moved to top after category/subcategory for non-phone products */}
+              {!isPhoneCategory && (
+                <div>
+                  <label htmlFor="barcode" className="block mb-2 font-medium">
+                    Barcode <span className="text-text-secondary font-normal">(Optional - Scan or leave empty to auto-generate)</span>
+                  </label>
+                  <input
+                    id="barcode"
+                    type="text"
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        document.getElementById('name')?.focus()
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
+                      isDarkMode
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300'
+                    }`}
+                    disabled={loading}
+                    placeholder="Scan barcode or leave empty to auto-generate"
+                  />
+                  <p className="text-xs text-text-secondary mt-1">
+                    Scan barcode here first, then continue with product details. If left empty, a unique barcode will be auto-generated.
+                  </p>
                 </div>
               )}
 
@@ -639,12 +678,8 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault()
-                      if (!isPhoneCategory) {
-                        document.getElementById('barcode')?.focus()
-                      } else {
-                        const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
-                        nextBtn?.click()
-                      }
+                      const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
+                      nextBtn?.click()
                     }
                   }}
                   rows={3}
@@ -657,38 +692,6 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   placeholder="Optional product description"
                 />
               </div>
-
-              {/* Barcode field - only for non-phone products */}
-              {!isPhoneCategory && (
-                <div>
-                  <label htmlFor="barcode" className="block mb-2 font-medium">
-                    Barcode <span className="text-text-secondary font-normal">(Optional - Auto-generated if empty)</span>
-                  </label>
-                  <input
-                    id="barcode"
-                    type="text"
-                    value={formData.barcode}
-                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        const nextBtn = document.querySelector('[data-step-action="next"]') as HTMLButtonElement
-                        nextBtn?.click()
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300'
-                    }`}
-                    disabled={loading}
-                    placeholder="Leave empty to auto-generate"
-                  />
-                  <p className="text-xs text-text-secondary mt-1">
-                    If left empty, a unique barcode will be automatically generated for this product
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
@@ -897,7 +900,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                     disabled={loading}
                     placeholder="Enter phone number"
                   />
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <MagnifyingGlassIcon className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                 </div>
                 
                 {showSupplierDropdown && filteredSuppliers.length > 0 && (
@@ -1113,7 +1116,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       />
                       {imeiErrors[index] && imei.trim().length > 0 && (
                         <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                          <AlertCircle size={12} />
+                          <WarningCircleIcon size={12} />
                           {imeiErrors[index]}
                         </p>
                       )}
@@ -1139,7 +1142,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         }`}
                         disabled={loading}
                       >
-                        <X size={20} />
+                        <XIcon size={20} />
                       </button>
                     )}
                   </div>
@@ -1157,7 +1160,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                   }`}
                   disabled={loading}
                 >
-                  <Plus size={20} />
+                  <PlusIcon size={20} />
                   Add IMEI Field
                 </button>
               )}

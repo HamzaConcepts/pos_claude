@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Check } from 'lucide-react'
+import { XIcon, CheckIcon } from '@phosphor-icons/react'
 import type { ProductIMEI } from '@/lib/types'
 import { getStoreId } from '@/lib/supabase'
 
@@ -112,7 +112,7 @@ export default function IMEISelectionModal({
               isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
             }`}
           >
-            <X size={24} />
+            <XIcon size={24} />
           </button>
         </div>
 
@@ -184,7 +184,7 @@ export default function IMEISelectionModal({
                         </div>
                         {isSelected && (
                           <div className="ml-4 w-8 h-8 rounded-full bg-black flex items-center justify-center">
-                            <Check size={20} className="text-white" />
+                            <CheckIcon size={20} className="text-white" />
                           </div>
                         )}
                       </div>

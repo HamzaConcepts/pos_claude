@@ -4,31 +4,30 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import type { UserRole } from '@/lib/supabase'
-import { Eye, EyeOff, Store, UserPlus } from 'lucide-react'
+import ProgressIndicator from '@/components/signup/ProgressIndicator'
+import { Storefront } from '@phosphor-icons/react'
 
-export default function SignupPage() {
+export default function SignupStep1() {
   const router = useRouter()
-  const [accountType, setAccountType] = useState<'Manager' | 'Cashier'>('Manager')
-  const [storeOption, setStoreOption] = useState<'create' | 'join'>('create') // For managers
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [formData, setFormData] = useState({
     storeName: '',
-    fullName: '',
-    phoneNumber: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    storeCode: '', // For joining existing store
+    ownerName: '',
   })
-  const [generatedStoreCode, setGeneratedStoreCode] = useState('') // Show code after store creation
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [checkingSession, setCheckingSession] = useState(true)
 
   useEffect(() => {
     checkExistingSession()
+    
+    // Load any saved data from previous visit
+    const savedData = sessionStorage.getItem('signup_step1')
+    if (savedData) {
+      try {
+        setFormData(JSON.parse(savedData))
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
   }, [])
 
   const checkExistingSession = async () => {
@@ -46,7 +45,6 @@ export default function SignupPage() {
       // Check for manager session
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        // Verify manager has store_id
         const { data: managerData } = await supabase
           .from('managers')
           .select('store_id')
@@ -56,9 +54,6 @@ export default function SignupPage() {
         if (managerData?.store_id) {
           router.replace('/dashboard')
           return
-        } else {
-          // Manager exists but no store - sign them out
-          await supabase.auth.signOut()
         }
       }
     } catch (err) {
@@ -68,427 +63,146 @@ export default function SignupPage() {
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }))
+    }
   }
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.storeName.trim()) {
+      newErrors.storeName = 'Store name is required'
+    } else if (formData.storeName.length > 100) {
+      newErrors.storeName = 'Store name must be 100 characters or less'
+    }
+
+    if (!formData.ownerName.trim()) {
+      newErrors.ownerName = 'Owner/Manager name is required'
+    } else if (formData.ownerName.length > 100) {
+      newErrors.ownerName = 'Name must be 100 characters or less'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
+    if (!validateForm()) {
       return
     }
 
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
-
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      setError('Password must contain uppercase, lowercase, and number')
-      return
-    }
-
-    // Phone number validation
-    if (!/^\d{11}$/.test(formData.phoneNumber)) {
-      setError('Phone number must be exactly 11 digits')
-      return
-    }
-
-    // Manager-specific validations
-    if (accountType === 'Manager') {
-      if (!formData.email.trim()) {
-        setError('Email is required for Manager accounts')
-        return
-      }
-      if (storeOption === 'create' && !formData.storeName.trim()) {
-        setError('Store name is required')
-        return
-      }
-      if (storeOption === 'join' && formData.storeCode.length !== 3) {
-        setError('Store code must be exactly 3 characters')
-        return
-      }
-    }
-
-    // Cashier-specific validations
-    if (accountType === 'Cashier') {
-      if (formData.storeCode.length !== 3) {
-        setError('Store code must be exactly 3 characters')
-        return
-      }
-    }
-
-    setLoading(true)
-
-    try {
-      // Check if phone number already exists in either table
-      const { data: existingManager } = await supabase
-        .from('managers')
-        .select('phone_number')
-        .eq('phone_number', formData.phoneNumber)
-        .maybeSingle()
-
-      const { data: existingCashier } = await supabase
-        .from('cashier_accounts')
-        .select('phone_number')
-        .eq('phone_number', formData.phoneNumber)
-        .maybeSingle()
-
-      if (existingManager || existingCashier) {
-        setError('Phone number already exists')
-        setLoading(false)
-        return
-      }
-
-      if (accountType === 'Manager') {
-        if (storeOption === 'create') {
-          // For creating a new store, use the signup API which handles everything
-          const response = await fetch('/api/auth/signup-manager', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: formData.email,
-              password: formData.password,
-              fullName: formData.fullName,
-              phoneNumber: formData.phoneNumber,
-              storeName: formData.storeName,
-              action: 'create',
-            }),
-          })
-
-          const result = await response.json()
-
-          if (!response.ok) {
-            throw new Error(result.error || 'Failed to create account')
-          }
-
-          setGeneratedStoreCode(result.storeCode)
-          alert(`Store created! Your store code is: ${result.storeCode}\n\nShare this code with your employees to join your store.\n\nPlease check your email to verify your account.`)
-          router.push('/login')
-        } else {
-          // For joining an existing store, use the signup API
-          const response = await fetch('/api/auth/signup-manager', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: formData.email,
-              password: formData.password,
-              fullName: formData.fullName,
-              phoneNumber: formData.phoneNumber,
-              storeName: formData.storeName,
-              storeCode: formData.storeCode.toUpperCase(),
-              action: 'join',
-            }),
-          })
-
-          const result = await response.json()
-
-          if (!response.ok) {
-            throw new Error(result.error || 'Failed to create account')
-          }
-
-          alert('Join request submitted! Please wait for the store manager to approve your request.\n\nAlso check your email to verify your account.')
-          router.push('/login')
-        }
-      } else {
-        // Cashier signup - use API to bypass RLS
-        const response = await fetch('/api/auth/signup-cashier', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fullName: formData.fullName,
-            phoneNumber: formData.phoneNumber,
-            password: formData.password,
-            storeCode: formData.storeCode.toUpperCase(),
-          }),
-        })
-
-        const result = await response.json()
-
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to create account')
-        }
-
-        alert('Join request submitted! Please wait for the store manager to approve your request.')
-        router.push('/login')
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during signup')
-    } finally {
-      setLoading(false)
-    }
+    // Save to sessionStorage and navigate
+    sessionStorage.setItem('signup_step1', JSON.stringify({
+      storeName: formData.storeName.trim(),
+      ownerName: formData.ownerName.trim(),
+    }))
+    
+    router.push('/signup/manager-account')
   }
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
-        <div className="text-lg">Checking session...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-600">Checking session...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] py-8">
-      <div className="bg-white p-8 rounded border border-gray-200 w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-3 text-center">POS System</h1>
-        <p className="text-center text-gray-600 mb-6">Create a new account</p>
-
-        {/* Account Type Toggle */}
-        <div className="flex gap-2 mb-6">
-          <button
-            type="button"
-            onClick={() => setAccountType('Manager')}
-            className={`flex-1 py-2 rounded font-medium transition-colors ${
-              accountType === 'Manager'
-                ? 'bg-cyan-600 text-white'
-                : 'bg-gray-200 text-black hover:bg-gray-300'
-            }`}
-          >
-            Manager
-          </button>
-          <button
-            type="button"
-            onClick={() => setAccountType('Cashier')}
-            className={`flex-1 py-2 rounded font-medium transition-colors ${
-              accountType === 'Cashier'
-                ? 'bg-cyan-600 text-white'
-                : 'bg-gray-200 text-black hover:bg-gray-300'
-            }`}
-          >
-            Cashier
-          </button>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full">
+        <ProgressIndicator currentStep={1} />
+        
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-cyan-100 rounded-full mb-4">
+            <Storefront size={32} className="text-cyan-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Create Your Store</h1>
+          <p className="text-gray-600 mt-1">Step 1 of 3 - Store Information</p>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-200 rounded">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSignup}>
-          {accountType === 'Manager' && (
-            <>
-              {/* Store Option Selection */}
-              <div className="mb-6 border border-gray-200 rounded p-4">
-                <label className="block mb-3 font-medium">Store Option</label>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setStoreOption('create')}
-                    className={`flex-1 p-3 rounded border-2 transition-all ${
-                      storeOption === 'create'
-                        ? 'border-cyan-600 bg-cyan-600 text-white'
-                        : 'border-gray bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <Store className="mx-auto mb-1" size={20} />
-                    <div className="text-sm font-medium">Create New Store</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStoreOption('join')}
-                    className={`flex-1 p-3 rounded border-2 transition-all ${
-                      storeOption === 'join'
-                        ? 'border-cyan-600 bg-cyan-600 text-white'
-                        : 'border-gray bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <UserPlus className="mx-auto mb-1" size={20} />
-                    <div className="text-sm font-medium">Join Existing Store</div>
-                  </button>
-                </div>
-              </div>
-
-              {storeOption === 'create' && (
-                <div className="mb-4">
-                  <label htmlFor="storeName" className="block mb-1 font-medium text-sm text-gray-700">
-                    Store Name
-                  </label>
-                  <input
-                    id="storeName"
-                    name="storeName"
-                    type="text"
-                    value={formData.storeName}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600"
-                    required
-                    disabled={loading}
-                  />
-                </div>
-              )}
-
-              {storeOption === 'join' && (
-                <div className="mb-4">
-                  <label htmlFor="storeCode" className="block mb-1 font-medium text-sm text-gray-700">
-                    Store Code <span className="text-sm text-gray-600">(3 characters)</span>
-                  </label>
-                  <input
-                    id="storeCode"
-                    name="storeCode"
-                    type="text"
-                    value={formData.storeCode}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600 uppercase"
-                    placeholder="A1B"
-                    maxLength={3}
-                    required
-                    disabled={loading}
-                  />
-                  <p className="text-xs text-gray-600 mt-1">
-                    Ask your store manager for the store code
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-
-          {accountType === 'Cashier' && (
-            <div className="mb-4">
-              <label htmlFor="storeCode" className="block mb-1 font-medium text-sm text-gray-700">
-                Store Code <span className="text-sm text-gray-600">(3 characters)</span>
-              </label>
-              <input
-                id="storeCode"
-                name="storeCode"
-                type="text"
-                value={formData.storeCode}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600 uppercase"
-                placeholder="A1B"
-                maxLength={3}
-                required
-                disabled={loading}
-              />
-              <p className="text-xs text-gray-600 mt-1">
-                Ask your manager for the store code
-              </p>
-            </div>
-          )}
-
+        <form onSubmit={handleSubmit}>
+          {/* Store Name */}
           <div className="mb-4">
-            <label htmlFor="fullName" className="block mb-1 font-medium text-sm text-gray-700">
-              {accountType === 'Manager' ? 'Manager Name' : 'Name'}
+            <label htmlFor="storeName" className="block text-sm font-semibold text-gray-700 mb-2">
+              Store Name <span className="text-red-600">*</span>
             </label>
             <input
-              id="fullName"
-              name="fullName"
               type="text"
-              value={formData.fullName}
+              id="storeName"
+              name="storeName"
+              value={formData.storeName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600"
-              required
-              disabled={loading}
+              className={`w-full border rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
+                errors.storeName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
+              placeholder="e.g., Ahmad Electronics"
+              maxLength={100}
+              autoFocus
             />
+            {errors.storeName && (
+              <p className="text-red-600 text-sm mt-1">{errors.storeName}</p>
+            )}
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="phoneNumber" className="block mb-1 font-medium text-sm text-gray-700">
-              Phone Number <span className="text-sm text-gray-600">(11 digits)</span>
+          {/* Owner Name */}
+          <div className="mb-6">
+            <label htmlFor="ownerName" className="block text-sm font-semibold text-gray-700 mb-2">
+              Owner/Manager Name <span className="text-red-600">*</span>
             </label>
             <input
-              id="phoneNumber"
-              name="phoneNumber"
-              type="tel"
-              value={formData.phoneNumber}
+              type="text"
+              id="ownerName"
+              name="ownerName"
+              value={formData.ownerName}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600"
-              placeholder="03001234567"
-              maxLength={11}
-              required
-              disabled={loading}
+              className={`w-full border rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
+                errors.ownerName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              }`}
+              placeholder="e.g., Ahmad Khan"
+              maxLength={100}
             />
+            {errors.ownerName && (
+              <p className="text-red-600 text-sm mt-1">{errors.ownerName}</p>
+            )}
           </div>
 
-          {accountType === 'Manager' && (
-            <div className="mb-4">
-              <label htmlFor="email" className="block mb-1 font-medium text-sm text-gray-700">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600"
-                required
-                disabled={loading}
-              />
-            </div>
-          )}
-
-          <div className="mb-4">
-            <label htmlFor="password" className="block mb-1 font-medium text-sm text-gray-700">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600 pr-10"
-                required
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-black"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label htmlFor="confirmPassword" className="block mb-1 font-medium text-sm text-gray-700">
-              Repeat Password
-            </label>
-            <div className="relative">
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-200 rounded focus:outline-none focus:border-cyan-600 pr-10"
-                required
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 hover:text-black"
-              >
-                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
-
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-cyan-600 text-white py-2 rounded hover:bg-cyan-700 disabled:bg-gray-400 transition-colors"
+            className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
           >
-            {loading ? 'Signing up...' : 'Sign Up'}
+            Continue →
           </button>
         </form>
 
-        <p className="mt-4 text-center text-gray-600">
-          Already have an account?{' '}
-          <Link href="/login" className="text-black underline font-medium">
-            Login
-          </Link>
-        </p>
+        {/* Login Link */}
+        <div className="mt-6 text-center">
+          <p className="text-gray-600">
+            Already have an account?{' '}
+            <Link href="/login" className="text-cyan-600 hover:text-cyan-700 font-semibold">
+              Sign in
+            </Link>
+          </p>
+        </div>
+
+        {/* Join Store Link */}
+        <div className="mt-4 pt-4 border-t border-gray-200 text-center">
+          <p className="text-sm text-gray-500">
+            Want to join an existing store?{' '}
+            <Link href="/signup/join" className="text-cyan-600 hover:text-cyan-700 font-medium">
+              Join with store code
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

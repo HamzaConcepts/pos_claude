@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { DollarSign, Plus, Edit2, Trash2, X, ToggleLeft, ToggleRight } from 'lucide-react'
+import { CurrencyDollarIcon, PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, ToggleLeftIcon, ToggleRightIcon } from '@phosphor-icons/react'
 import { supabase, getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -280,7 +280,7 @@ export default function PredefinedExpensesManager() {
           onClick={() => handleOpenModal()}
           className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 font-medium flex items-center gap-2"
         >
-          <Plus className="w-4 h-4" />
+          <PlusIcon className="w-4 h-4" />
           Add Expense
         </button>
       </div>
@@ -293,7 +293,7 @@ export default function PredefinedExpensesManager() {
 
       {expenses.length === 0 ? (
         <div className="text-center py-12 bg-white border-2 border-dashed border-gray-300 rounded-lg">
-          <DollarSign className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+          <CurrencyDollarIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             No Pre-defined Expenses
           </h3>
@@ -366,12 +366,12 @@ export default function PredefinedExpensesManager() {
                           >
                             {expense.is_active ? (
                               <>
-                                <ToggleRight className="w-5 h-5 text-green-600" />
+                                <ToggleRightIcon className="w-5 h-5 text-green-600" />
                                 <span className="text-sm text-green-600">Active</span>
                               </>
                             ) : (
                               <>
-                                <ToggleLeft className="w-5 h-5 text-gray-400" />
+                                <ToggleLeftIcon className="w-5 h-5 text-gray-400" />
                                 <span className="text-sm text-gray-500">Inactive</span>
                               </>
                             )}
@@ -384,14 +384,14 @@ export default function PredefinedExpensesManager() {
                               className="p-2 hover:bg-gray-100 rounded"
                               title="Edit"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <PencilSimpleIcon className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(expense.id)}
                               className="p-2 hover:bg-red-50 rounded text-red-600"
                               title="Delete"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <TrashIcon className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -418,7 +418,7 @@ export default function PredefinedExpensesManager() {
               <button onClick={handleCloseModal} className={`p-1 rounded ${
                 isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
               }`}>
-                <X className="w-5 h-5" />
+                <XIcon className="w-5 h-5" />
               </button>
             </div>
 
