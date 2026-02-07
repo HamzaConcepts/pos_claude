@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { UsersIcon, CurrencyDollarIcon, TrendUpIcon, CalendarIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import { getPKTDate } from '@/lib/date-utils'
 
 interface Cashier {
   id: number
