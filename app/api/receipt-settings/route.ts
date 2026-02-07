@@ -43,9 +43,18 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
+    // Merge with defaults to ensure no null/empty critical fields
+    const mergedData = {
+      ...DEFAULT_RECEIPT_SETTINGS,
+      ...data,
+      // Override empty strings with defaults for critical fields
+      business_name: data.business_name || DEFAULT_RECEIPT_SETTINGS.business_name,
+      thank_you_message: data.thank_you_message || DEFAULT_RECEIPT_SETTINGS.thank_you_message,
+    }
+
     return NextResponse.json({
       success: true,
-      data,
+      data: mergedData,
       isDefault: false,
     })
   } catch (error: any) {
@@ -85,25 +94,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Ensure critical fields are never empty
+    const finalBusinessName = (business_name && business_name.trim()) || 'My Store'
+    const finalThankYouMessage = (thank_you_message && thank_you_message.trim()) || 'Thank you for your purchase!'
+
     // Upsert the settings (insert or update)
     const { data, error } = await supabase
       .from('receipt_settings')
       .upsert(
         {
           store_id: parseInt(store_id),
-          business_name: business_name || 'My Store',
-          business_address,
-          business_phone,
-          business_email,
-          tax_id,
-          logo_url,
+          business_name: finalBusinessName,
+          business_address: business_address?.trim() || null,
+          business_phone: business_phone?.trim() || null,
+          business_email: business_email?.trim() || null,
+          tax_id: tax_id?.trim() || null,
+          logo_url: logo_url?.trim() || null,
           default_format: default_format || 'pdf',
           thermal_paper_width: thermal_paper_width || '80mm',
           auto_print: auto_print ?? false,
           show_logo: show_logo ?? true,
           show_tax_id: show_tax_id ?? true,
-          thank_you_message: thank_you_message || 'Thank you for your purchase!',
-          return_policy,
+          thank_you_message: finalThankYouMessage,
+          return_policy: return_policy?.trim() || null,
           updated_at: new Date().toISOString(),
         },
         {

@@ -594,7 +594,8 @@ export default function StorePage() {
                               {request.user_type}
                             </span>
                             <span className="text-xs text-gray-600">
-                              {new Date(request.requested_at).toLocaleDateString('en-US', {
+                              {new Date(request.requested_at).toLocaleDateString('en-PK', {
+                                timeZone: 'Asia/Karachi',
                                 month: 'short',
                                 day: 'numeric',
                                 hour: '2-digit',
@@ -696,7 +697,8 @@ export default function StorePage() {
                           </span>
                         </td>
                         <td className="px-3 py-2.5 text-xs text-gray-600">
-                          {new Date(user.created_at).toLocaleDateString('en-US', {
+                          {new Date(user.created_at).toLocaleDateString('en-PK', {
+                            timeZone: 'Asia/Karachi',
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric'
@@ -1964,7 +1966,7 @@ function SuppliersTab({ suppliers, onAddSupplier, onEditSupplier, onRecordPaymen
                   </td>
                   <td className="px-5 py-3 text-sm">{formatCurrency(supplier.total_paid || 0)}</td>
                   <td className="px-5 py-3 text-sm">
-                    {supplier.last_payment_date ? new Date(supplier.last_payment_date).toLocaleDateString() : 'Never'}
+                    {supplier.last_payment_date ? new Date(supplier.last_payment_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' }) : 'Never'}
                   </td>
                   <td className="px-5 py-3 text-sm">
                     <div className="flex items-center justify-center gap-2">
@@ -2376,7 +2378,7 @@ function InitialCustomersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
                         <div>
                           <span className="text-gray-600">Added:</span>
                           <span className="ml-2 text-gray-900">
-                            {new Date(entry.created_at).toLocaleDateString()}
+                            {new Date(entry.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                           </span>
                         </div>
                       </div>
@@ -2508,7 +2510,7 @@ function InitialSuppliersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
                         <div>
                           <span className="text-gray-600">Added:</span>
                           <span className="ml-2 text-gray-900">
-                            {new Date(entry.created_at).toLocaleDateString()}
+                            {new Date(entry.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                           </span>
                         </div>
                       </div>

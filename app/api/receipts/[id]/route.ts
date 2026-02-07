@@ -88,7 +88,13 @@ export async function GET(
         updated_at: new Date().toISOString(),
       } as ReceiptSettings
     } else {
-      settings = settingsData as ReceiptSettings
+      // Merge with defaults to ensure no null/empty critical fields
+      settings = {
+        ...DEFAULT_RECEIPT_SETTINGS,
+        ...settingsData,
+        business_name: settingsData.business_name || DEFAULT_RECEIPT_SETTINGS.business_name,
+        thank_you_message: settingsData.thank_you_message || DEFAULT_RECEIPT_SETTINGS.thank_you_message,
+      } as ReceiptSettings
     }
 
     // Add cashier name to sale object

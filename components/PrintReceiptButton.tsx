@@ -12,6 +12,7 @@ import {
 } from '@/lib/receipt-generator'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import { getPKTNow } from '@/lib/date-utils'
 
 interface PrintReceiptButtonProps {
   // Either provide sale object directly (for immediate printing after sale)
@@ -66,15 +67,24 @@ export default function PrintReceiptButton({
         const settingsResponse = await fetch(`/api/receipt-settings?store_id=${storeId}`)
         const settingsResult = await settingsResponse.json()
 
-        const settings: ReceiptSettings = settingsResult.success
-          ? settingsResult.data
-          : {
-              ...DEFAULT_RECEIPT_SETTINGS,
-              id: 0,
-              store_id: parseInt(String(storeId || '0')),
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }
+        let settings: ReceiptSettings
+        if (settingsResult.success) {
+          // Merge with defaults to ensure no null/empty critical fields
+          settings = {
+            ...DEFAULT_RECEIPT_SETTINGS,
+            ...settingsResult.data,
+            business_name: settingsResult.data.business_name || DEFAULT_RECEIPT_SETTINGS.business_name,
+            thank_you_message: settingsResult.data.thank_you_message || DEFAULT_RECEIPT_SETTINGS.thank_you_message,
+          }
+        } else {
+          settings = {
+            ...DEFAULT_RECEIPT_SETTINGS,
+            id: 0,
+            store_id: parseInt(String(storeId || '0')),
+            created_at: getPKTNow(),
+            updated_at: getPKTNow(),
+          }
+        }
 
         return {
           data: saleToReceiptData(sale, settings),

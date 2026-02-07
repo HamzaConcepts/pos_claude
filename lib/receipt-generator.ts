@@ -27,25 +27,29 @@ function formatCurrency(amount: number, decimals: number = 2): string {
 }
 
 /**
- * Format date for receipt display
+ * Format date for receipt display in PKT timezone
  */
 function formatDate(dateString: string, format: 'full' | 'short' = 'full'): string {
   const date = new Date(dateString)
   if (format === 'short') {
-    return date.toLocaleString('en-US', {
+    return date.toLocaleString('en-PK', {
+      timeZone: 'Asia/Karachi',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: true,
     })
   }
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString('en-PK', {
+    timeZone: 'Asia/Karachi',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
+    hour12: true,
   })
 }
 
@@ -537,7 +541,7 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
     <div style="text-align: center; margin-top: 12px; padding-top: 8px; border-top: 1px dashed #000;">
       <div style="font-weight: bold; font-size: 11px;">${escapeHTML(settings.thank_you_message)}</div>
       ${settings.return_policy ? `<div style="font-size: 8px; margin-top: 4px; color: #666;">${escapeHTML(settings.return_policy)}</div>` : ''}
-      <div style="font-size: 8px; margin-top: 8px;">${new Date().toLocaleDateString()}</div>
+      <div style="font-size: 8px; margin-top: 8px;">${new Date().toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</div>
     </div>
   </div>
 </body>

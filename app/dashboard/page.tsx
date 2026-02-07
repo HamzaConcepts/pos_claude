@@ -269,7 +269,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-center">
                       <p className={`text-[10px] font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                        {new Date(day.date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi', weekday: 'short' })}
                       </p>
                     </div>
                   </div>
@@ -326,7 +326,8 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className={`font-mono text-[10px] font-semibold truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.sale_number || `Sale #${sale.id}`}</p>
                       <p className={`text-[10px] truncate mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
-                        {new Date(sale.sale_date).toLocaleDateString('en-US', { 
+                        {new Date(sale.sale_date).toLocaleDateString('en-PK', { 
+                          timeZone: 'Asia/Karachi',
                           month: 'short', 
                           day: 'numeric',
                           hour: '2-digit',

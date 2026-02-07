@@ -72,6 +72,13 @@ export default function ReceiptSettingsPage() {
         return
       }
 
+      // Validate required fields
+      if (!settings.business_name || !settings.business_name.trim()) {
+        setError('Business name is required')
+        setSaving(false)
+        return
+      }
+
       const response = await fetch('/api/receipt-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

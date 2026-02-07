@@ -401,7 +401,7 @@ export default function CustomerLedgerPage() {
                               {transaction.sales?.sale_description || `Sale #${transaction.sale_id}`}
                             </span>
                             <span className="text-gray-400">•</span>
-                            <span className="text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</span>
+                            <span className="text-gray-600">{new Date(transaction.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
                             {transaction.notes && (
                               <>
                                 <span className="text-gray-400">•</span>
@@ -506,7 +506,7 @@ export default function CustomerLedgerPage() {
                       {customer.notes || '-'}
                     </td>
                     <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {new Date(customer.created_at).toLocaleDateString()}
+                      {new Date(customer.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                     </td>
                   </tr>
                 ))}

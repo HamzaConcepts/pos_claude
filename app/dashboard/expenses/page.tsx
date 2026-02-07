@@ -5,6 +5,7 @@ import { CurrencyDollarIcon, TrendUpIcon, CalendarIcon, PlusIcon, XIcon, PencilS
 import { supabase, getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import { getPKTDate } from '@/lib/date-utils'
 
 interface Expense {
   id: number
@@ -110,7 +111,7 @@ export default function ExpensesPage() {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0])
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0])
+  const [expenseDate, setExpenseDate] = useState(getPKTDate())
   const [submitting, setSubmitting] = useState(false)
   const [selectedCashier, setSelectedCashier] = useState<any>(null)
 
@@ -271,7 +272,7 @@ export default function ExpensesPage() {
         setAmount('')
         setCategory(EXPENSE_CATEGORIES[0])
         setPaymentMethod('Cash')
-        setExpenseDate(new Date().toISOString().split('T')[0])
+        setExpenseDate(getPKTDate())
         fetchExpenses()
       } else {
         setError(result.error || 'Failed to add expense')
@@ -325,7 +326,7 @@ export default function ExpensesPage() {
         setDescription('')
         setAmount('')
         setCategory(EXPENSE_CATEGORIES[0])
-        setExpenseDate(new Date().toISOString().split('T')[0])
+        setExpenseDate(getPKTDate())
         fetchExpenses()
       } else {
         setError(result.error || 'Failed to update expense')
@@ -554,7 +555,8 @@ export default function ExpensesPage() {
                     className="border-b border-gray-100 bg-white hover:bg-gray-50"
                   >
                     <td className="px-3 py-2.5 text-sm text-gray-900">
-                      {new Date(expense.expense_date).toLocaleDateString('en-US', {
+                      {new Date(expense.expense_date).toLocaleDateString('en-PK', {
+                        timeZone: 'Asia/Karachi',
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
@@ -956,7 +958,8 @@ export default function ExpensesPage() {
               <div>
                 <span className="font-semibold text-gray-700">Date:</span>{' '}
                 <span className="text-gray-900">
-                  {new Date(deletingExpense.expense_date).toLocaleDateString('en-US', {
+                  {new Date(deletingExpense.expense_date).toLocaleDateString('en-PK', {
+                    timeZone: 'Asia/Karachi',
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric'
@@ -1024,7 +1027,8 @@ export default function ExpensesPage() {
               <div>
                 <span className="font-semibold text-gray-700">Date:</span>{' '}
                 <span className="text-gray-900">
-                  {new Date(reviewingExpense.expense_date).toLocaleDateString('en-US', {
+                  {new Date(reviewingExpense.expense_date).toLocaleDateString('en-PK', {
+                    timeZone: 'Asia/Karachi',
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric'
@@ -1099,7 +1103,8 @@ export default function ExpensesPage() {
               <div className="mb-2">
                 <span className="font-semibold text-gray-700">Date:</span>{' '}
                 <span className="text-gray-900">
-                  {new Date(viewingMarkedExpense.expense_date).toLocaleDateString('en-US', {
+                  {new Date(viewingMarkedExpense.expense_date).toLocaleDateString('en-PK', {
+                    timeZone: 'Asia/Karachi',
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric'

@@ -418,7 +418,7 @@ export default function SupplierKhaataPage() {
                             </div>
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-600">
-                            {new Date(record.created_at).toLocaleDateString()}
+                            {new Date(record.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                           </td>
                           <td className="px-4 py-2 text-right text-sm text-gray-900">
                             Rs. {record.total_amount.toLocaleString()}
@@ -510,7 +510,7 @@ export default function SupplierKhaataPage() {
                       {supplier.notes || '-'}
                     </td>
                     <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {new Date(supplier.created_at).toLocaleDateString()}
+                      {new Date(supplier.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                     </td>
                   </tr>
                 ))}

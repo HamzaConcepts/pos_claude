@@ -650,7 +650,7 @@ export default function KhaataPage() {
                                   {transaction.sales?.sale_description || `Sale #${transaction.sale_id}`}
                                 </span>
                                 <span className="text-gray-400">•</span>
-                                <span className="text-gray-600">{new Date(transaction.created_at).toLocaleDateString()}</span>
+                                <span className="text-gray-600">{new Date(transaction.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
                                 {transaction.notes && (
                                   <>
                                     <span className="text-gray-400">•</span>
@@ -835,7 +835,7 @@ export default function KhaataPage() {
                                 <span className="text-gray-400">•</span>
                                 <span className="text-gray-600">Batch: {record.stock_batches?.batch_number || 'N/A'}</span>
                                 <span className="text-gray-400">•</span>
-                                <span className="text-gray-600">{new Date(record.created_at).toLocaleDateString()}</span>
+                                <span className="text-gray-600">{new Date(record.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
                                 {record.notes && (
                                   <>
                                     <span className="text-gray-400">•</span>

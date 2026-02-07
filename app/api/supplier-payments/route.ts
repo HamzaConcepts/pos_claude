@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getPKTNow } from '@/lib/date-utils'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
       .update({
         balance_owed: newBalance < 0 ? 0 : newBalance,
         total_paid: newTotalPaid,
-        last_payment_date: new Date().toISOString()
+        last_payment_date: getPKTNow() // Use PKT timezone
       })
       .eq('id', supplier_id)
 

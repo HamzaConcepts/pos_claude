@@ -28,7 +28,7 @@ export default function CashiersManagementPage() {
   const [cashiers, setCashiers] = useState<Cashier[]>([])
   const [stats, setStats] = useState<CashierStats[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)) // YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState(getPKTDate().slice(0, 7)) // YYYY-MM
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -172,7 +172,7 @@ export default function CashiersManagementPage() {
       {/* Cashiers Table */}
       <div className={`border rounded overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
         <div className="p-4 bg-gray-50 border-b border-gray-200">
-          <h2 className="text-base font-bold text-gray-900">Performance for {new Date(selectedMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
+          <h2 className="text-base font-bold text-gray-900">Performance for {new Date(selectedMonth).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi', month: 'long', year: 'numeric' })}</h2>
         </div>
 
         {cashiers.length === 0 ? (

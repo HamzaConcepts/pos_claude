@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { FileTextIcon, DownloadSimpleIcon, CalendarIcon, FunnelIcon, CaretDownIcon, CaretUpIcon, TrendUpIcon, TrendDownIcon, CurrencyDollarIcon, CreditCardIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import { getPKTDate } from '@/lib/date-utils'
 import { SummaryReport } from '@/components/reports/SummaryReport'
 import { SalesReport } from '@/components/reports/SalesReport'
 import { ExpensesReport } from '@/components/reports/ExpensesReport'
@@ -30,8 +31,12 @@ export default function ReportsPage() {
   const [filters, setFilters] = useState<ReportFilters>({
     type: 'summary',
     period: 'monthly',
-    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: (() => {
+      const pktDate = getPKTDate()
+      const [year, month] = pktDate.split('-')
+      return `${year}-${month}-01`
+    })(),
+    endDate: getPKTDate(),
     cashierId: '',
     paymentMethod: '',
     category: ''
@@ -61,24 +66,29 @@ export default function ReportsPage() {
 
   const handleQuickPeriodChange = (period: QuickPeriod) => {
     setQuickPeriod(period)
-    const today = new Date()
+    const pktDate = getPKTDate()
     let startDate = ''
-    let endDate = today.toISOString().split('T')[0]
+    let endDate = pktDate
 
     switch (period) {
       case 'today':
         startDate = endDate
         break
       case 'week':
-        const weekStart = new Date(today)
-        weekStart.setDate(today.getDate() - today.getDay()) // Start of week (Sunday)
+        // Calculate start of week in PKT
+        const [year, month, day] = pktDate.split('-').map(Number)
+        const pktToday = new Date(year, month - 1, day)
+        const weekStart = new Date(pktToday)
+        weekStart.setDate(pktToday.getDate() - pktToday.getDay()) // Start of week (Sunday)
         startDate = weekStart.toISOString().split('T')[0]
         break
       case 'month':
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
+        const [yr, mo] = pktDate.split('-')
+        startDate = `${yr}-${mo}-01`
         break
       case 'year':
-        startDate = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0]
+        const [yearOnly] = pktDate.split('-')
+        startDate = `${yearOnly}-01-01`
         break
       case 'custom':
         setShowCustomDates(true)
@@ -204,7 +214,7 @@ export default function ReportsPage() {
   const generateSalesCSV = (data: any) => {
     let csv = 'Date,Sale ID,Cashier,Total,Payment Method,Status\n'
     data.sales?.forEach((sale: any) => {
-      csv += `${new Date(sale.sale_date).toLocaleDateString()},${sale.id},${sale.cashier_name || 'N/A'},${sale.total_amount},${sale.payment_method},${sale.payment_status}\n`
+      csv += `${new Date(sale.sale_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })},${sale.id},${sale.cashier_name || 'N/A'},${sale.total_amount},${sale.payment_method},${sale.payment_status}\n`
     })
     return csv
   }
@@ -212,7 +222,7 @@ export default function ReportsPage() {
   const generateExpensesCSV = (data: any) => {
     let csv = 'Date,Category,Description,Amount,Payment Method\n'
     data.expenses?.forEach((exp: any) => {
-      csv += `${new Date(exp.expense_date).toLocaleDateString()},${exp.category},${exp.description},${exp.amount},${exp.payment_method || 'N/A'}\n`
+      csv += `${new Date(exp.expense_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })},${exp.category},${exp.description},${exp.amount},${exp.payment_method || 'N/A'}\n`
     })
     return csv
   }

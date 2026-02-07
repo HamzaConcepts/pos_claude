@@ -73,6 +73,9 @@ export default function POSPage() {
 
   // Receipt type setting (loaded from localStorage)
   const [receiptType, setReceiptType] = useState<'pdf' | 'thermal'>('pdf')
+  
+  // Receipt settings for preview
+  const [receiptSettings, setReceiptSettings] = useState<any>(null)
 
   // Barcode scanner detection - scanners type fast and send Enter
   // Auto-select product when barcode is scanned (no confirmation needed)
@@ -144,6 +147,7 @@ export default function POSPage() {
     fetchCurrentUser()
     loadSelectedCashier()
     fetchAllCustomers()
+    fetchReceiptSettings()
     // Load receipt type from localStorage
     const savedReceiptType = localStorage.getItem('pos_receipt_type')
     if (savedReceiptType === 'thermal' || savedReceiptType === 'pdf') {
@@ -175,6 +179,22 @@ export default function POSPage() {
       }
     } catch (err) {
       console.error('Failed to fetch customers:', err)
+    }
+  }
+
+  const fetchReceiptSettings = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/receipt-settings?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setReceiptSettings(result.data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch receipt settings:', err)
     }
   }
 
@@ -296,11 +316,20 @@ export default function POSPage() {
 
   useEffect(() => {
     if (searchTerm) {
-      const filtered = products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.sku.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      const searchLower = searchTerm.toLowerCase()
+      const filtered = products.filter((p) => {
+        const nameLower = p.name.toLowerCase()
+        const skuLower = p.sku.toLowerCase()
+        
+        // Check if SKU starts with search term
+        if (skuLower.startsWith(searchLower)) {
+          return true
+        }
+        
+        // Check if any word in the product name starts with the search term
+        const words = nameLower.split(/\s+/)
+        return words.some(word => word.startsWith(searchLower))
+      })
       setFilteredProducts(filtered.slice(0, 10))
       setHighlightedIndex(-1) // Reset highlighted index when results change
     } else {
@@ -763,8 +792,16 @@ export default function POSPage() {
         <div className="p-2 bg-white text-black">
           {/* Header */}
           <div className="text-center border-b border-dashed border-black pb-2 mb-2">
-            <p className="font-bold text-base">POS SYSTEM</p>
-            <p className="text-xs">Sales Receipt</p>
+            <p className="font-bold text-base">{receiptSettings?.business_name || 'POS SYSTEM'}</p>
+            {receiptSettings?.business_address && (
+              <p className="text-xs mt-1">{receiptSettings.business_address}</p>
+            )}
+            {receiptSettings?.business_phone && (
+              <p className="text-xs">Tel: {receiptSettings.business_phone}</p>
+            )}
+            {receiptSettings?.show_tax_id && receiptSettings?.tax_id && (
+              <p className="text-[9px] mt-0.5">Tax ID: {receiptSettings.tax_id}</p>
+            )}
           </div>
 
           {/* Sale Info */}
@@ -777,8 +814,9 @@ export default function POSPage() {
                 </tr>
                 <tr>
                   <td className="py-0.5">Date:</td>
-                  <td className="text-right py-0.5">{new Date(lastSale.sale_date).toLocaleString('en-US', { 
-                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                  <td className="text-right py-0.5">{new Date(lastSale.sale_date).toLocaleString('en-PK', { 
+                    timeZone: 'Asia/Karachi',
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true 
                   })}</td>
                 </tr>
                 <tr>
@@ -907,9 +945,12 @@ export default function POSPage() {
 
           {/* Footer */}
           <div className="text-center mt-3 pt-2 border-t border-dashed border-black">
-            <p className="font-bold">Thank you!</p>
+            <p className="font-bold">{receiptSettings?.thank_you_message || 'Thank you!'}</p>
+            {receiptSettings?.return_policy && (
+              <p className="text-[9px] mt-1 text-gray-600">{receiptSettings.return_policy}</p>
+            )}
             <p className="text-[10px] mt-1">
-              {new Date().toLocaleDateString()}
+              {new Date().toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
             </p>
           </div>
         </div>
@@ -921,8 +962,21 @@ export default function POSPage() {
       <div className="max-w-md mx-auto" id="receipt">
         <div className="p-6 bg-white text-black">
           <div className="text-center mb-4 pb-4 border-b-2 border-black">
-            <h1 className="text-2xl font-bold">POS System</h1>
-            <p className="text-sm">Sales Receipt</p>
+            <h1 className="text-2xl font-bold">{receiptSettings?.business_name || 'POS System'}</h1>
+            {receiptSettings?.business_address && (
+              <p className="text-sm mt-1">{receiptSettings.business_address}</p>
+            )}
+            <div className="text-xs mt-2">
+              {receiptSettings?.business_phone && (
+                <p>Tel: {receiptSettings.business_phone}</p>
+              )}
+              {receiptSettings?.business_email && (
+                <p>{receiptSettings.business_email}</p>
+              )}
+              {receiptSettings?.show_tax_id && receiptSettings?.tax_id && (
+                <p className="mt-1">Tax ID: {receiptSettings.tax_id}</p>
+              )}
+            </div>
           </div>
 
           <table className="w-full text-sm mb-4">
@@ -933,7 +987,7 @@ export default function POSPage() {
               </tr>
               <tr>
                 <td className="py-1 text-gray-600">Date:</td>
-                <td className="py-1 text-right">{new Date(lastSale.sale_date).toLocaleString()}</td>
+                <td className="py-1 text-right">{new Date(lastSale.sale_date).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', hour12: true })}</td>
               </tr>
               <tr>
                 <td className="py-1 text-gray-600">Cashier:</td>
@@ -1088,7 +1142,10 @@ export default function POSPage() {
 
           {/* Footer */}
           <div className="text-center mt-4 pt-4 border-t border-gray-300">
-            <p className="font-medium">Thank you for your business!</p>
+            <p className="font-medium">{receiptSettings?.thank_you_message || 'Thank you for your business!'}</p>
+            {receiptSettings?.return_policy && (
+              <p className="text-xs mt-2 text-gray-600">{receiptSettings.return_policy}</p>
+            )}
           </div>
         </div>
       </div>

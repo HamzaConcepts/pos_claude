@@ -586,12 +586,12 @@ export default function InventoryPage() {
                                     
                                     <div>
                                       <span className="text-gray-600 text-xs">Created:</span>
-                                      <p className="text-sm text-gray-900">{new Date(product.created_at).toLocaleDateString()}</p>
+                                      <p className="text-sm text-gray-900">{new Date(product.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
                                     </div>
                                     
                                     <div>
                                       <span className="text-gray-600 text-xs">Updated:</span>
-                                      <p className="text-sm text-gray-900">{new Date(product.updated_at).toLocaleDateString()}</p>
+                                      <p className="text-sm text-gray-900">{new Date(product.updated_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
                                     </div>
                                   </div>
                                 </div>
@@ -632,7 +632,7 @@ export default function InventoryPage() {
                                               <div>
                                                 <span className="text-gray-600">Date:</span>
                                                 <div className="font-medium text-gray-900">
-                                                  {new Date(batch.purchase_date).toLocaleDateString()}
+                                                  {new Date(batch.purchase_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                                                 </div>
                                               </div>
                                               <div>

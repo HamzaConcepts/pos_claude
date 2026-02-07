@@ -7,6 +7,7 @@ import { getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import PrintReceiptButton from '@/components/PrintReceiptButton'
+import { getPKTDate } from '@/lib/date-utils'
 
 
 export default function SalesPage() {
@@ -30,7 +31,7 @@ export default function SalesPage() {
   const [endDate, setEndDate] = useState('')
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [pdfPeriod, setPdfPeriod] = useState<'day' | 'month' | 'year'>('day')
-  const [pdfDate, setPdfDate] = useState(new Date().toISOString().split('T')[0])
+  const [pdfDate, setPdfDate] = useState(getPKTDate())
   const [pdfCashierId, setPdfCashierId] = useState('')
   const [pdfCustomerId, setPdfCustomerId] = useState('')
   const [generatingPdf, setGeneratingPdf] = useState(false)
@@ -60,6 +61,9 @@ export default function SalesPage() {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [reviewingSale, setReviewingSale] = useState<any>(null)
   const [reviewNote, setReviewNote] = useState('')
+  
+  // Receipt settings for preview
+  const [receiptSettings, setReceiptSettings] = useState<any>(null)
 
   useEffect(() => {
     // Check user role
@@ -73,6 +77,7 @@ export default function SalesPage() {
     fetchCashiers()
     fetchProducts()
     fetchCustomers()
+    fetchReceiptSettings()
   }, [])
 
   useEffect(() => {
@@ -148,6 +153,22 @@ export default function SalesPage() {
       }
     } catch (err) {
       console.error('Failed to fetch customers')
+    }
+  }
+
+  const fetchReceiptSettings = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/receipt-settings?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setReceiptSettings(result.data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch receipt settings:', err)
     }
   }
 
@@ -528,12 +549,14 @@ export default function SalesPage() {
                           </div>
                         </td>
                         <td className={`px-3 py-2.5 hidden md:table-cell text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          {new Date(sale.sale_date).toLocaleString('en-US', {
+                          {new Date(sale.sale_date).toLocaleString('en-PK', {
+                            timeZone: 'Asia/Karachi',
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
                             hour: '2-digit',
-                            minute: '2-digit'
+                            minute: '2-digit',
+                            hour12: true
                           })}
                         </td>
                         <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.cashier_name || 'Unknown'}</td>
@@ -646,7 +669,8 @@ export default function SalesPage() {
                                   <div>
                                     <span className="text-gray-600">Date:</span>
                                     <span className="ml-2 font-medium text-gray-900">
-                                      {new Date(sale.sale_date).toLocaleDateString('en-US', {
+                                      {new Date(sale.sale_date).toLocaleDateString('en-PK', {
+                                        timeZone: 'Asia/Karachi',
                                         month: 'short',
                                         day: 'numeric',
                                         year: 'numeric',
@@ -723,7 +747,8 @@ export default function SalesPage() {
                                 <div className="p-3 border border-gray-200 rounded bg-white">
                                   <div className="text-xs text-gray-600 mb-1">Sale Date</div>
                                   <div className="font-semibold text-sm text-gray-900">
-                                    {new Date(sale.sale_date).toLocaleString('en-US', {
+                                    {new Date(sale.sale_date).toLocaleString('en-PK', {
+                                      timeZone: 'Asia/Karachi',
                                       month: 'long',
                                       day: 'numeric',
                                       year: 'numeric',
@@ -807,7 +832,8 @@ export default function SalesPage() {
                                         {(sale as any).payments.map((payment: any, idx: number) => (
                                           <tr key={payment.id} className="border-b border-gray-100 bg-white hover:bg-gray-50">
                                             <td className="px-3 py-2 text-gray-900">
-                                              {new Date(payment.payment_date).toLocaleString('en-US', {
+                                              {new Date(payment.payment_date).toLocaleString('en-PK', {
+                                                timeZone: 'Asia/Karachi',
                                                 month: 'short',
                                                 day: 'numeric',
                                                 year: 'numeric',
@@ -890,7 +916,8 @@ export default function SalesPage() {
                 <div>
                   <span className="font-semibold text-gray-700">Date:</span>{' '}
                   <span className="text-gray-900">
-                  {new Date(editingSale.sale_date).toLocaleString('en-US', {
+                  {new Date(editingSale.sale_date).toLocaleString('en-PK', {
+                    timeZone: 'Asia/Karachi',
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
@@ -1131,8 +1158,21 @@ export default function SalesPage() {
             {/* Receipt Content */}
             <div className="p-6">
               <div className="text-center mb-5">
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">POS System</h1>
-                <h2 className="text-lg text-gray-700">Sales Receipt</h2>
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">{receiptSettings?.business_name || 'POS System'}</h1>
+                {receiptSettings?.business_address && (
+                  <p className="text-sm text-gray-600 mt-1">{receiptSettings.business_address}</p>
+                )}
+                <div className="text-xs text-gray-600 mt-2">
+                  {receiptSettings?.business_phone && (
+                    <p>Tel: {receiptSettings.business_phone}</p>
+                  )}
+                  {receiptSettings?.business_email && (
+                    <p>{receiptSettings.business_email}</p>
+                  )}
+                  {receiptSettings?.show_tax_id && receiptSettings?.tax_id && (
+                    <p className="mt-1">Tax ID: {receiptSettings.tax_id}</p>
+                  )}
+                </div>
               </div>
 
               <div className="mb-5 border-t border-b border-gray-200 py-4">
@@ -1144,7 +1184,7 @@ export default function SalesPage() {
                   <div>
                     <p className="text-xs text-gray-600">Date</p>
                     <p className="font-medium text-gray-900">
-                      {new Date(receiptSale.sale_date).toLocaleString()}
+                      {new Date(receiptSale.sale_date).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', hour12: true })}
                     </p>
                   </div>
                   <div>
@@ -1269,7 +1309,10 @@ export default function SalesPage() {
               </div>
 
               <div className="mt-5 text-center text-sm text-gray-600">
-                <p>Thank you for your business!</p>
+                <p>{receiptSettings?.thank_you_message || 'Thank you for your business!'}</p>
+                {receiptSettings?.return_policy && (
+                  <p className="text-xs mt-2">{receiptSettings.return_policy}</p>
+                )}
               </div>
             </div>
 
@@ -1334,7 +1377,8 @@ export default function SalesPage() {
               <div>
                 <span className="font-semibold text-gray-700">Date:</span>{' '}
                 <span className="text-gray-900">
-                  {new Date(deletingSale.sale_date).toLocaleString('en-US', {
+                  {new Date(deletingSale.sale_date).toLocaleString('en-PK', {
+                    timeZone: 'Asia/Karachi',
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
@@ -1400,7 +1444,8 @@ export default function SalesPage() {
               <div>
                 <span className="font-semibold text-gray-700">Date:</span>{' '}
                 <span className="text-gray-900">
-                  {new Date(reviewingSale.sale_date).toLocaleString('en-US', {
+                  {new Date(reviewingSale.sale_date).toLocaleString('en-PK', {
+                    timeZone: 'Asia/Karachi',
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',

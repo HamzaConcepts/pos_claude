@@ -282,7 +282,7 @@ export async function generateSalesPDF(
       </table>
 
       <div class="footer">
-        Generated on ${new Date().toLocaleString('en-US')}
+        Generated on ${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}
       </div>
     </body>
     </html>
