@@ -14,6 +14,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
   const [labelTitle, setLabelTitle] = useState(product.name)
   const [showPrice, setShowPrice] = useState(true)
   const [quantity, setQuantity] = useState<number | ''>(product.stock_quantity || 1)
+  const [printMode, setPrintMode] = useState<'individual' | 'grid'>('individual')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -114,7 +115,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
 
       if (result.success && result.labels) {
         // Generate PDF client-side
-        await generateAndOpenPDF(result.labels)
+        await generateAndOpenPDF(result.labels, printMode)
         onClose()
       } else {
         setError(result.error || 'Failed to generate labels')
@@ -127,10 +128,136 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
     }
   }
 
-  const generateAndOpenPDF = async (labels: any[]) => {
+  const generateAndOpenPDF = async (labels: any[], mode: 'individual' | 'grid' = 'individual') => {
     // Dynamic import to avoid SSR issues
     const jsPDF = (await import('jspdf')).default
     const JsBarcode = (await import('jsbarcode')).default
+
+    if (mode === 'grid') {
+      // A4 Grid Mode
+      await generateA4GridPDF(labels, jsPDF, JsBarcode)
+    } else {
+      // Individual Label Mode (Original)
+      await generateIndividualLabelsPDF(labels, jsPDF, JsBarcode)
+    }
+  }
+
+  const generateA4GridPDF = async (labels: any[], jsPDF: any, JsBarcode: any) => {
+    // A4 dimensions in points (72 DPI): 595.28 x 841.89
+    const pageWidth = 595.28
+    const pageHeight = 841.89
+
+    // Label dimensions (50mm x 25mm converted to points)
+    const labelWidth = 50 * 2.83465 // ~141.73 points
+    const labelHeight = 25 * 2.83465 // ~70.87 points
+
+    // Grid configuration (4 columns x 11 rows)
+    const cols = 4
+    const rows = 11
+    const marginX = (pageWidth - (cols * labelWidth)) / (cols + 1)
+    const marginY = (pageHeight - (rows * labelHeight)) / (rows + 1)
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: 'a4',
+    })
+
+    let labelIndex = 0
+    let pageIndex = 0
+
+    while (labelIndex < labels.length) {
+      if (pageIndex > 0) {
+        doc.addPage()
+      }
+
+      // Draw grid of labels on current page
+      for (let row = 0; row < rows && labelIndex < labels.length; row++) {
+        for (let col = 0; col < cols && labelIndex < labels.length; col++) {
+          const label = labels[labelIndex]
+          const x = marginX + col * (labelWidth + marginX)
+          const y = marginY + row * (labelHeight + marginY)
+
+          await drawLabelAt(doc, label, x, y, labelWidth, labelHeight, JsBarcode)
+          labelIndex++
+        }
+      }
+
+      pageIndex++
+    }
+
+    // Open PDF in new tab
+    const pdfBlob = doc.output('blob')
+    const pdfUrl = URL.createObjectURL(pdfBlob)
+    window.open(pdfUrl, '_blank')
+    
+    // Clean up after 1 minute
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000)
+  }
+
+  const drawLabelAt = async (
+    doc: any,
+    label: any,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    JsBarcode: any
+  ) => {
+    try {
+      // Generate barcode as data URL
+      const canvas = document.createElement('canvas')
+      
+      JsBarcode(canvas, label.barcode, {
+        format: 'CODE128',
+        width: 1.5,
+        height: 30,
+        displayValue: false,
+        margin: 0,
+      })
+
+      // Add label title
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      const titleWidth = doc.getTextWidth(label.title)
+      const titleX = x + (width - titleWidth) / 2
+      doc.text(label.title, titleX, y + 10)
+
+      // Add price if enabled
+      let currentY = y + 10
+      if (label.price !== null && label.price !== undefined) {
+        doc.setFontSize(7)
+        doc.setFont('helvetica', 'normal')
+        const priceText = `PKR ${Number(label.price).toFixed(2)}`
+        const priceWidth = doc.getTextWidth(priceText)
+        const priceX = x + (width - priceWidth) / 2
+        currentY += 10
+        doc.text(priceText, priceX, currentY)
+      }
+
+      // Add barcode image
+      const barcodeDataURL = canvas.toDataURL('image/png')
+      const barcodeY = currentY + 4
+      const barcodeWidth = width - 10
+      const barcodeHeight = 20
+      doc.addImage(barcodeDataURL, 'PNG', x + 5, barcodeY, barcodeWidth, barcodeHeight)
+
+      // Add human-readable barcode text
+      doc.setFontSize(6)
+      doc.setFont('courier', 'normal')
+      const barcodeTextWidth = doc.getTextWidth(label.barcodeText)
+      const barcodeTextX = x + (width - barcodeTextWidth) / 2
+      const textY = barcodeY + barcodeHeight + 8
+      doc.text(label.barcodeText, barcodeTextX, textY)
+
+    } catch (error) {
+      console.error('Error generating barcode for:', label.barcode, error)
+      doc.setFontSize(6)
+      doc.text('Barcode error', x + 5, y + height / 2)
+    }
+  }
+
+  const generateIndividualLabelsPDF = async (labels: any[], jsPDF: any, JsBarcode: any) => {
 
     // Label dimensions (50mm x 25mm converted to points at 72 DPI)
     // 1mm = 2.83465 points
@@ -174,7 +301,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
         if (label.price !== null && label.price !== undefined) {
           doc.setFontSize(8)
           doc.setFont('helvetica', 'normal')
-          const priceText = `Rs. ${Number(label.price).toFixed(2)}`
+          const priceText = `PKR ${Number(label.price).toFixed(2)}`
           const priceWidth = doc.getTextWidth(priceText)
           const priceX = (labelWidth - priceWidth) / 2
           doc.text(priceText, priceX, 28)
@@ -306,6 +433,43 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
                 className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"
               ></div>
             </label>
+          </div>
+
+          {/* Print Mode Selection */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Print Mode
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="printMode"
+                  value="individual"
+                  checked={printMode === 'individual'}
+                  onChange={(e) => setPrintMode('individual')}
+                  className="w-4 h-4"
+                />
+                <div>
+                  <div className="text-sm font-medium">Individual Labels</div>
+                  <div className="text-xs opacity-60">One label per page (50mm x 25mm)</div>
+                </div>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="printMode"
+                  value="grid"
+                  checked={printMode === 'grid'}
+                  onChange={(e) => setPrintMode('grid')}
+                  className="w-4 h-4"
+                />
+                <div>
+                  <div className="text-sm font-medium">A4 Grid Layout</div>
+                  <div className="text-xs opacity-60">Multiple labels on A4 paper (4x11 grid)</div>
+                </div>
+              </label>
+            </div>
           </div>
 
           {/* Quantity (only for non-phone products) */}

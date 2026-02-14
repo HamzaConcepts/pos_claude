@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, PackageIcon, CurrencyDollarIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import { useCurrency } from '@/lib/currency-context'
 
 interface SupplierKhaata {
   id: number
@@ -62,6 +63,7 @@ interface InitialSupplier {
 
 export default function SupplierKhaataPage() {
   const isDarkMode = useDarkMode()
+  const { currency, formatCurrency } = useCurrency()
   const [suppliers, setSuppliers] = useState<SupplierKhaata[]>([])
   const [initialSuppliers, setInitialSuppliers] = useState<InitialSupplier[]>([])
   const [loading, setLoading] = useState(true)
@@ -370,10 +372,10 @@ export default function SupplierKhaataPage() {
                       >
                         <td className="px-4 py-3 font-medium text-sm text-gray-900">{supplier.supplier_name}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{supplier.supplier_phone}</td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-900">Rs. {supplier.total_amount.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right text-sm text-green-600">Rs. {supplier.amount_paid.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-900">{formatCurrency(supplier.total_amount, 0)}</td>
+                        <td className="px-4 py-3 text-right text-sm text-green-600">{formatCurrency(supplier.amount_paid, 0)}</td>
                         <td className="px-4 py-3 text-right text-sm font-semibold text-red-600">
-                          Rs. {supplier.amount_remaining.toLocaleString()}
+                          {formatCurrency(supplier.amount_remaining, 0)}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className="inline-block px-2 py-1 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded text-xs font-medium">
@@ -421,13 +423,13 @@ export default function SupplierKhaataPage() {
                             {new Date(record.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                           </td>
                           <td className="px-4 py-2 text-right text-sm text-gray-900">
-                            Rs. {record.total_amount.toLocaleString()}
+                            {formatCurrency(record.total_amount, 0)}
                           </td>
                           <td className="px-4 py-2 text-right text-sm text-green-600">
-                            Rs. {record.amount_paid.toLocaleString()}
+                            {formatCurrency(record.amount_paid, 0)}
                           </td>
                           <td className="px-4 py-2 text-right text-sm font-medium text-red-600">
-                            Rs. {record.amount_remaining.toLocaleString()}
+                            {formatCurrency(record.amount_remaining, 0)}
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-600">
                             {record.notes && (
@@ -543,8 +545,8 @@ export default function SupplierKhaataPage() {
 
             <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
               <p className="text-sm text-gray-900"><strong>Supplier:</strong> {selectedRecord.supplier_name}</p>
-              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> Rs. {selectedRecord.total_amount.toLocaleString()}</p>
-              <p className="text-sm text-gray-900"><strong>Current Remaining:</strong> Rs. {selectedRecord.amount_remaining.toLocaleString()}</p>
+              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> {formatCurrency(selectedRecord.total_amount, 0)}</p>
+              <p className="text-sm text-gray-900"><strong>Current Remaining:</strong> {formatCurrency(selectedRecord.amount_remaining, 0)}</p>
             </div>
 
             <div className="space-y-4">
@@ -561,7 +563,7 @@ export default function SupplierKhaataPage() {
                 />
                 {formData.amount_paid && (
                   <p className="text-sm text-gray-600 mt-1">
-                    New Remaining: Rs. {(selectedRecord.total_amount - parseFloat(formData.amount_paid || '0')).toLocaleString()}
+                    New Remaining: {formatCurrency(selectedRecord.total_amount - parseFloat(formData.amount_paid || '0'), 0)}
                   </p>
                 )}
               </div>
@@ -651,9 +653,9 @@ export default function SupplierKhaataPage() {
             <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
               <p className="text-sm text-gray-900"><strong>Supplier:</strong> {selectedForPayment.supplier_name}</p>
               <p className="text-sm text-gray-900"><strong>Phone:</strong> {selectedForPayment.supplier_phone}</p>
-              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> Rs. {selectedForPayment.total_amount.toLocaleString()}</p>
-              <p className="text-sm text-gray-900"><strong>Amount Paid:</strong> Rs. {selectedForPayment.amount_paid.toLocaleString()}</p>
-              <p className="text-sm text-red-600 font-semibold"><strong>Remaining Balance:</strong> Rs. {selectedForPayment.amount_remaining.toLocaleString()}</p>
+              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> {formatCurrency(selectedForPayment.total_amount, 0)}</p>
+              <p className="text-sm text-gray-900"><strong>Amount Paid:</strong> {formatCurrency(selectedForPayment.amount_paid, 0)}</p>
+              <p className="text-sm text-red-600 font-semibold"><strong>Remaining Balance:</strong> {formatCurrency(selectedForPayment.amount_remaining, 0)}</p>
             </div>
 
             <div className="space-y-4">
@@ -671,7 +673,7 @@ export default function SupplierKhaataPage() {
                 />
                 {paymentFormData.payment_amount && (
                   <p className="text-sm text-gray-600 mt-1">
-                    New Remaining: Rs. {(selectedForPayment.amount_remaining - parseFloat(paymentFormData.payment_amount || '0')).toLocaleString()}
+                    New Remaining: {formatCurrency(selectedForPayment.amount_remaining - parseFloat(paymentFormData.payment_amount || '0'), 0)}
                   </p>
                 )}
               </div>

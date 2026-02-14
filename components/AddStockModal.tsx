@@ -964,7 +964,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 
                 <div className="p-3 bg-blue-50 rounded border border-blue-300 mb-4">
                   <p className="text-sm text-blue-800">
-                    <strong>Total Amount:</strong> Rs. {formData.cost_price && formData.quantity ? 
+                    <strong>Total Amount:</strong> PKR {formData.cost_price && formData.quantity ? 
                       (parseFloat(formData.cost_price) * parseInt(formData.quantity)).toLocaleString() : '0'}
                   </p>
                 </div>
@@ -1039,7 +1039,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                     {parseFloat(formData.amount_paid) < (parseFloat(formData.cost_price) * parseInt(formData.quantity)) ? (
                       <div className="p-3 bg-yellow-50 rounded border border-yellow-300">
                         <p className="text-sm text-yellow-800">
-                          <strong>Remaining:</strong> Rs. {(
+                          <strong>Remaining:</strong> PKR {(
                             (parseFloat(formData.cost_price) * parseInt(formData.quantity)) - parseFloat(formData.amount_paid)
                           ).toLocaleString()}
                         </p>

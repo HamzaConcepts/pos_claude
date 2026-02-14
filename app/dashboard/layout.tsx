@@ -7,6 +7,7 @@ import type { UserRole } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
 import MobileBottomNav from '@/components/MobileBottomNav'
 import { useSwipeable } from 'react-swipeable'
+import { CurrencyProvider } from '@/lib/currency-context'
 
 export default function DashboardLayout({
   children,
@@ -170,15 +171,17 @@ export default function DashboardLayout({
 
   // User is authenticated, show dashboard
   return (
-    <div className={`flex flex-row min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#F5F5F5]'}`}>
-      <Sidebar userRole={user.role} userName={user.name} />
-      <main 
-        {...swipeHandlers}
-        className={`flex-1 p-4 sm:p-5 md:p-6 pb-20 lg:pb-6 transition-all duration-300 lg:ml-[var(--sidebar-width,13rem)] ${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#F5F5F5]'}`}
-      >
-        {children}
-      </main>
-      <MobileBottomNav userRole={user.role} />
-    </div>
+    <CurrencyProvider>
+      <div className={`flex flex-row min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#F5F5F5]'}`}>
+        <Sidebar userRole={user.role} userName={user.name} />
+        <main 
+          {...swipeHandlers}
+          className={`flex-1 p-4 sm:p-5 md:p-6 pb-20 lg:pb-6 transition-all duration-300 lg:ml-[var(--sidebar-width,13rem)] ${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#F5F5F5]'}`}
+        >
+          {children}
+        </main>
+        <MobileBottomNav userRole={user.role} />
+      </div>
+    </CurrencyProvider>
   )
 }

@@ -331,7 +331,7 @@ export default function StoreExpensesPage() {
                           <div className="font-medium">{expense.name}</div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          Rs. {expense.default_amount.toLocaleString()}
+                          PKR {expense.default_amount.toLocaleString()}
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-sm text-gray-600">

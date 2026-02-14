@@ -48,6 +48,7 @@ interface Subcategory {
 interface StoreInfo {
   store_code: string
   store_name: string
+  currency: string
 }
 
 interface Cashier {
@@ -126,7 +127,17 @@ export default function StorePage() {
   const [teamSubTab, setTeamSubTab] = useState<'users' | 'cashiers'>('users')
   const [productsSubTab, setProductsSubTab] = useState<'categories' | 'initial-stock'>('categories')
   const [partnersSubTab, setPartnersSubTab] = useState<'initial-suppliers' | 'initial-customers'>('initial-suppliers')
-  const [settingsSubTab, setSettingsSubTab] = useState<'info' | 'expenses'>('info')
+  const [settingsSubTab, setSettingsSubTab] = useState<'info' | 'expenses' | 'withdrawals'>('info')
+  
+  // Owner Withdrawals state
+  const [withdrawals, setWithdrawals] = useState<any[]>([])
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false)
+  const [withdrawalForm, setWithdrawalForm] = useState({
+    amount: '',
+    withdrawal_from: 'Cash',
+    description: '',
+    withdrawal_date: new Date().toISOString().split('T')[0]
+  })
 
   useEffect(() => {
     fetchAllData()
@@ -142,7 +153,8 @@ export default function StorePage() {
       fetchCashiersForUserTab(),
       fetchSuppliers(),
       fetchInitialCustomers(),
-      fetchInitialSuppliers()
+      fetchInitialSuppliers(),
+      fetchWithdrawals()
     ])
   }
 
@@ -308,6 +320,93 @@ export default function StorePage() {
       }
     } catch (err) {
       console.error('Error fetching suppliers:', err)
+    }
+  }
+
+  const fetchWithdrawals = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/owner-withdrawals?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setWithdrawals(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching withdrawals:', err)
+    }
+  }
+
+  const createWithdrawal = async () => {
+    try {
+      if (!withdrawalForm.amount || parseFloat(withdrawalForm.amount) <= 0) {
+        alert('Please enter a valid amount')
+        return
+      }
+
+      const storeId = getStoreId()
+      if (!storeId) {
+        alert('Store ID not found')
+        return
+      }
+
+      const response = await fetch('/api/owner-withdrawals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store_id: storeId,
+          amount: parseFloat(withdrawalForm.amount),
+          withdrawal_from: withdrawalForm.withdrawal_from,
+          description: withdrawalForm.description,
+          withdrawal_date: withdrawalForm.withdrawal_date,
+          recorded_by: null // Will be set by the API from the auth session
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        alert('Withdrawal recorded successfully')
+        setShowWithdrawalModal(false)
+        setWithdrawalForm({
+          amount: '',
+          withdrawal_from: 'Cash',
+          description: '',
+          withdrawal_date: new Date().toISOString().split('T')[0]
+        })
+        await fetchWithdrawals()
+      } else {
+        alert('Error: ' + result.error)
+      }
+    } catch (err: any) {
+      console.error('Error creating withdrawal:', err)
+      alert('Failed to create withdrawal: ' + err.message)
+    }
+  }
+
+  const deleteWithdrawal = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this withdrawal?')) return
+
+    try {
+      const response = await fetch(`/api/owner-withdrawals?id=${id}`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        alert('Withdrawal deleted successfully')
+        await fetchWithdrawals()
+      } else {
+        alert('Error: ' + result.error)
+      }
+    } catch (err: any) {
+      console.error('Error deleting withdrawal:', err)
+      alert('Failed to delete withdrawal: ' + err.message)
     }
   }
 
@@ -553,6 +652,15 @@ export default function StorePage() {
                 : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
             }`}>
             Expense Types
+          </button>
+          <button
+            onClick={() => setSettingsSubTab('withdrawals')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              settingsSubTab === 'withdrawals'
+                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
+                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+            }`}>
+            Owner Withdrawals
           </button>
         </div>
       )}
@@ -860,6 +968,197 @@ export default function StorePage() {
         </div>
       )}
 
+      {/* Settings Tab - Owner Withdrawals */}
+      {activeTab === 'settings' && settingsSubTab === 'withdrawals' && (
+        <div className={`rounded border p-6 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Owner Withdrawals</h2>
+              <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Record money withdrawn from cash or bank. These do NOT affect profit/loss.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowWithdrawalModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700"
+            >
+              <PlusIcon size={18} />
+              Record Withdrawal
+            </button>
+          </div>
+
+          {/* Info Banner */}
+          <div className={`mb-6 p-4 rounded border ${isDarkMode ? 'bg-blue-900/20 border-blue-700/50' : 'bg-blue-50 border-blue-200'}`}>
+            <p className={`text-sm ${isDarkMode ? 'text-blue-400' : 'text-blue-700'}`}>
+              <strong>Important:</strong> Owner withdrawals only reduce cash in hand or bank balance. They do not affect profit/loss calculations since they are capital outflows, not business expenses.
+            </p>
+          </div>
+
+          {/* Withdrawals List */}
+          {withdrawals.length === 0 ? (
+            <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              No withdrawals recorded yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className={`border-b ${isDarkMode ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Amount</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">From</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Description</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Recorded By</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {withdrawals.map((withdrawal: any) => (
+                    <tr
+                      key={withdrawal.id}
+                      className={`border-b ${isDarkMode ? 'border-gray-700 bg-gray-800 hover:bg-gray-750' : 'border-gray-100 bg-white hover:bg-gray-50'}`}
+                    >
+                      <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                        {new Date(withdrawal.withdrawal_date).toLocaleDateString('en-PK', {
+                          timeZone: 'Asia/Karachi',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </td>
+                      <td className={`px-4 py-3 text-sm font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                        PKR {withdrawal.amount.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                          withdrawal.withdrawal_from === 'Cash'
+                            ? isDarkMode ? 'bg-green-900/30 text-green-400 border border-green-700' : 'bg-green-100 text-green-700 border border-green-300'
+                            : isDarkMode ? 'bg-blue-900/30 text-blue-400 border border-blue-700' : 'bg-blue-100 text-blue-700 border border-blue-300'
+                        }`}>
+                          {withdrawal.withdrawal_from}
+                        </span>
+                      </td>
+                      <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                        {withdrawal.description || '-'}
+                      </td>
+                      <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {withdrawal.recorded_by_name || 'System'}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => deleteWithdrawal(withdrawal.id)}
+                          className={`p-1.5 rounded hover:bg-red-100 ${isDarkMode ? 'text-red-400 hover:bg-red-900/30' : 'text-red-600'}`}
+                        >
+                          <TrashIcon size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Withdrawal Modal */}
+      {showWithdrawalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className={`rounded-lg p-6 max-w-md w-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Record Owner Withdrawal</h3>
+              <button
+                onClick={() => setShowWithdrawalModal(false)}
+                className={`p-1 rounded ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+              >
+                <XIcon size={20} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Amount <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={withdrawalForm.amount}
+                  onChange={(e) => setWithdrawalForm({ ...withdrawalForm, amount: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  placeholder="Enter amount"
+                />
+              </div>
+
+              <div>
+                <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Withdraw From <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={withdrawalForm.withdrawal_from}
+                  onChange={(e) => setWithdrawalForm({ ...withdrawalForm, withdrawal_from: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Bank">Bank</option>
+                </select>
+              </div>
+
+              <div>
+                <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Date <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={withdrawalForm.withdrawal_date}
+                  onChange={(e) => setWithdrawalForm({ ...withdrawalForm, withdrawal_date: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={withdrawalForm.description}
+                  onChange={(e) => setWithdrawalForm({ ...withdrawalForm, description: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 ${
+                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                  rows={3}
+                  placeholder="Enter description (optional)"
+                />
+              </div>
+
+              <div className="flex gap-2 mt-6">
+                <button
+                  onClick={createWithdrawal}
+                  className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700"
+                >
+                  Record Withdrawal
+                </button>
+                <button
+                  onClick={() => setShowWithdrawalModal(false)}
+                  className={`flex-1 px-4 py-2 rounded ${
+                    isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                  }`}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Category Modal */}
       {showCategoryModal && (
         <CategoryModal
@@ -1102,6 +1401,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
 function StoreInfoTab({ storeInfo, onRefresh }: any) {
   const [editing, setEditing] = useState(false)
   const [storeCode, setStoreCode] = useState(storeInfo?.store_code || '')
+  const [currency, setCurrency] = useState(storeInfo?.currency || 'PKR')
   const [saving, setSaving] = useState(false)
   const [cashiers, setCashiers] = useState<any[]>([])
   const [loadingCashiers, setLoadingCashiers] = useState(true)
@@ -1115,6 +1415,14 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
       setReceiptType(savedReceiptType)
     }
   }, [])
+
+  // Update state when storeInfo changes
+  useEffect(() => {
+    if (storeInfo) {
+      setStoreCode(storeInfo.store_code || '')
+      setCurrency(storeInfo.currency || 'PKR')
+    }
+  }, [storeInfo])
 
   const fetchCashiers = async () => {
     try {
@@ -1145,7 +1453,11 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
       const response = await fetch('/api/store-info', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ store_id: storeId, store_code: storeCode.trim() })
+        body: JSON.stringify({ 
+          store_id: storeId, 
+          store_code: storeCode.trim(),
+          currency: currency 
+        })
       })
 
       const result = await response.json()
@@ -1153,11 +1465,13 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
       if (result.success) {
         setEditing(false)
         onRefresh()
+        // Dispatch custom event to update currency in context
+        window.dispatchEvent(new Event('currencyUpdated'))
       } else {
-        alert(result.error || 'Failed to update store code')
+        alert(result.error || 'Failed to update store settings')
       }
     } catch (err) {
-      alert('Failed to update store code')
+      alert('Failed to update store settings')
     } finally {
       setSaving(false)
     }
@@ -1213,6 +1527,7 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                     onClick={() => {
                       setEditing(false)
                       setStoreCode(storeInfo?.store_code || '')
+                      setCurrency(storeInfo?.currency || 'PKR')
                     }}
                     className="px-3 py-1.5 border border-gray-200 rounded hover:bg-gray-100 text-xs"
                   >
@@ -1231,6 +1546,39 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                   </button>
                 </div>
               )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">Store Currency</label>
+              {editing ? (
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm"
+                >
+                  <option value="PKR">PKR - Pakistani Rupee</option>
+                  <option value="USD">USD - US Dollar</option>
+                  <option value="EUR">EUR - Euro</option>
+                  <option value="GBP">GBP - British Pound</option>
+                  <option value="INR">INR - Indian Rupee</option>
+                  <option value="AED">AED - UAE Dirham</option>
+                  <option value="SAR">SAR - Saudi Riyal</option>
+                  <option value="CAD">CAD - Canadian Dollar</option>
+                  <option value="AUD">AUD - Australian Dollar</option>
+                </select>
+              ) : (
+                <div className="flex items-center justify-between p-2 bg-gray-100 rounded border border-gray-300">
+                  <span className="text-sm font-mono">{storeInfo?.currency || 'PKR'}</span>
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center gap-1 px-2 py-1 bg-white border border-black rounded hover:bg-gray-50 text-xs"
+                  >
+                    <PencilSimpleIcon size={12} />
+                    Edit
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-text-secondary mt-1">Currency used throughout the app</p>
             </div>
           </div>
         </div>
@@ -2330,7 +2678,7 @@ function InitialCustomersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
         <div className="p-4 bg-gray-50 border-b-2 border-black flex justify-between items-center">
           <div>
             <h2 className="text-lg font-bold">Initial Customer Balances</h2>
-            <p className="text-sm text-gray-600">Total Owed: Rs. {totalOwed.toFixed(2)}</p>
+            <p className="text-sm text-gray-600">Total Owed: PKR {totalOwed.toFixed(2)}</p>
           </div>
           <button
             onClick={onAddEntry}
@@ -2373,7 +2721,7 @@ function InitialCustomersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
                         )}
                         <div>
                           <span className="text-gray-600">Amount Owed:</span>
-                          <span className="ml-2 font-bold text-red-600">Rs. {entry.amount_owed.toFixed(2)}</span>
+                          <span className="ml-2 font-bold text-red-600">PKR {entry.amount_owed.toFixed(2)}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Added:</span>
@@ -2456,7 +2804,7 @@ function InitialSuppliersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
         <div className="p-4 bg-gray-50 border-b-2 border-black flex justify-between items-center">
           <div>
             <h2 className="text-lg font-bold">Initial Supplier Balances</h2>
-            <p className="text-sm text-gray-600">Total Owed: Rs. {totalOwed.toFixed(2)}</p>
+            <p className="text-sm text-gray-600">Total Owed: PKR {totalOwed.toFixed(2)}</p>
           </div>
           <button
             onClick={onAddEntry}
@@ -2505,7 +2853,7 @@ function InitialSuppliersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
                         )}
                         <div>
                           <span className="text-gray-600">Amount Owed:</span>
-                          <span className="ml-2 font-bold text-red-600">Rs. {entry.amount_owed.toFixed(2)}</span>
+                          <span className="ml-2 font-bold text-red-600">PKR {entry.amount_owed.toFixed(2)}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Added:</span>

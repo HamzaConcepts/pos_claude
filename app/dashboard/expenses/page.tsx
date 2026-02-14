@@ -6,6 +6,7 @@ import { supabase, getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { getPKTDate } from '@/lib/date-utils'
+import { useCurrency } from '@/lib/currency-context'
 
 interface Expense {
   id: number
@@ -78,6 +79,7 @@ const getCategoryStyle = (category: string, isDark: boolean): string => {
 export default function ExpensesPage() {
   const router = useRouter()
   const isDarkMode = useDarkMode()
+  const { currency, formatCurrency } = useCurrency()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [predefinedExpenses, setPredefinedExpenses] = useState<PredefinedExpense[]>([])
   const [loading, setLoading] = useState(true)
@@ -204,13 +206,18 @@ export default function ExpensesPage() {
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const startOfYear = new Date(today.getFullYear(), 0, 1)
 
-    const todayExpenses = expenses.filter(e => 
+    // EXCLUDE inventory-related expenses from operating expense calculations
+    const operatingExpenses = expenses.filter(e => 
+      e.category !== 'new_product' && e.category !== 'inventory_restock'
+    )
+
+    const todayExpenses = operatingExpenses.filter(e => 
       new Date(e.expense_date).toDateString() === today.toDateString()
     )
-    const monthExpenses = expenses.filter(e => 
+    const monthExpenses = operatingExpenses.filter(e => 
       new Date(e.expense_date) >= startOfMonth
     )
-    const yearExpenses = expenses.filter(e => 
+    const yearExpenses = operatingExpenses.filter(e => 
       new Date(e.expense_date) >= startOfYear
     )
 
@@ -218,7 +225,7 @@ export default function ExpensesPage() {
       today: todayExpenses.reduce((sum, e) => sum + e.amount, 0),
       month: monthExpenses.reduce((sum, e) => sum + e.amount, 0),
       year: yearExpenses.reduce((sum, e) => sum + e.amount, 0),
-      total: expenses.reduce((sum, e) => sum + e.amount, 0)
+      total: operatingExpenses.reduce((sum, e) => sum + e.amount, 0)
     }
   }
 
@@ -489,7 +496,7 @@ export default function ExpensesPage() {
             <CurrencyDollarIcon className="text-red-600" size={16} />
           </div>
           <div className="text-lg font-semibold text-red-600">
-            ${stats.today.toFixed(2)}
+            {formatCurrency(stats.today, 2)}
           </div>
         </div>
 
@@ -499,7 +506,7 @@ export default function ExpensesPage() {
             <CalendarIcon className="text-red-600" size={16} />
           </div>
           <div className="text-lg font-semibold text-red-600">
-            ${stats.month.toFixed(2)}
+            {formatCurrency(stats.month, 2)}
           </div>
         </div>
 
@@ -509,7 +516,7 @@ export default function ExpensesPage() {
             <TrendUpIcon className="text-red-600" size={16} />
           </div>
           <div className="text-lg font-semibold text-red-600">
-            ${stats.year.toFixed(2)}
+            {formatCurrency(stats.year, 2)}
           </div>
         </div>
 
@@ -519,7 +526,7 @@ export default function ExpensesPage() {
             <CurrencyDollarIcon className="text-red-600" size={16} />
           </div>
           <div className="text-lg font-semibold text-red-600">
-            ${stats.total.toFixed(2)}
+            {formatCurrency(stats.total, 2)}
           </div>
         </div>
       </div>
@@ -527,12 +534,15 @@ export default function ExpensesPage() {
       {/* Expenses List */}
       <div className={`rounded border overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
         <div className={`p-4 border-b ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Recent Expenses</h2>
+          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Operating Expenses</h2>
+          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            Rent, utilities, salaries, and other operational costs (inventory purchases tracked separately)
+          </p>
         </div>
         
-        {expenses.length === 0 ? (
+        {expenses.filter(e => e.category !== 'new_product' && e.category !== 'inventory_restock').length === 0 ? (
           <div className="p-6 text-center text-gray-500 text-sm">
-            No expenses recorded yet. Click "Add Expense" to get started.
+            No operating expenses recorded yet. Click "Add Expense" to get started.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -549,7 +559,7 @@ export default function ExpensesPage() {
                 </tr>
               </thead>
               <tbody>
-                {expenses.map((expense, index) => (
+                {expenses.filter(e => e.category !== 'new_product' && e.category !== 'inventory_restock').map((expense, index) => (
                   <tr
                     key={expense.id}
                     className="border-b border-gray-100 bg-white hover:bg-gray-50"
@@ -579,7 +589,7 @@ export default function ExpensesPage() {
                       {expense.recorded_by_name || expense.managers?.full_name || 'Cashier'}
                     </td>
                     <td className="px-3 py-2.5 text-sm text-right font-semibold text-red-600">
-                      ${expense.amount.toFixed(2)}
+                      {formatCurrency(expense.amount, 2)}
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
@@ -703,7 +713,7 @@ export default function ExpensesPage() {
                     <option value="">-- Select a predefined expense --</option>
                     {predefinedExpenses.map((pe) => (
                       <option key={pe.id} value={pe.id}>
-                        {pe.name} ({pe.category}) - Rs. {pe.default_amount.toLocaleString()}
+                        {pe.name} ({pe.category}) - PKR {pe.default_amount.toLocaleString()}
                       </option>
                     ))}
                   </select>

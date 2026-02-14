@@ -46,6 +46,7 @@ export default function MobileBottomNav({ userRole }: { userRole: UserRole }) {
     { href: '/dashboard', label: 'Overview', icon: HouseIcon, permission: 'view_dashboard' },
     { href: '/dashboard/pos', label: 'POS', icon: ShoppingCartIcon, permission: 'process_sale' },
     { href: '/dashboard/inventory', label: 'Products', icon: PackageIcon, permission: 'create_product' },
+    { href: '/dashboard/inventory-purchases', label: 'Purchases', icon: ShoppingCartIcon, permission: 'create_product' },
     { href: '/dashboard/sales', label: 'Sales', icon: CurrencyDollarIcon, permission: 'view_sales' },
     { href: '/dashboard/expenses', label: 'Expenses', icon: FileTextIcon, permission: 'add_expense' },
     { href: '/dashboard/khaata', label: 'Ledger', icon: BookOpenIcon, permission: 'create_user' },

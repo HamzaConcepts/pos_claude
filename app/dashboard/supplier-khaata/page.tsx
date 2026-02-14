@@ -287,10 +287,10 @@ export default function SupplierKhaataPage() {
                       >
                         <td className="px-4 py-3 font-medium text-sm text-gray-900">{supplier.supplier_name}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{supplier.supplier_phone}</td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-900">Rs. {supplier.total_amount.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right text-sm text-green-600">Rs. {supplier.amount_paid.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right text-sm font-semibold text-red-600">
-                          Rs. {supplier.amount_remaining.toLocaleString()}
+                    <td className="px-4 py-3 text-right text-sm text-gray-900">PKR {supplier.total_amount.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right text-sm text-green-600">PKR {supplier.amount_paid.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-red-600">
+                      PKR {supplier.amount_remaining.toLocaleString()}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className="inline-block px-2 py-1 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded text-xs font-medium">
@@ -320,13 +320,13 @@ export default function SupplierKhaataPage() {
                             {new Date(record.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                           </td>
                           <td className="px-4 py-2 text-right text-sm text-gray-900">
-                            Rs. {record.total_amount.toLocaleString()}
+                            PKR {record.total_amount.toLocaleString()}
                           </td>
                           <td className="px-4 py-2 text-right text-sm text-green-600">
-                            Rs. {record.amount_paid.toLocaleString()}
+                            PKR {record.amount_paid.toLocaleString()}
                           </td>
                           <td className="px-4 py-2 text-right text-sm font-medium text-red-600">
-                            Rs. {record.amount_remaining.toLocaleString()}
+                            PKR {record.amount_remaining.toLocaleString()}
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-600">
                             {record.notes && (
@@ -381,8 +381,8 @@ export default function SupplierKhaataPage() {
 
             <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
               <p className="text-sm text-gray-900"><strong>Supplier:</strong> {selectedRecord.supplier_name}</p>
-              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> Rs. {selectedRecord.total_amount.toLocaleString()}</p>
-              <p className="text-sm text-gray-900"><strong>Current Remaining:</strong> Rs. {selectedRecord.amount_remaining.toLocaleString()}</p>
+              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> PKR {selectedRecord.total_amount.toLocaleString()}</p>
+              <p className="text-sm text-gray-900"><strong>Current Remaining:</strong> PKR {selectedRecord.amount_remaining.toLocaleString()}</p>
             </div>
 
             <div className="space-y-4">
@@ -399,7 +399,7 @@ export default function SupplierKhaataPage() {
                 />
                 {formData.amount_paid && (
                   <p className="text-sm text-gray-600 mt-1">
-                    New Remaining: Rs. {(selectedRecord.total_amount - parseFloat(formData.amount_paid || '0')).toLocaleString()}
+                    New Remaining: PKR {(selectedRecord.total_amount - parseFloat(formData.amount_paid || '0')).toLocaleString()}
                   </p>
                 )}
               </div>

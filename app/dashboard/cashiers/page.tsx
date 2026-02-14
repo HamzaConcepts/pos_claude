@@ -5,6 +5,7 @@ import { UsersIcon, CurrencyDollarIcon, TrendUpIcon, CalendarIcon } from '@phosp
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { getPKTDate } from '@/lib/date-utils'
+import { useCurrency } from '@/lib/currency-context'
 
 interface Cashier {
   id: number
@@ -26,6 +27,7 @@ interface CashierStats {
 
 export default function CashiersManagementPage() {
   const isDarkMode = useDarkMode()
+  const { currency, formatCurrency } = useCurrency()
   const [cashiers, setCashiers] = useState<Cashier[]>([])
   const [stats, setStats] = useState<CashierStats[]>([])
   const [loading, setLoading] = useState(true)
@@ -146,7 +148,7 @@ export default function CashiersManagementPage() {
             </div>
             <p className="text-gray-600 text-sm font-medium">Total Salaries</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900">${totalSalaries.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSalaries, 0)}</p>
         </div>
 
         <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
@@ -156,7 +158,7 @@ export default function CashiersManagementPage() {
             </div>
             <p className="text-gray-600 text-sm font-medium">Total Commissions</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900">${totalCommissions.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCommissions, 2)}</p>
         </div>
 
         <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
@@ -166,7 +168,7 @@ export default function CashiersManagementPage() {
             </div>
             <p className="text-gray-600 text-sm font-medium">Total Payroll</p>
           </div>
-          <p className="text-2xl font-bold text-gray-900">${totalPayroll.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+          <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalPayroll, 2)}</p>
         </div>
       </div>
 
@@ -222,23 +224,23 @@ export default function CashiersManagementPage() {
                       </td>
                       <td className="px-3 py-3 text-gray-600 text-sm hidden md:table-cell">{cashier.phone_number}</td>
                       <td className="px-3 py-3 text-right font-medium text-sm text-gray-900">
-                        ${(cashier.salary || 0).toLocaleString()}
+                        {formatCurrency(cashier.salary || 0, 0)}
                       </td>
                       <td className="px-3 py-3 text-right text-sm text-gray-700 hidden sm:table-cell">{cashierStats.orders_completed}</td>
                       <td className="px-3 py-3 text-right font-medium text-sm text-gray-700 hidden lg:table-cell">
-                        ${cashierStats.total_sales.toLocaleString()}
+                        {formatCurrency(cashierStats.total_sales, 0)}
                       </td>
                       <td className="px-3 py-3 text-right font-medium text-green-600 text-sm">
-                        ${cashierStats.total_profit.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        {formatCurrency(cashierStats.total_profit, 2)}
                       </td>
                       <td className="px-3 py-3 text-right text-gray-600 text-sm hidden md:table-cell">
                         {cashier.commission_rate}%
                       </td>
                       <td className="px-3 py-3 text-right font-semibold text-orange-600 text-sm">
-                        ${cashierStats.commission_earned.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        {formatCurrency(cashierStats.commission_earned, 2)}
                       </td>
                       <td className="px-3 py-3 text-right font-semibold text-sm text-gray-900 hidden lg:table-cell">
-                        ${totalComp.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        {formatCurrency(totalComp, 2)}
                       </td>
                       <td className="px-3 py-3 text-center hidden sm:table-cell">
                         <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${ 
@@ -257,23 +259,23 @@ export default function CashiersManagementPage() {
                 <tr>
                   <td colSpan={2} className="px-3 py-3 text-sm text-gray-900">TOTALS</td>
                   <td className="px-3 py-3 text-right text-sm text-gray-900">
-                    ${totalSalaries.toLocaleString()}
+                    {formatCurrency(totalSalaries, 0)}
                   </td>
                   <td className="px-3 py-3 text-right text-sm text-gray-900 hidden sm:table-cell">
                     {stats.reduce((sum, s) => sum + s.orders_completed, 0)}
                   </td>
                   <td className="px-3 py-3 text-right text-sm text-gray-900 hidden lg:table-cell">
-                    ${stats.reduce((sum, s) => sum + s.total_sales, 0).toLocaleString()}
+                    {formatCurrency(stats.reduce((sum, s) => sum + s.total_sales, 0), 0)}
                   </td>
                   <td className="px-3 py-3 text-right text-green-600 text-sm">
-                    ${stats.reduce((sum, s) => sum + s.total_profit, 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {formatCurrency(stats.reduce((sum, s) => sum + s.total_profit, 0), 2)}
                   </td>
                   <td className="px-3 py-3 hidden md:table-cell"></td>
                   <td className="px-3 py-3 text-right text-orange-600 text-sm">
-                    ${totalCommissions.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {formatCurrency(totalCommissions, 2)}
                   </td>
                   <td className="px-3 py-3 text-right text-sm text-gray-900 hidden lg:table-cell">
-                    ${totalPayroll.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    {formatCurrency(totalPayroll, 2)}
                   </td>
                   <td className="px-3 py-3 hidden sm:table-cell"></td>
                 </tr>

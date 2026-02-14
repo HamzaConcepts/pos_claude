@@ -352,7 +352,7 @@ export default function PredefinedExpensesManager() {
                           <div className="font-medium">{expense.name}</div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          Rs. {expense.default_amount.toLocaleString()}
+                          PKR {expense.default_amount.toLocaleString()}
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-sm text-gray-600">
@@ -467,7 +467,7 @@ export default function PredefinedExpensesManager() {
                 <label className={`block text-sm font-medium mb-1 ${
                   isDarkMode ? 'text-gray-300' : ''
                 }`}>
-                  Default Amount (Rs.) <span className="text-red-500">*</span>
+                  Default Amount (PKR) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"

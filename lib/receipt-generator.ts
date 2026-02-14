@@ -20,10 +20,10 @@ export const DEFAULT_RECEIPT_SETTINGS: Omit<ReceiptSettings, 'id' | 'store_id' |
 }
 
 /**
- * Format currency with Rs. symbol
+ * Format currency with custom currency symbol
  */
-function formatCurrency(amount: number, decimals: number = 2): string {
-  return `Rs. ${amount.toFixed(decimals)}`
+function formatCurrency(amount: number, currency: string = 'PKR', decimals: number = 2): string {
+  return `${currency} ${amount.toFixed(decimals)}`
 }
 
 /**
@@ -91,6 +91,7 @@ export function generatePDFReceipt(data: ReceiptData): jsPDF {
   })
 
   const settings = data.settings
+  const currency = data.currency || 'PKR'
   const pageWidth = doc.internal.pageSize.getWidth()
   const marginLeft = 15
   const marginRight = 15
@@ -211,7 +212,7 @@ export function generatePDFReceipt(data: ReceiptData): jsPDF {
     yPos += 4
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(211, 47, 47)
-    doc.text(`Amount Due: ${formatCurrency(data.partial_customer.amount_remaining)}`, marginLeft + 3, yPos)
+    doc.text(`Amount Due: ${formatCurrency(data.partial_customer.amount_remaining, currency)}`, marginLeft + 3, yPos)
     doc.setTextColor(0, 0, 0)
     yPos += 8
   }
@@ -220,8 +221,8 @@ export function generatePDFReceipt(data: ReceiptData): jsPDF {
   const tableData = data.items.map((item) => [
     item.name,
     item.quantity.toString(),
-    formatCurrency(item.unit_price),
-    formatCurrency(item.subtotal),
+    formatCurrency(item.unit_price, currency),
+    formatCurrency(item.subtotal, currency),
   ])
 
   autoTable(doc, {
@@ -261,7 +262,7 @@ export function generatePDFReceipt(data: ReceiptData): jsPDF {
     const subtotal = calculateSubtotal(data)
     doc.setFontSize(10)
     doc.text('Subtotal:', totalsX, yPos)
-    doc.text(formatCurrency(subtotal), pageWidth - marginRight, yPos, { align: 'right' })
+    doc.text(formatCurrency(subtotal, currency), pageWidth - marginRight, yPos, { align: 'right' })
     yPos += 5
 
     // Discount
@@ -270,7 +271,7 @@ export function generatePDFReceipt(data: ReceiptData): jsPDF {
       ? `Discount (${data.discount_value}%):` 
       : 'Discount:'
     doc.text(discountLabel, totalsX, yPos)
-    doc.text(`-${formatCurrency(calculateDiscountAmount(data))}`, pageWidth - marginRight, yPos, { align: 'right' })
+    doc.text(`-${formatCurrency(calculateDiscountAmount(data), currency)}`, pageWidth - marginRight, yPos, { align: 'right' })
     doc.setTextColor(0, 0, 0)
     yPos += 5
   }
@@ -283,14 +284,14 @@ export function generatePDFReceipt(data: ReceiptData): jsPDF {
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
   doc.text('TOTAL:', totalsX, yPos)
-  doc.text(formatCurrency(data.total_amount), pageWidth - marginRight, yPos, { align: 'right' })
+  doc.text(formatCurrency(data.total_amount, currency), pageWidth - marginRight, yPos, { align: 'right' })
   yPos += 8
 
   // Amount Paid
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
   doc.text('Amount Paid:', totalsX, yPos)
-  doc.text(formatCurrency(data.amount_paid), pageWidth - marginRight, yPos, { align: 'right' })
+  doc.text(formatCurrency(data.amount_paid, currency), pageWidth - marginRight, yPos, { align: 'right' })
   yPos += 5
 
   // Change or Amount Due
@@ -298,11 +299,11 @@ export function generatePDFReceipt(data: ReceiptData): jsPDF {
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(211, 47, 47)
     doc.text('Amount Due:', totalsX, yPos)
-    doc.text(formatCurrency(data.amount_due), pageWidth - marginRight, yPos, { align: 'right' })
+    doc.text(formatCurrency(data.amount_due, currency), pageWidth - marginRight, yPos, { align: 'right' })
     doc.setTextColor(0, 0, 0)
   } else {
     doc.text('Change:', totalsX, yPos)
-    doc.text(formatCurrency(data.change_given), pageWidth - marginRight, yPos, { align: 'right' })
+    doc.text(formatCurrency(data.change_given, currency), pageWidth - marginRight, yPos, { align: 'right' })
   }
   yPos += 15
 
@@ -343,6 +344,7 @@ export interface ThermalReceiptOptions {
  */
 export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalReceiptOptions): string {
   const settings = data.settings
+  const currency = data.currency || 'PKR'
   const paperWidth = options?.paperWidth || settings.thermal_paper_width || '80mm'
   const maxChars = paperWidth === '80mm' ? 48 : 32
   const receiptWidth = paperWidth === '80mm' ? '302px' : '219px' // Approximate pixel width
@@ -359,7 +361,7 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
           ${escapeHTML(item.name)}
         </div>
         <div style="font-size: 10px; color: #666;">
-          ${item.quantity} × Rs.${item.unit_price.toFixed(0)}
+          ${item.quantity} × ${currency} ${item.unit_price.toFixed(0)}
         </div>
       </td>
       <td style="padding: 2px 0; text-align: right; vertical-align: top; font-weight: bold; font-size: 11px;">
@@ -388,7 +390,7 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
         <div style="font-weight: bold; font-size: 10px;">⚠ CREDIT SALE:</div>
         <div style="font-size: 10px;">${escapeHTML(data.partial_customer.name)}</div>
         <div style="font-size: 10px;">Ph: ${escapeHTML(data.partial_customer.phone)}</div>
-        <div style="font-weight: bold; font-size: 10px;">Due: Rs.${data.partial_customer.amount_remaining.toFixed(0)}</div>
+        <div style="font-weight: bold; font-size: 10px;">Due: ${currency} ${data.partial_customer.amount_remaining.toFixed(0)}</div>
       </div>
     `
   }
@@ -399,7 +401,7 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
     discountHTML = `
       <tr>
         <td style="padding: 2px 0; font-size: 10px;">Subtotal:</td>
-        <td style="padding: 2px 0; text-align: right; font-size: 10px;">Rs.${subtotal.toFixed(0)}</td>
+        <td style="padding: 2px 0; text-align: right; font-size: 10px;">${currency} ${subtotal.toFixed(0)}</td>
       </tr>
       <tr>
         <td style="padding: 2px 0; font-size: 10px;">Discount:</td>
@@ -414,14 +416,14 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
     finalAmountHTML = `
       <tr style="font-weight: bold;">
         <td style="padding: 2px 0; font-size: 10px;">DUE:</td>
-        <td style="padding: 2px 0; text-align: right; font-size: 10px;">Rs.${data.amount_due.toFixed(0)}</td>
+        <td style="padding: 2px 0; text-align: right; font-size: 10px;">${currency} ${data.amount_due.toFixed(0)}</td>
       </tr>
     `
   } else {
     finalAmountHTML = `
       <tr>
         <td style="padding: 2px 0; font-size: 10px;">Change:</td>
-        <td style="padding: 2px 0; text-align: right; font-size: 10px;">Rs.${data.change_given.toFixed(0)}</td>
+        <td style="padding: 2px 0; text-align: right; font-size: 10px;">${currency} ${data.change_given.toFixed(0)}</td>
       </tr>
     `
   }
@@ -521,11 +523,11 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
         ${discountHTML}
         <tr style="font-weight: bold; font-size: 12px; border-top: 1px solid #000;">
           <td style="padding: 4px 0;">TOTAL:</td>
-          <td style="padding: 4px 0; text-align: right;">Rs.${data.total_amount.toFixed(0)}</td>
+          <td style="padding: 4px 0; text-align: right;">${currency} ${data.total_amount.toFixed(0)}</td>
         </tr>
         <tr>
           <td style="padding: 2px 0; font-size: 10px;">Paid:</td>
-          <td style="padding: 2px 0; text-align: right; font-size: 10px;">Rs.${data.amount_paid.toFixed(0)}</td>
+          <td style="padding: 2px 0; text-align: right; font-size: 10px;">${currency} ${data.amount_paid.toFixed(0)}</td>
         </tr>
         ${finalAmountHTML}
       </tbody>
@@ -605,7 +607,7 @@ export function printThermalReceipt(data: ReceiptData, options?: ThermalReceiptO
 /**
  * Convert sale data from API to ReceiptData format
  */
-export function saleToReceiptData(sale: any, settings: ReceiptSettings): ReceiptData {
+export function saleToReceiptData(sale: any, settings: ReceiptSettings, currency: string = 'PKR'): ReceiptData {
   const items = (sale.sale_items || []).map((item: any) => ({
     name: item.product_name || item.products?.name || 'Unknown Item',
     quantity: item.quantity,
@@ -621,6 +623,7 @@ export function saleToReceiptData(sale: any, settings: ReceiptSettings): Receipt
     cashier_name: sale.cashier_name || null,
     payment_method: sale.payment_method,
     payment_status: sale.payment_status,
+    currency,
     subtotal: items.reduce((sum: number, item: any) => sum + item.subtotal, 0),
     discount_type: sale.discount_type || 'none',
     discount_value: sale.discount_value || 0,

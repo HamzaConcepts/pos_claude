@@ -53,17 +53,30 @@ export default function PrintReceiptButton({
   // Fetch receipt data from API if saleId is provided
   const fetchReceiptData = async (): Promise<{ data: ReceiptData; settings: ReceiptSettings } | null> => {
     try {
+      // Fetch currency from store info
+      const storeId = getStoreId()
+      let currency = 'PKR' // default
+      
+      try {
+        const storeInfoResponse = await fetch(`/api/store-info?store_id=${storeId}`)
+        const storeInfoResult = await storeInfoResponse.json()
+        if (storeInfoResult.success && storeInfoResult.data.currency) {
+          currency = storeInfoResult.data.currency
+        }
+      } catch (e) {
+        console.warn('Failed to fetch currency, using PKR', e)
+      }
+
       if (sale && propSettings) {
         // Use provided data directly
         return {
-          data: saleToReceiptData(sale, propSettings),
+          data: saleToReceiptData(sale, propSettings, currency),
           settings: propSettings,
         }
       }
 
       if (sale) {
         // Have sale but need settings
-        const storeId = getStoreId()
         const settingsResponse = await fetch(`/api/receipt-settings?store_id=${storeId}`)
         const settingsResult = await settingsResponse.json()
 
@@ -87,7 +100,7 @@ export default function PrintReceiptButton({
         }
 
         return {
-          data: saleToReceiptData(sale, settings),
+          data: saleToReceiptData(sale, settings, currency),
           settings,
         }
       }

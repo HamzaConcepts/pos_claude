@@ -8,11 +8,13 @@ import { useRouter } from 'next/navigation'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import PrintReceiptButton from '@/components/PrintReceiptButton'
 import { getPKTDate } from '@/lib/date-utils'
+import { useCurrency } from '@/lib/currency-context'
 
 
 export default function SalesPage() {
   const router = useRouter()
   const isDarkMode = useDarkMode()
+  const { currency, formatCurrency } = useCurrency()
   const [sales, setSales] = useState<any[]>([])
   const [filteredSales, setFilteredSales] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -561,7 +563,7 @@ export default function SalesPage() {
                         </td>
                         <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.cashier_name || 'Unknown'}</td>
                         <td className={`px-3 py-2.5 text-right font-semibold text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
-                          Rs. {sale.total_amount.toFixed(2)}
+                          {formatCurrency(sale.total_amount, 2)}
                         </td>
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">
@@ -732,7 +734,7 @@ export default function SalesPage() {
                                     <div>
                                       <div className="text-red-100 mb-1">Amount Remaining</div>
                                       <div className="font-bold text-white text-lg">
-                                        ${(sale as any).partial_payment_customers[0].amount_remaining.toFixed(2)}
+                                        {formatCurrency((sale as any).partial_payment_customers[0].amount_remaining, 2)}
                                       </div>
                                     </div>
                                   </div>
@@ -763,12 +765,12 @@ export default function SalesPage() {
                                 </div>
                                 <div className="p-3 border border-gray-200 rounded bg-white">
                                   <div className="text-xs text-gray-600 mb-1">Amount Paid</div>
-                                  <div className="font-semibold text-sm text-gray-900">${sale.amount_paid?.toFixed(2) || '0.00'}</div>
+                                  <div className="font-semibold text-sm text-gray-900">{formatCurrency(sale.amount_paid || 0, 2)}</div>
                                 </div>
                                 <div className="p-3 border border-gray-200 rounded bg-white">
                                   <div className="text-xs text-gray-600 mb-1">Profit</div>
                                   <div className={`font-semibold text-sm ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    ${profit.toFixed(2)}
+                                    {formatCurrency(profit, 2)}
                                   </div>
                                 </div>
                               </div>
@@ -796,15 +798,15 @@ export default function SalesPage() {
                                           <td className="px-3 py-2 font-mono text-xs text-gray-600">{item.product_sku || 'N/A'}</td>
                                           <td className="px-3 py-2 text-gray-900">{item.product_name || 'Unknown Product'}</td>
                                           <td className="px-3 py-2 text-center text-gray-900">{item.quantity}</td>
-                                          <td className="px-3 py-2 text-right text-gray-900">${item.unit_price.toFixed(2)}</td>
-                                          <td className="px-3 py-2 text-right font-semibold text-gray-900">${item.subtotal.toFixed(2)}</td>
+                                          <td className="px-3 py-2 text-right text-gray-900">{formatCurrency(item.unit_price, 2)}</td>
+                                          <td className="px-3 py-2 text-right font-semibold text-gray-900">{formatCurrency(item.subtotal, 2)}</td>
                                         </tr>
                                       ))}
                                     </tbody>
                                     <tfoot className="bg-cyan-600 text-white">
                                       <tr>
                                         <td colSpan={4} className="px-3 py-2 text-right font-semibold">Total:</td>
-                                        <td className="px-3 py-2 text-right font-semibold">${sale.total_amount.toFixed(2)}</td>
+                                        <td className="px-3 py-2 text-right font-semibold">{formatCurrency(sale.total_amount, 2)}</td>
                                       </tr>
                                     </tfoot>
                                   </table>
@@ -852,7 +854,7 @@ export default function SalesPage() {
                                               </span>
                                             </td>
                                             <td className="px-3 py-2 text-gray-900">{payment.recorded_by_name || 'Unknown'}</td>
-                                            <td className="px-3 py-2 text-right font-semibold text-gray-900">${payment.amount.toFixed(2)}</td>
+                                            <td className="px-3 py-2 text-right font-semibold text-gray-900">{formatCurrency(payment.amount, 2)}</td>
                                           </tr>
                                         ))}
                                       </tbody>

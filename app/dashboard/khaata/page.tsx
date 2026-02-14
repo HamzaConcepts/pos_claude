@@ -5,6 +5,7 @@ import { UserCircleIcon, BuildingsIcon, MagnifyingGlassIcon, PencilSimpleIcon, T
 import { useRouter } from 'next/navigation'
 import { getStoreId, getManagerId, getCashierId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import { useCurrency } from '@/lib/currency-context'
 
 interface KhaataCustomer {
   id: number
@@ -78,6 +79,7 @@ interface AggregatedSupplier {
 export default function KhaataPage() {
   const router = useRouter()
   const isDarkMode = useDarkMode()
+  const { currency, formatCurrency } = useCurrency()
   const [activeTab, setActiveTab] = useState<'customers' | 'suppliers'>('customers')
   
   // Customer state
@@ -606,10 +608,10 @@ export default function KhaataPage() {
                           </td>
                           <td className="px-3 py-2.5 font-medium text-sm text-gray-900">{customer.customer_name}</td>
                           <td className="px-3 py-2.5 text-sm text-gray-900">{customer.customer_phone}</td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900">${customer.total_amount.toFixed(2)}</td>
-                          <td className="px-3 py-2.5 text-right text-green-600 font-semibold text-sm">${customer.amount_paid.toFixed(2)}</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900">{formatCurrency(customer.total_amount, 2)}</td>
+                          <td className="px-3 py-2.5 text-right text-green-600 font-semibold text-sm">{formatCurrency(customer.amount_paid, 2)}</td>
                           <td className="px-3 py-2.5 text-right font-semibold text-sm text-orange-600">
-                            ${customer.amount_remaining.toFixed(2)}
+                            {formatCurrency(customer.amount_remaining, 2)}
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-medium">
@@ -659,10 +661,10 @@ export default function KhaataPage() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-right text-sm text-gray-900">${transaction.total_amount.toFixed(2)}</td>
-                            <td className="px-3 py-2 text-right text-sm text-green-600">${transaction.amount_paid.toFixed(2)}</td>
+                            <td className="px-3 py-2 text-right text-sm text-gray-900">{formatCurrency(transaction.total_amount, 2)}</td>
+                            <td className="px-3 py-2 text-right text-sm text-green-600">{formatCurrency(transaction.amount_paid, 2)}</td>
                             <td className="px-3 py-2 text-right text-sm font-medium text-orange-600">
-                              ${transaction.amount_remaining.toFixed(2)}
+                              {formatCurrency(transaction.amount_remaining, 2)}
                             </td>
                             <td className="px-3 py-2">
                               <div className="flex gap-2 justify-center">
@@ -698,13 +700,13 @@ export default function KhaataPage() {
                   <tr className="bg-cyan-600 text-white font-semibold">
                     <td colSpan={3} className="px-3 py-2.5 text-sm">TOTAL</td>
                     <td className="px-3 py-2.5 text-right text-sm">
-                      ${filteredAggregatedCustomers.reduce((sum, c) => sum + c.total_amount, 0).toFixed(2)}
+                      {formatCurrency(filteredAggregatedCustomers.reduce((sum, c) => sum + c.total_amount, 0), 2)}
                     </td>
                     <td className="px-3 py-2.5 text-right text-sm">
-                      ${filteredAggregatedCustomers.reduce((sum, c) => sum + c.amount_paid, 0).toFixed(2)}
+                      {formatCurrency(filteredAggregatedCustomers.reduce((sum, c) => sum + c.amount_paid, 0), 2)}
                     </td>
                     <td className="px-3 py-2.5 text-right text-sm">
-                      ${filteredAggregatedCustomers.reduce((sum, c) => sum + c.amount_remaining, 0).toFixed(2)}
+                      {formatCurrency(filteredAggregatedCustomers.reduce((sum, c) => sum + c.amount_remaining, 0), 2)}
                     </td>
                     <td></td>
                   </tr>
@@ -791,10 +793,10 @@ export default function KhaataPage() {
                           </td>
                           <td className="px-3 py-2.5 font-medium text-sm text-gray-900">{supplier.supplier_name}</td>
                           <td className="px-3 py-2.5 text-sm text-gray-900">{supplier.supplier_phone}</td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900">Rs. {supplier.total_amount.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-right text-green-600 font-semibold text-sm">Rs. {supplier.amount_paid.toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900">{formatCurrency(supplier.total_amount, 0)}</td>
+                          <td className="px-3 py-2.5 text-right text-green-600 font-semibold text-sm">{formatCurrency(supplier.amount_paid, 0)}</td>
                           <td className="px-3 py-2.5 text-right font-semibold text-sm text-red-600">
-                            Rs. {supplier.amount_remaining.toLocaleString()}
+                            {formatCurrency(supplier.amount_remaining, 0)}
                           </td>
                           <td className="px-3 py-2.5 text-center">
                             <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-medium">
@@ -844,10 +846,10 @@ export default function KhaataPage() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-right text-sm text-gray-900">Rs. {record.total_amount.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right text-sm text-green-600">Rs. {record.amount_paid.toLocaleString()}</td>
+                                                      <td className="px-3 py-2 text-right text-sm text-gray-900">{formatCurrency(record.total_amount, 0)}</td>
+                            <td className="px-3 py-2 text-right text-sm text-green-600">{formatCurrency(record.amount_paid, 0)}</td>
                             <td className="px-3 py-2 text-right text-sm font-medium text-red-600">
-                              Rs. {record.amount_remaining.toLocaleString()}
+                              {formatCurrency(record.amount_remaining, 0)}
                             </td>
                             <td className="px-3 py-2">
                               <div className="flex gap-2 justify-center">
@@ -883,13 +885,13 @@ export default function KhaataPage() {
                   <tr className="bg-cyan-600 text-white font-semibold">
                     <td colSpan={3} className="px-3 py-2.5 text-sm">TOTAL</td>
                     <td className="px-3 py-2.5 text-right text-sm">
-                      Rs. {filteredSuppliers.reduce((sum, s) => sum + s.total_amount, 0).toLocaleString()}
+                      {formatCurrency(filteredSuppliers.reduce((sum, s) => sum + s.total_amount, 0), 0)}
                     </td>
                     <td className="px-3 py-2.5 text-right text-sm">
-                      Rs. {filteredSuppliers.reduce((sum, s) => sum + s.amount_paid, 0).toLocaleString()}
+                      {formatCurrency(filteredSuppliers.reduce((sum, s) => sum + s.amount_paid, 0), 0)}
                     </td>
                     <td className="px-3 py-2.5 text-right text-sm">
-                      Rs. {filteredSuppliers.reduce((sum, s) => sum + s.amount_remaining, 0).toLocaleString()}
+                      {formatCurrency(filteredSuppliers.reduce((sum, s) => sum + s.amount_remaining, 0), 0)}
                     </td>
                     <td></td>
                   </tr>
@@ -1131,7 +1133,7 @@ export default function KhaataPage() {
 
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
               <p className="text-blue-900">
-                <strong>Current Balance:</strong> ${selectedForPayment.remaining_balance.toFixed(2)}
+                <strong>Current Balance:</strong> {formatCurrency(selectedForPayment.remaining_balance, 2)}
               </p>
             </div>
 

@@ -288,6 +288,8 @@ export interface ReceiptData {
   cashier_name: string | null
   payment_method: 'Cash' | 'Digital'
   payment_status: 'Paid' | 'Partial' | 'Pending'
+  // Currency
+  currency?: string
   // Amounts
   subtotal: number
   discount_type: 'percentage' | 'amount' | 'none'

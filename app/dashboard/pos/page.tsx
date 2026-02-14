@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import IMEISelectionModal from '@/components/IMEISelectionModal'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import PrintReceiptButton from '@/components/PrintReceiptButton'
+import { useCurrency } from '@/lib/currency-context'
 
 interface CartItem {
   product: ProductWithBackwardCompatibility
@@ -18,6 +19,7 @@ interface CartItem {
 export default function POSPage() {
   const router = useRouter()
   const isDarkMode = useDarkMode()
+  const { currency, formatCurrency } = useCurrency()
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -637,7 +639,7 @@ export default function POSPage() {
     setShowPartialPaymentConfirm(false)
     const total = calculateTotal()
     const paid = parseFloat(amountPaid) || 0
-    setError(`Insufficient payment. Total: Rs. ${total.toFixed(2)}, Paid: Rs. ${paid.toFixed(2)}`)
+    setError(`Insufficient payment. Total: ${formatCurrency(total, 2)}, Paid: ${formatCurrency(paid, 2)}`)
   }
 
   const processSaleTransaction = async (partialPaymentCustomer: any, discountAmount: number = 0) => {
@@ -1523,7 +1525,7 @@ export default function POSPage() {
                           </div>
 
                           <p className={`font-semibold w-20 text-right ${isDarkMode ? 'text-gray-200' : ''}`}>
-                            Rs. {((item.product.aggregated_stock?.aggregated_selling_price || 0) * item.quantity).toFixed(2)}
+                            {formatCurrency((item.product.aggregated_stock?.aggregated_selling_price || 0) * item.quantity, 2)}
                           </p>
 
                           <button
@@ -1555,7 +1557,7 @@ export default function POSPage() {
 
             <div className="mb-5">
               <p className={`text-xs mb-2 font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Amount</p>
-              <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {total.toFixed(2)}</p>
+              <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(total, 2)}</p>
             </div>
 
             <div className="mb-4">
@@ -1626,7 +1628,7 @@ export default function POSPage() {
             {amountPaid && parseFloat(amountPaid) >= total && (
               <div className={`mb-4 p-4 border rounded-lg ${isDarkMode ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'}`}>
                 <p className={`text-xs mb-1 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Change</p>
-                <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Rs. {change.toFixed(2)}</p>
+                <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(change, 2)}</p>
               </div>
             )}
 
@@ -1689,7 +1691,7 @@ export default function POSPage() {
                   <div>
                     <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
                       <p className="text-orange-800 font-medium">
-                        ⚠️ Amount is below minimum price (Rs. {lowestNegotiable.toFixed(2)})
+                        ⚠️ Amount is below minimum price ({formatCurrency(lowestNegotiable, 2)})
                       </p>
                       <p className="text-orange-700 text-xs mt-1">
                         Only Khaata (customer credit) option is available
@@ -1725,21 +1727,21 @@ export default function POSPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total Amount:</span>
-                  <span className="font-semibold text-gray-900">Rs. {calculateTotal().toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(calculateTotal(), 2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Lowest Negotiable:</span>
-                  <span className="font-medium text-orange-600">Rs. {calculateLowestNegotiable().toFixed(2)}</span>
+                  <span className="font-medium text-orange-600">{formatCurrency(calculateLowestNegotiable(), 2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-semibold text-gray-900">Rs. {(parseFloat(amountPaid) || 0).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(parseFloat(amountPaid) || 0, 2)}</span>
                 </div>
                 <div className="border-t border-gray-300 pt-2 mt-2"></div>
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-900">Remaining Amount:</span>
                   <span className="font-bold text-lg text-orange-600">
-                    Rs. {(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
+                    {formatCurrency(calculateTotal() - (parseFloat(amountPaid) || 0), 2)}
                   </span>
                 </div>
               </div>
@@ -1801,17 +1803,17 @@ export default function POSPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Total Amount:</span>
-                  <span className="font-semibold text-gray-900">Rs. {calculateTotal().toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(calculateTotal(), 2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-semibold text-gray-900">Rs. {(parseFloat(amountPaid) || 0).toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(parseFloat(amountPaid) || 0, 2)}</span>
                 </div>
                 <div className="border-t border-gray-300 pt-2 mt-2"></div>
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-900">Amount Due:</span>
                   <span className="font-bold text-lg text-gray-900">
-                    Rs. {(calculateTotal() - (parseFloat(amountPaid) || 0)).toFixed(2)}
+                    {formatCurrency(calculateTotal() - (parseFloat(amountPaid) || 0), 2)}
                   </span>
                 </div>
               </div>
@@ -1917,7 +1919,7 @@ export default function POSPage() {
                   placeholder="Enter sale price"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Minimum: Rs. {calculateLowestNegotiable().toFixed(2)} (Lowest Negotiable)
+                  Minimum: {formatCurrency(calculateLowestNegotiable(), 2)} (Lowest Negotiable)
                 </p>
               </div>
             </div>

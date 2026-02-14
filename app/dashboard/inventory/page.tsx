@@ -12,10 +12,12 @@ import PrintLabelsModal from '@/components/PrintLabelsModal'
 import { getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useDarkMode } from '@/hooks/useDarkMode'
+import { useCurrency } from '@/lib/currency-context'
 
 export default function InventoryPage() {
   const router = useRouter()
   const isDarkMode = useDarkMode()
+  const { currency, formatCurrency } = useCurrency()
   
   // State
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
@@ -473,13 +475,13 @@ export default function InventoryPage() {
                         </td>
                         <td className="px-3 py-3 text-right hidden lg:table-cell">
                           <span className="font-medium text-sm text-gray-900">
-                            Rs. {(product.aggregated_stock?.aggregated_lowest_negotiable || 0).toFixed(2)}
+                            {formatCurrency(product.aggregated_stock?.aggregated_lowest_negotiable || 0, 2)}
                           </span>
                         </td>
                         <td className="px-3 py-3 text-right hidden lg:table-cell">
                           {product.aggregated_stock?.aggregated_selling_price ? (
                             <span className="font-medium text-green-600 text-sm">
-                              Rs. {product.aggregated_stock.aggregated_selling_price.toFixed(2)}
+                              {formatCurrency(product.aggregated_stock.aggregated_selling_price, 2)}
                             </span>
                           ) : (
                             <span className="text-gray-400 text-xs">-</span>
@@ -562,21 +564,21 @@ export default function InventoryPage() {
                                   <div className="grid grid-cols-2 gap-3 mt-4">
                                     <div>
                                       <span className="text-gray-600 text-xs">Cost Price:</span>
-                                      <p className="font-medium text-sm text-gray-900">Rs. {(product.aggregated_stock?.aggregated_cost_price || 0).toFixed(2)}</p>
+                                      <p className="font-medium text-sm text-gray-900">{formatCurrency(product.aggregated_stock?.aggregated_cost_price || 0, 2)}</p>
                                     </div>
                                     
                                     {profitMargin && (
                                       <div>
                                         <span className="text-gray-600 text-xs">Profit Margin:</span>
                                         <p className="font-medium text-green-600 text-sm">
-                                          Rs. {profitMargin.profit.toFixed(2)} ({profitMargin.margin.toFixed(1)}%)
+                                          {formatCurrency(profitMargin.profit, 2)} ({profitMargin.margin.toFixed(1)}%)
                                         </p>
                                       </div>
                                     )}
                                     
                                     <div>
                                       <span className="text-gray-600 text-xs">Stock Value:</span>
-                                      <p className="font-medium text-sm text-gray-900">Rs. {stockValue.toFixed(2)}</p>
+                                      <p className="font-medium text-sm text-gray-900">{formatCurrency(stockValue, 2)}</p>
                                     </div>
                                     
                                     <div>
@@ -644,13 +646,13 @@ export default function InventoryPage() {
                                               <div>
                                                 <span className="text-gray-600">Cost Price:</span>
                                                 <div className="font-medium text-gray-900">
-                                                  Rs. {batch.cost_price.toFixed(2)}
+                                                  {formatCurrency(batch.cost_price, 2)}
                                                 </div>
                                               </div>
                                               <div>
                                                 <span className="text-gray-600">Target Price:</span>
                                                 <div className="font-medium text-gray-900">
-                                                  Rs. {(batch.selling_price || 0).toFixed(2)}
+                                                  {formatCurrency(batch.selling_price || 0, 2)}
                                                 </div>
                                               </div>
                                             </div>

@@ -6,8 +6,10 @@ import Link from 'next/link'
 import type { DashboardStats } from '@/lib/types'
 import { getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { useCurrency } from '@/lib/currency-context'
 
 export default function DashboardPage() {
+  const { currency, formatCurrency } = useCurrency()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -137,7 +139,7 @@ export default function DashboardPage() {
             </div>
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Revenue</p>
           </div>
-          <p className={`text-xl font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>Rs. {stats.monthlySales.revenue.toFixed(2)}</p>
+          <p className={`text-xl font-bold ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{formatCurrency(stats.monthlySales.revenue, 2)}</p>
           <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>This month</p>
         </div>
 
@@ -149,7 +151,7 @@ export default function DashboardPage() {
             </div>
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>COGS</p>
           </div>
-          <p className="text-xl font-bold text-orange-600">Rs. {(stats.monthlyCOGS || 0).toFixed(2)}</p>
+          <p className="text-xl font-bold text-orange-600">{formatCurrency(stats.monthlyCOGS || 0, 2)}</p>
           <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Cost of goods sold</p>
         </div>
 
@@ -162,7 +164,7 @@ export default function DashboardPage() {
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Gross Profit</p>
           </div>
           <p className={`text-xl font-bold ${(stats.grossProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            Rs. {(stats.grossProfit || 0).toFixed(2)}
+            {formatCurrency(stats.grossProfit || 0, 2)}
           </p>
           <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Revenue - COGS</p>
         </div>
@@ -175,8 +177,8 @@ export default function DashboardPage() {
             </div>
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Expenses</p>
           </div>
-          <p className="text-xl font-bold text-red-600">Rs. {stats.monthlyExpenses.toFixed(2)}</p>
-          <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Rs. {stats.todayExpenses?.toFixed(2) || '0.00'} today</p>
+          <p className="text-xl font-bold text-red-600">{formatCurrency(stats.monthlyExpenses, 2)}</p>
+          <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>{formatCurrency(stats.todayExpenses || 0, 2)} today</p>
         </div>
 
         {/* Net Profit */}
@@ -188,7 +190,7 @@ export default function DashboardPage() {
             <p className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Net Profit</p>
           </div>
           <p className={`text-xl font-bold ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            Rs. {stats.netProfit.toFixed(2)}
+            {formatCurrency(stats.netProfit, 2)}
           </p>
           <p className={`text-[10px] mt-1.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>Gross profit - Expenses</p>
         </div>
@@ -219,7 +221,7 @@ export default function DashboardPage() {
               {stats.expensesByCategory.slice(0, 3).map((cat: any) => (
                 <div key={cat.category}>
                   <p className={`text-[10px] mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>{cat.category}</p>
-                  <p className={`text-base font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Rs. {cat.total.toFixed(2)}</p>
+                  <p className={`text-base font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{formatCurrency(cat.total, 2)}</p>
                 </div>
               ))}
             </div>
@@ -262,7 +264,7 @@ export default function DashboardPage() {
                       <div className="absolute bottom-0 w-full bg-gradient-to-t from-cyan-600 to-cyan-500 rounded-t-lg hover:from-cyan-500 hover:to-cyan-400 transition-all cursor-pointer" style={{ height: '100%' }}>
                         {day.revenue > 0 && (
                           <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-[10px] font-semibold whitespace-nowrap">
-                            <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Rs. {day.revenue.toFixed(0)}</span>
+                            <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>{formatCurrency(day.revenue, 0)}</span>
                           </div>
                         )}
                       </div>
@@ -294,7 +296,7 @@ export default function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <p className={`font-medium text-xs truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{product.product_name || 'Unknown'}</p>
                     <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-600'}`}>
-                      Rs. {Number(product.revenue || 0).toFixed(2)} · {product.quantity || 0} sold
+                      {formatCurrency(Number(product.revenue || 0), 2)} · {product.quantity || 0} sold
                     </p>
                   </div>
                 </div>
@@ -336,7 +338,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <div className="text-right ml-3">
-                      <p className={`font-bold text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Rs. {sale.total_amount.toFixed(2)}</p>
+                      <p className={`font-bold text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{formatCurrency(sale.total_amount, 2)}</p>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium mt-0.5 inline-block ${
                         sale.payment_status === 'Paid' ? 'bg-green-500/20 text-green-600' :
                         sale.payment_status === 'Partial' ? 'bg-red-500/20 text-red-600' :

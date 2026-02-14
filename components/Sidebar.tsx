@@ -20,7 +20,8 @@ import {
   MoonIcon,
   SunIcon,
   SignOutIcon,
-  ReceiptIcon
+  ReceiptIcon,
+  ShoppingCartIcon
 } from '@phosphor-icons/react'
 import { useState, useEffect } from 'react'
 import { supabase, hasPermission, type UserRole, getStoreId } from '@/lib/supabase'
@@ -144,6 +145,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     { href: '/dashboard', label: 'Overview', icon: HouseIcon, permission: 'view_dashboard' },
     { href: '/dashboard/pos', label: 'New Sale', icon: ShoppingBagIcon, permission: 'process_sale' },
     { href: '/dashboard/inventory', label: 'Products', icon: PackageIcon, permission: 'create_product' },
+    { href: '/dashboard/inventory-purchases', label: 'Stock Purchases', icon: ShoppingCartIcon, permission: 'create_product' },
     { href: '/dashboard/sales', label: 'Sales History', icon: FileTextIcon, permission: 'view_sales' },
     { href: '/dashboard/expenses', label: 'Expense Tracker', icon: CurrencyDollarIcon, permission: 'add_expense' },
     { href: '/dashboard/reports', label: 'Reports', icon: TrendUpIcon, permission: 'view_dashboard' },

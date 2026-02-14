@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Fetch store information from stores table
     const { data: store, error } = await supabaseAdmin
       .from('stores')
-      .select('store_code, store_name')
+      .select('store_code, store_name, currency')
       .eq('id', storeId)
       .single()
 
@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
       data: {
         store_name: store?.store_name || 'Not set',
         store_code: store?.store_code || '',
-        auto_generated_code: store?.store_code || ''
+        auto_generated_code: store?.store_code || '',
+        currency: store?.currency || 'PKR'
       }
     })
   } catch (error: any) {
@@ -59,7 +60,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { store_id, store_code } = body
+    const { store_id, store_code, currency } = body
 
     if (!store_id) {
       return NextResponse.json(
@@ -68,10 +69,14 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Update store code in stores table
+    // Update store code and/or currency in stores table
+    const updateData: any = {}
+    if (store_code !== undefined) updateData.store_code = store_code?.trim() || null
+    if (currency !== undefined) updateData.currency = currency
+
     const { data, error } = await supabaseAdmin
       .from('stores')
-      .update({ store_code: store_code?.trim() || null })
+      .update(updateData)
       .eq('id', store_id)
       .select()
       .single()

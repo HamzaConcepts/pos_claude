@@ -5,6 +5,7 @@ import { FileTextIcon, DownloadSimpleIcon, CalendarIcon, FunnelIcon, CaretDownIc
 import { getStoreId } from '@/lib/supabase'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { getPKTDate } from '@/lib/date-utils'
+import { useCurrency } from '@/lib/currency-context'
 import { SummaryReport } from '@/components/reports/SummaryReport'
 import { SalesReport } from '@/components/reports/SalesReport'
 import { ExpensesReport } from '@/components/reports/ExpensesReport'
@@ -26,6 +27,7 @@ type QuickPeriod = 'today' | 'week' | 'month' | 'year' | 'custom'
 
 export default function ReportsPage() {
   const isDarkMode = useDarkMode()
+  const { currency, formatCurrency: formatCurrencyFromContext } = useCurrency()
   const [quickPeriod, setQuickPeriod] = useState<QuickPeriod>('month')
   const [showCustomDates, setShowCustomDates] = useState(false)
   const [filters, setFilters] = useState<ReportFilters>({
@@ -255,11 +257,7 @@ export default function ReportsPage() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-      style: 'currency',
-      currency: 'PKR',
-      minimumFractionDigits: 0
-    }).format(amount)
+    return formatCurrencyFromContext(amount, 0)
   }
 
   return (
