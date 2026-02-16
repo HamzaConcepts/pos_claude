@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     // Fetch store information from stores table
     const { data: store, error } = await supabaseAdmin
       .from('stores')
-      .select('store_code, store_name, currency')
+      .select('store_code, store_name, currency, logo_url')
       .eq('id', storeId)
       .single()
 
@@ -39,13 +39,24 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
+    // Also fetch receipt_settings for business details
+    const { data: receiptSettings } = await supabaseAdmin
+      .from('receipt_settings')
+      .select('business_address, business_phone, business_email')
+      .eq('store_id', parseInt(storeId))
+      .single()
+
     return NextResponse.json({
       success: true,
       data: {
         store_name: store?.store_name || 'Not set',
         store_code: store?.store_code || '',
         auto_generated_code: store?.store_code || '',
-        currency: store?.currency || 'PKR'
+        currency: store?.currency || 'PKR',
+        logo_url: store?.logo_url || null,
+        address: receiptSettings?.business_address || null,
+        phone: receiptSettings?.business_phone || null,
+        email: receiptSettings?.business_email || null,
       }
     })
   } catch (error: any) {
@@ -60,7 +71,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { store_id, store_code, currency } = body
+    const { store_id, store_code, currency, logo_url } = body
 
     if (!store_id) {
       return NextResponse.json(
@@ -73,6 +84,7 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {}
     if (store_code !== undefined) updateData.store_code = store_code?.trim() || null
     if (currency !== undefined) updateData.currency = currency
+    if (logo_url !== undefined) updateData.logo_url = logo_url?.trim() || null
 
     const { data, error } = await supabaseAdmin
       .from('stores')

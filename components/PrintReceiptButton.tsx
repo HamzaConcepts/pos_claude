@@ -144,7 +144,7 @@ export default function PrintReceiptButton({
       const { data } = result
 
       if (printFormat === 'pdf') {
-        printPDFReceipt(data)
+        await printPDFReceipt(data)
       } else {
         printThermalReceipt(data, {
           paperWidth: data.settings.thermal_paper_width,
@@ -174,7 +174,7 @@ export default function PrintReceiptButton({
         return
       }
 
-      downloadPDFReceipt(result.data)
+      await downloadPDFReceipt(result.data)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 2000)
     } catch (err: any) {

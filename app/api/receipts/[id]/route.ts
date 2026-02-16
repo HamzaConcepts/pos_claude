@@ -78,12 +78,21 @@ export async function GET(
       .eq('store_id', sale.store_id)
       .single()
 
+    // Also fetch logo_url from stores table
+    const { data: storeData } = await supabase
+      .from('stores')
+      .select('logo_url')
+      .eq('id', sale.store_id)
+      .single()
+    const storeLogo = storeData?.logo_url || null
+
     if (settingsError || !settingsData) {
       // Use default settings if none exist
       settings = {
         ...DEFAULT_RECEIPT_SETTINGS,
         id: 0,
         store_id: sale.store_id,
+        logo_url: storeLogo,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       } as ReceiptSettings
@@ -94,6 +103,8 @@ export async function GET(
         ...settingsData,
         business_name: settingsData.business_name || DEFAULT_RECEIPT_SETTINGS.business_name,
         thank_you_message: settingsData.thank_you_message || DEFAULT_RECEIPT_SETTINGS.thank_you_message,
+        // Use store logo if receipt_settings doesn't have one
+        logo_url: settingsData.logo_url || storeLogo,
       } as ReceiptSettings
     }
 

@@ -320,3 +320,107 @@ export interface ReceiptItem {
   unit_price: number
   subtotal: number
 }
+
+// ===== Quotation Management Types =====
+
+export interface Quotation {
+  id: number
+  quotation_number: string
+  customer_name: string | null
+  customer_phone: string | null
+  customer_email: string | null
+  customer_address: string | null
+  subtotal: number
+  discount_type: 'none' | 'fixed' | 'percentage'
+  discount_value: number
+  discount_amount: number
+  total: number
+  notes: string | null
+  terms_and_conditions: string | null
+  valid_until: string | null
+  status: 'draft' | 'finalized' | 'expired' | 'cancelled'
+  store_id: number
+  created_by: string | null
+  created_by_cashier_id: number | null
+  created_at: string
+  updated_at: string
+  finalized_at: string | null
+  finalized_by: string | null
+  finalized_by_cashier_id: number | null
+  deleted_at: string | null
+  deleted_by: string | null
+  deleted_by_cashier_id: number | null
+  // Nested relations
+  quotation_items?: QuotationItem[]
+}
+
+export interface QuotationItem {
+  id: number
+  quotation_id: number
+  product_id: number | null
+  product_name: string
+  product_sku: string | null
+  product_description: string | null
+  product_category: string | null
+  quantity: number
+  unit_price: number
+  line_total: number
+  discount_amount: number
+  notes: string | null
+  sort_order: number
+  is_manual_item: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface QuotationAuditLog {
+  id: number
+  quotation_id: number
+  action: string
+  user_id: string | null
+  cashier_id: number | null
+  changes: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface QuotationFormItem {
+  id?: number
+  product_id: number | null
+  product_name: string
+  product_sku: string
+  product_description: string
+  product_category: string
+  quantity: number
+  unit_price: number
+  line_total: number
+  is_manual_item: boolean
+  notes: string
+  sort_order: number
+  // Client-side only fields
+  temp_id?: string
+  stock_available?: number
+}
+
+export interface QuotationFormData {
+  customer_name: string
+  customer_phone: string
+  customer_email: string
+  customer_address: string
+  valid_until: string
+  notes: string
+  terms_and_conditions: string
+  discount_type: 'none' | 'fixed' | 'percentage'
+  discount_value: number
+  items: QuotationFormItem[]
+}
+
+export interface QuotationPDFData {
+  quotation: Quotation
+  items: QuotationItem[]
+  store_name: string
+  store_address: string | null
+  store_phone: string | null
+  store_email: string | null
+  currency: string
+  logo_url: string | null
+}

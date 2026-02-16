@@ -49,6 +49,7 @@ interface StoreInfo {
   store_code: string
   store_name: string
   currency: string
+  logo_url: string | null
 }
 
 interface Cashier {
@@ -1406,6 +1407,8 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
   const [cashiers, setCashiers] = useState<any[]>([])
   const [loadingCashiers, setLoadingCashiers] = useState(true)
   const [receiptType, setReceiptType] = useState<'pdf' | 'thermal'>('pdf')
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string | null>(storeInfo?.logo_url || null)
 
   useEffect(() => {
     fetchCashiers()
@@ -1421,6 +1424,7 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
     if (storeInfo) {
       setStoreCode(storeInfo.store_code || '')
       setCurrency(storeInfo.currency || 'PKR')
+      setLogoUrl(storeInfo.logo_url || null)
     }
   }, [storeInfo])
 
@@ -1474,6 +1478,77 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
       alert('Failed to update store settings')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Client-side validation
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5 MB')
+      return
+    }
+
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml']
+    if (!allowedTypes.includes(file.type)) {
+      alert('Only PNG, JPEG, WebP, and SVG images are allowed')
+      return
+    }
+
+    try {
+      setLogoUploading(true)
+      const storeId = getStoreId()
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('store_id', storeId?.toString() || '')
+
+      const response = await fetch('/api/upload-logo', {
+        method: 'POST',
+        body: formData,
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setLogoUrl(result.data.logo_url)
+        onRefresh()
+      } else {
+        alert(result.error || 'Failed to upload logo')
+      }
+    } catch (err) {
+      alert('Failed to upload logo')
+      console.error(err)
+    } finally {
+      setLogoUploading(false)
+      // Reset the file input
+      e.target.value = ''
+    }
+  }
+
+  const handleLogoRemove = async () => {
+    if (!confirm('Are you sure you want to remove the store logo?')) return
+
+    try {
+      setLogoUploading(true)
+      const storeId = getStoreId()
+
+      const response = await fetch(`/api/upload-logo?store_id=${storeId}`, {
+        method: 'DELETE',
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setLogoUrl(null)
+        onRefresh()
+      } else {
+        alert(result.error || 'Failed to remove logo')
+      }
+    } catch (err) {
+      alert('Failed to remove logo')
+      console.error(err)
+    } finally {
+      setLogoUploading(false)
     }
   }
 
@@ -1579,6 +1654,62 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                 </div>
               )}
               <p className="text-xs text-text-secondary mt-1">Currency used throughout the app</p>
+            </div>
+
+            {/* Store Logo */}
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">Store Logo</label>
+              <p className="text-xs text-gray-400 mb-2">Used in receipts and quotation PDFs. Max 5 MB (PNG, JPEG, WebP, SVG)</p>
+              {logoUrl ? (
+                <div className="flex items-start gap-3">
+                  <div className="w-20 h-20 rounded border border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={logoUrl}
+                      alt="Store logo"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="cursor-pointer">
+                      <span className="flex items-center gap-1 px-2 py-1 bg-white border border-black rounded hover:bg-gray-50 text-xs">
+                        <PencilSimpleIcon size={12} />
+                        Change
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                        disabled={logoUploading}
+                      />
+                    </label>
+                    <button
+                      onClick={handleLogoRemove}
+                      disabled={logoUploading}
+                      className="flex items-center gap-1 px-2 py-1 border border-red-300 text-red-600 rounded hover:bg-red-50 text-xs disabled:opacity-50"
+                    >
+                      <TrashIcon size={12} />
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <label className="cursor-pointer">
+                  <div className={`w-full p-4 rounded border-2 border-dashed border-gray-300 hover:border-gray-400 bg-gray-50 text-center transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <StorefrontIcon size={28} className="mx-auto mb-1 text-gray-400" />
+                    <p className="text-xs text-gray-500">
+                      {logoUploading ? 'Uploading...' : 'Click to upload logo'}
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                    disabled={logoUploading}
+                  />
+                </label>
+              )}
             </div>
           </div>
         </div>

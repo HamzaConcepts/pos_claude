@@ -81,9 +81,41 @@ function calculateDiscountAmount(data: ReceiptData): number {
   return data.discount_value
 }
 
+/**
+ * Load image from URL and return as base64 data URL for jsPDF
+ */
+async function loadImageAsBase64(url: string): Promise<{ base64: string; width: number; height: number } | null> {
+  try {
+    return await new Promise((resolve) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          resolve(null)
+          return
+        }
+        ctx.drawImage(img, 0, 0)
+        const base64 = canvas.toDataURL('image/png')
+        resolve({ base64, width: img.naturalWidth, height: img.naturalHeight })
+      }
+      img.onerror = () => {
+        console.warn('Failed to load logo image:', url)
+        resolve(null)
+      }
+      img.src = url
+    })
+  } catch {
+    return null
+  }
+}
+
 // ===== PDF RECEIPT GENERATION (A4 Format) =====
 
-export function generatePDFReceipt(data: ReceiptData): jsPDF {
+export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -99,6 +131,25 @@ export function generatePDFReceipt(data: ReceiptData): jsPDF {
   let yPos = 20
 
   // ===== HEADER SECTION =====
+
+  // Logo (if available)
+  if (settings.show_logo && settings.logo_url) {
+    const logoData = await loadImageAsBase64(settings.logo_url)
+    if (logoData) {
+      const maxLogoHeight = 20
+      const maxLogoWidth = 45
+      const aspectRatio = logoData.width / logoData.height
+      let logoWidth = maxLogoHeight * aspectRatio
+      let logoHeight = maxLogoHeight
+      if (logoWidth > maxLogoWidth) {
+        logoWidth = maxLogoWidth
+        logoHeight = maxLogoWidth / aspectRatio
+      }
+      const logoX = (pageWidth - logoWidth) / 2
+      doc.addImage(logoData.base64, 'PNG', logoX, yPos - 5, logoWidth, logoHeight)
+      yPos += logoHeight + 3
+    }
+  }
   
   // Business Name
   doc.setFontSize(20)
@@ -568,8 +619,8 @@ function escapeHTML(str: string): string {
 /**
  * Open PDF in new window for printing
  */
-export function printPDFReceipt(data: ReceiptData): void {
-  const doc = generatePDFReceipt(data)
+export async function printPDFReceipt(data: ReceiptData): Promise<void> {
+  const doc = await generatePDFReceipt(data)
   const pdfBlob = doc.output('blob')
   const pdfUrl = URL.createObjectURL(pdfBlob)
   
@@ -584,8 +635,8 @@ export function printPDFReceipt(data: ReceiptData): void {
 /**
  * Download PDF receipt
  */
-export function downloadPDFReceipt(data: ReceiptData): void {
-  const doc = generatePDFReceipt(data)
+export async function downloadPDFReceipt(data: ReceiptData): Promise<void> {
+  const doc = await generatePDFReceipt(data)
   doc.save(`receipt-${data.sale_number}.pdf`)
 }
 
