@@ -18,6 +18,15 @@ const supabaseAdmin = createClient(
 // Generate next quotation number for a store
 async function generateQuotationNumber(storeId: number): Promise<string> {
   const currentYear = new Date().getFullYear()
+
+  // Fetch store code to create a store-unique prefix
+  const { data: storeData } = await supabaseAdmin
+    .from('stores')
+    .select('store_code')
+    .eq('id', storeId)
+    .single()
+
+  const storePrefix = storeData?.store_code || String(storeId)
   
   // Upsert the sequence counter and get the new value
   const { data: existing } = await supabaseAdmin
@@ -44,7 +53,7 @@ async function generateQuotationNumber(storeId: number): Promise<string> {
   }
 
   const paddedSequence = String(nextSequence).padStart(6, '0')
-  return `Q-${currentYear}-${paddedSequence}`
+  return `Q-${storePrefix}-${currentYear}-${paddedSequence}`
 }
 
 // GET /api/quotations - List quotations with filters

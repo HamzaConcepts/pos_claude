@@ -163,11 +163,21 @@ export default function SalesPage() {
       const storeId = getStoreId()
       if (!storeId) return
 
-      const response = await fetch(`/api/receipt-settings?store_id=${storeId}`)
-      const result = await response.json()
+      const [settingsRes, storeInfoRes] = await Promise.all([
+        fetch(`/api/receipt-settings?store_id=${storeId}`),
+        fetch(`/api/store-info?store_id=${storeId}`),
+      ])
+      const settingsResult = await settingsRes.json()
+      const storeInfoResult = await storeInfoRes.json()
+      const storeLogo = storeInfoResult?.success ? storeInfoResult.data?.logo_url : null
 
-      if (result.success) {
-        setReceiptSettings(result.data)
+      if (settingsResult.success) {
+        setReceiptSettings({
+          ...settingsResult.data,
+          logo_url: settingsResult.data.logo_url || storeLogo,
+        })
+      } else if (storeLogo) {
+        setReceiptSettings({ logo_url: storeLogo, show_logo: true })
       }
     } catch (err) {
       console.error('Failed to fetch receipt settings:', err)
@@ -1224,7 +1234,7 @@ export default function SalesPage() {
                       <div className="col-span-2">
                         <p className="text-xs text-red-700">Amount Remaining</p>
                         <p className="font-bold text-red-900 text-base">
-                          ${receiptSale.partial_payment_customers[0].amount_remaining.toFixed(2)}
+                          {currency} {receiptSale.partial_payment_customers[0].amount_remaining.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -1246,9 +1256,9 @@ export default function SalesPage() {
                     <tr key={item.id} className="border-b border-gray-200">
                       <td className="py-2 text-sm text-gray-900">{item.product_name || item.products?.name || 'Unknown Product'}</td>
                       <td className="text-right text-sm text-gray-900">{item.quantity}</td>
-                      <td className="text-right text-sm text-gray-900">${item.unit_price.toFixed(2)}</td>
+                      <td className="text-right text-sm text-gray-900">{currency} {item.unit_price.toFixed(2)}</td>
                       <td className="text-right font-medium text-sm text-gray-900">
-                        ${item.subtotal.toFixed(2)}
+                        {currency} {item.subtotal.toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -1261,7 +1271,7 @@ export default function SalesPage() {
                     <div className="flex justify-between mb-2 text-sm">
                       <span className="text-gray-600">Subtotal:</span>
                       <span className="text-gray-900">
-                        ${(
+                        {currency} {(
                           receiptSale.discount_type === 'percentage'
                             ? receiptSale.total_amount / (1 - receiptSale.discount_value / 100)
                             : receiptSale.total_amount + receiptSale.discount_value
@@ -1273,7 +1283,7 @@ export default function SalesPage() {
                         Discount ({receiptSale.discount_type === 'percentage' ? `${receiptSale.discount_value}%` : 'Amount'}):
                       </span>
                       <span>
-                        -${(
+                        -{currency} {(
                           receiptSale.discount_type === 'percentage'
                             ? (receiptSale.total_amount / (1 - receiptSale.discount_value / 100)) * (receiptSale.discount_value / 100)
                             : receiptSale.discount_value
@@ -1284,21 +1294,21 @@ export default function SalesPage() {
                 )}
                 <div className="flex justify-between text-lg font-bold mb-2 text-gray-900">
                   <span>Total:</span>
-                  <span>${receiptSale.total_amount.toFixed(2)}</span>
+                  <span>{currency} {receiptSale.total_amount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between mb-2 text-sm">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="text-gray-900">${receiptSale.amount_paid.toFixed(2)}</span>
+                  <span className="text-gray-900">{currency} {receiptSale.amount_paid.toFixed(2)}</span>
                 </div>
                 {receiptSale.payment_status === 'Partial' ? (
                   <div className="flex justify-between text-base font-medium text-red-600">
                     <span>Amount Due:</span>
-                    <span>${receiptSale.amount_due.toFixed(2)}</span>
+                    <span>{currency} {receiptSale.amount_due.toFixed(2)}</span>
                   </div>
                 ) : (
                   <div className="flex justify-between text-base font-medium text-gray-900">
                     <span>Change:</span>
-                    <span>${(receiptSale.amount_paid - receiptSale.total_amount).toFixed(2)}</span>
+                    <span>{currency} {(receiptSale.amount_paid - receiptSale.total_amount).toFixed(2)}</span>
                   </div>
                 )}
                 
@@ -1322,8 +1332,6 @@ export default function SalesPage() {
             <div className="flex gap-3 p-4 border-t border-gray-200 print:hidden">
               <PrintReceiptButton
                 sale={receiptSale}
-                showFormatOptions={true}
-                defaultFormat="pdf"
                 className="flex-1"
               />
               <button
@@ -1374,7 +1382,7 @@ export default function SalesPage() {
               </div>
               <div className="mb-2">
                 <span className="font-semibold text-gray-700">Total:</span>{' '}
-                <span className="text-gray-900">${deletingSale.total_amount.toFixed(2)}</span>
+                <span className="text-gray-900">{currency} {deletingSale.total_amount.toFixed(2)}</span>
               </div>
               <div>
                 <span className="font-semibold text-gray-700">Date:</span>{' '}

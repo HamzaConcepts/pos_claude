@@ -73,9 +73,6 @@ export default function POSPage() {
   // Collapsible customer details section
   const [isCustomerSectionExpanded, setIsCustomerSectionExpanded] = useState(false)
 
-  // Receipt type setting (loaded from localStorage)
-  const [receiptType, setReceiptType] = useState<'pdf' | 'thermal'>('pdf')
-  
   // Receipt settings for preview
   const [receiptSettings, setReceiptSettings] = useState<any>(null)
 
@@ -150,11 +147,6 @@ export default function POSPage() {
     loadSelectedCashier()
     fetchAllCustomers()
     fetchReceiptSettings()
-    // Load receipt type from localStorage
-    const savedReceiptType = localStorage.getItem('pos_receipt_type')
-    if (savedReceiptType === 'thermal' || savedReceiptType === 'pdf') {
-      setReceiptType(savedReceiptType)
-    }
   }, [])
 
   const fetchAllCustomers = async () => {
@@ -189,11 +181,25 @@ export default function POSPage() {
       const storeId = getStoreId()
       if (!storeId) return
 
-      const response = await fetch(`/api/receipt-settings?store_id=${storeId}`)
-      const result = await response.json()
+      // Fetch receipt settings and store logo in parallel
+      const [settingsRes, storeInfoRes] = await Promise.all([
+        fetch(`/api/receipt-settings?store_id=${storeId}`),
+        fetch(`/api/store-info?store_id=${storeId}`),
+      ])
+      const settingsResult = await settingsRes.json()
+      const storeInfoResult = await storeInfoRes.json()
 
-      if (result.success) {
-        setReceiptSettings(result.data)
+      const storeLogo = storeInfoResult?.success ? storeInfoResult.data?.logo_url : null
+
+      if (settingsResult.success) {
+        setReceiptSettings({
+          ...settingsResult.data,
+          // Use store logo if receipt_settings doesn't have one
+          logo_url: settingsResult.data.logo_url || storeLogo,
+        })
+      } else if (storeLogo) {
+        // Even if no receipt settings, pass the store logo
+        setReceiptSettings({ logo_url: storeLogo, show_logo: true })
       }
     } catch (err) {
       console.error('Failed to fetch receipt settings:', err)
@@ -792,19 +798,35 @@ export default function POSPage() {
     const ThermalReceipt = () => (
       <div className="thermal-receipt max-w-[300px] mx-auto font-mono text-xs" id="receipt">
         <div className="p-2 bg-white text-black">
-          {/* Header */}
+          {/* Header with Logo */}
           <div className="text-center border-b border-dashed border-black pb-2 mb-2">
-            <p className="font-bold text-base">{receiptSettings?.business_name || 'POS SYSTEM'}</p>
+            {receiptSettings?.show_logo !== false && receiptSettings?.logo_url && (
+              <div className="mb-1.5">
+                <img
+                  src={receiptSettings.logo_url}
+                  alt="Store Logo"
+                  className="mx-auto max-w-[100px] max-h-[50px] object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+              </div>
+            )}
+            <p className="font-bold text-base tracking-wide">{receiptSettings?.business_name || 'POS SYSTEM'}</p>
             {receiptSettings?.business_address && (
               <p className="text-xs mt-1">{receiptSettings.business_address}</p>
             )}
             {receiptSettings?.business_phone && (
               <p className="text-xs">Tel: {receiptSettings.business_phone}</p>
             )}
+            {receiptSettings?.business_email && (
+              <p className="text-[9px]">{receiptSettings.business_email}</p>
+            )}
             {receiptSettings?.show_tax_id && receiptSettings?.tax_id && (
               <p className="text-[9px] mt-0.5">Tax ID: {receiptSettings.tax_id}</p>
             )}
           </div>
+
+          {/* Receipt Title */}
+          <div className="text-center font-bold text-xs tracking-[3px] mb-2">SALES RECEIPT</div>
 
           {/* Sale Info */}
           <div className="border-b border-dashed border-black pb-2 mb-2">
@@ -855,7 +877,7 @@ export default function POSPage() {
               <p>{lastSale.partial_payment_customers[0].customer_name}</p>
               <p>Ph: {lastSale.partial_payment_customers[0].customer_phone}</p>
               <p className="font-bold">
-                Due: Rs.{lastSale.partial_payment_customers[0].amount_remaining.toFixed(0)}
+                Due: {currency} {lastSale.partial_payment_customers[0].amount_remaining.toFixed(0)}
               </p>
             </div>
           )}
@@ -877,7 +899,7 @@ export default function POSPage() {
                         {item.product_name || item.products?.name || 'Item'}
                       </div>
                       <div className="text-[10px] text-gray-600">
-                        {item.quantity} × Rs.{item.unit_price.toFixed(0)}
+                        {item.quantity} × {currency} {item.unit_price.toFixed(0)}
                       </div>
                     </td>
                     <td className="text-right py-1 font-bold align-top">
@@ -897,7 +919,7 @@ export default function POSPage() {
                   <tr>
                     <td className="py-0.5">Subtotal:</td>
                     <td className="text-right py-0.5">
-                      Rs.{(
+                      {currency} {(
                         lastSale.discount_type === 'percentage'
                           ? lastSale.total_amount / (1 - lastSale.discount_value / 100)
                           : lastSale.total_amount + lastSale.discount_value
@@ -918,21 +940,21 @@ export default function POSPage() {
               )}
               <tr className="font-bold text-sm border-t border-black">
                 <td className="py-1">TOTAL:</td>
-                <td className="text-right py-1">Rs.{lastSale.total_amount.toFixed(0)}</td>
+                <td className="text-right py-1">{currency} {lastSale.total_amount.toFixed(0)}</td>
               </tr>
               <tr>
                 <td className="py-0.5">Paid:</td>
-                <td className="text-right py-0.5">Rs.{lastSale.amount_paid.toFixed(0)}</td>
+                <td className="text-right py-0.5">{currency} {lastSale.amount_paid.toFixed(0)}</td>
               </tr>
               {lastSale.payment_status === 'Partial' ? (
                 <tr className="font-bold">
                   <td className="py-0.5">DUE:</td>
-                  <td className="text-right py-0.5">Rs.{lastSale.amount_due.toFixed(0)}</td>
+                  <td className="text-right py-0.5">{currency} {lastSale.amount_due.toFixed(0)}</td>
                 </tr>
               ) : (
                 <tr>
                   <td className="py-0.5">Change:</td>
-                  <td className="text-right py-0.5">Rs.{(lastSale.amount_paid - lastSale.total_amount).toFixed(0)}</td>
+                  <td className="text-right py-0.5">{currency} {(lastSale.amount_paid - lastSale.total_amount).toFixed(0)}</td>
                 </tr>
               )}
             </tbody>
@@ -959,16 +981,27 @@ export default function POSPage() {
       </div>
     )
 
-    // PDF Receipt - Standard format for A4/Letter printers
+    // PDF Receipt - Professional A4 layout preview
     const PDFReceipt = () => (
-      <div className="max-w-md mx-auto" id="receipt">
+      <div className="max-w-2xl mx-auto" id="receipt">
         <div className="p-6 bg-white text-black">
-          <div className="text-center mb-4 pb-4 border-b-2 border-black">
-            <h1 className="text-2xl font-bold">{receiptSettings?.business_name || 'POS System'}</h1>
-            {receiptSettings?.business_address && (
-              <p className="text-sm mt-1">{receiptSettings.business_address}</p>
-            )}
-            <div className="text-xs mt-2">
+          {/* Two-column header: Logo+Name left, Contact right */}
+          <div className="flex justify-between items-start mb-3 pb-3 border-b-2 border-gray-300">
+            <div className="flex items-center gap-3">
+              {receiptSettings?.show_logo !== false && receiptSettings?.logo_url && (
+                <img
+                  src={receiptSettings.logo_url}
+                  alt="Store Logo"
+                  className="max-w-[60px] max-h-[40px] object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+              )}
+              <h1 className="text-xl font-bold">{receiptSettings?.business_name || 'POS System'}</h1>
+            </div>
+            <div className="text-right text-xs text-gray-600">
+              {receiptSettings?.business_address && (
+                <p>{receiptSettings.business_address}</p>
+              )}
               {receiptSettings?.business_phone && (
                 <p>Tel: {receiptSettings.business_phone}</p>
               )}
@@ -976,169 +1009,170 @@ export default function POSPage() {
                 <p>{receiptSettings.business_email}</p>
               )}
               {receiptSettings?.show_tax_id && receiptSettings?.tax_id && (
-                <p className="mt-1">Tax ID: {receiptSettings.tax_id}</p>
+                <p>Tax ID: {receiptSettings.tax_id}</p>
               )}
             </div>
           </div>
 
-          <table className="w-full text-sm mb-4">
-            <tbody>
-              <tr>
-                <td className="py-1 text-gray-600">Sale Number:</td>
-                <td className="py-1 text-right font-mono font-bold">{lastSale.sale_number}</td>
-              </tr>
-              <tr>
-                <td className="py-1 text-gray-600">Date:</td>
-                <td className="py-1 text-right">{new Date(lastSale.sale_date).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', hour12: true })}</td>
-              </tr>
-              <tr>
-                <td className="py-1 text-gray-600">Cashier:</td>
-                <td className="py-1 text-right">{lastSale.cashier_name || 'Unknown'}</td>
-              </tr>
-              <tr>
-                <td className="py-1 text-gray-600">Payment:</td>
-                <td className="py-1 text-right">{lastSale.payment_method}</td>
-              </tr>
-              <tr>
-                <td className="py-1 text-gray-600">Status:</td>
-                <td className={`py-1 text-right font-bold ${lastSale.payment_status === 'Partial' ? 'text-red-600' : ''}`}>
-                  {lastSale.payment_status}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          {/* Dark title bar */}
+          <div className="bg-black text-white text-center py-2 mb-4">
+            <h2 className="text-sm font-bold tracking-widest">SALES RECEIPT</h2>
+          </div>
+
+          {/* Metadata grid */}
+          <div className="grid grid-cols-3 gap-3 text-sm mb-4">
+            <div>
+              <p className="text-xs text-gray-500">Receipt #</p>
+              <p className="font-mono font-bold">{lastSale.sale_number}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Date</p>
+              <p className="font-medium">{new Date(lastSale.sale_date).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Cashier</p>
+              <p className="font-medium">{lastSale.cashier_name || 'Unknown'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Payment Method</p>
+              <p className="font-medium">{lastSale.payment_method}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Payment Status</p>
+              <p className={`font-bold ${lastSale.payment_status === 'Partial' ? 'text-red-600' : ''}`}>
+                {lastSale.payment_status}
+              </p>
+            </div>
+          </div>
 
           {/* Customer Info */}
           {(lastSale.customer_name || lastSale.customer_phone || lastSale.customer_cnic) && (
-            <div className="mb-4 p-3 bg-gray-100 border border-gray-300">
-              <p className="font-bold mb-2 text-sm">Customer Information</p>
-              <table className="w-full text-sm">
-                <tbody>
-                  {lastSale.customer_name && (
-                    <tr>
-                      <td className="py-0.5 text-gray-600">Name:</td>
-                      <td className="py-0.5 text-right">{lastSale.customer_name}</td>
-                    </tr>
-                  )}
-                  {lastSale.customer_phone && (
-                    <tr>
-                      <td className="py-0.5 text-gray-600">Phone:</td>
-                      <td className="py-0.5 text-right">{lastSale.customer_phone}</td>
-                    </tr>
-                  )}
-                  {lastSale.customer_cnic && (
-                    <tr>
-                      <td className="py-0.5 text-gray-600">CNIC:</td>
-                      <td className="py-0.5 text-right">{lastSale.customer_cnic}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+              <p className="font-bold mb-2 text-xs text-gray-500 uppercase">Customer</p>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                {lastSale.customer_name && (
+                  <div>
+                    <p className="text-gray-500 text-xs">Name</p>
+                    <p>{lastSale.customer_name}</p>
+                  </div>
+                )}
+                {lastSale.customer_phone && (
+                  <div>
+                    <p className="text-gray-500 text-xs">Phone</p>
+                    <p>{lastSale.customer_phone}</p>
+                  </div>
+                )}
+                {lastSale.customer_cnic && (
+                  <div>
+                    <p className="text-gray-500 text-xs">CNIC</p>
+                    <p>{lastSale.customer_cnic}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {/* Partial Payment Customer */}
           {lastSale.partial_payment_customers?.[0] && (
-            <div className="mb-4 p-3 bg-red-50 border-2 border-red-500">
-              <p className="font-bold mb-2 text-sm text-red-700">⚠ PARTIAL PAYMENT</p>
-              <table className="w-full text-sm">
-                <tbody>
-                  <tr>
-                    <td className="py-0.5">Name:</td>
-                    <td className="py-0.5 text-right">{lastSale.partial_payment_customers[0].customer_name}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-0.5">Phone:</td>
-                    <td className="py-0.5 text-right">{lastSale.partial_payment_customers[0].customer_phone}</td>
-                  </tr>
-                  <tr className="font-bold text-red-700">
-                    <td className="py-0.5">Amount Due:</td>
-                    <td className="py-0.5 text-right">Rs. {lastSale.partial_payment_customers[0].amount_remaining.toFixed(2)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="mb-4 p-3 bg-red-50 border-2 border-red-500 rounded">
+              <p className="font-bold mb-2 text-sm text-red-700">PARTIAL PAYMENT - CREDIT SALE</p>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div>
+                  <p className="text-red-600 text-xs">Name</p>
+                  <p>{lastSale.partial_payment_customers[0].customer_name}</p>
+                </div>
+                <div>
+                  <p className="text-red-600 text-xs">Phone</p>
+                  <p>{lastSale.partial_payment_customers[0].customer_phone}</p>
+                </div>
+                <div>
+                  <p className="text-red-600 text-xs">Amount Due</p>
+                  <p className="font-bold text-red-700">{currency} {lastSale.partial_payment_customers[0].amount_remaining.toFixed(2)}</p>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Items Table */}
+          {/* Items Table - 5 columns */}
           <table className="w-full text-sm mb-4 border-collapse">
             <thead>
-              <tr className="border-b-2 border-black">
-                <th className="text-left py-2">Item</th>
-                <th className="text-center py-2 w-16">Qty</th>
-                <th className="text-right py-2 w-24">Price</th>
-                <th className="text-right py-2 w-24">Total</th>
+              <tr className="bg-black text-white">
+                <th className="text-center py-2 px-2 w-10">#</th>
+                <th className="text-left py-2 px-2">Item Description</th>
+                <th className="text-center py-2 px-2 w-14">Qty</th>
+                <th className="text-right py-2 px-2 w-24">Unit Price</th>
+                <th className="text-right py-2 px-2 w-24">Amount</th>
               </tr>
             </thead>
             <tbody>
-              {lastSale.sale_items?.map((item: any) => (
-                <tr key={item.id} className="border-b border-gray-300">
-                  <td className="py-2">{item.product_name || item.products?.name || 'Unknown'}</td>
-                  <td className="text-center py-2">{item.quantity}</td>
-                  <td className="text-right py-2">Rs.{item.unit_price.toFixed(2)}</td>
-                  <td className="text-right py-2 font-medium">Rs.{item.subtotal.toFixed(2)}</td>
+              {lastSale.sale_items?.map((item: any, idx: number) => (
+                <tr key={item.id} className={`border-b border-gray-200 ${idx % 2 === 1 ? 'bg-gray-50' : ''}`}>
+                  <td className="text-center py-2 px-2 text-gray-500">{idx + 1}</td>
+                  <td className="py-2 px-2">{item.product_name || item.products?.name || 'Unknown'}</td>
+                  <td className="text-center py-2 px-2">{item.quantity}</td>
+                  <td className="text-right py-2 px-2">{currency} {item.unit_price.toFixed(2)}</td>
+                  <td className="text-right py-2 px-2 font-medium">{currency} {item.subtotal.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          {/* Totals */}
-          <div className="border-t-2 border-black pt-3">
-            <table className="w-full text-sm">
-              <tbody>
-                {lastSale.discount_value > 0 && lastSale.discount_type !== 'none' && (
-                  <>
-                    <tr>
-                      <td className="py-1">Subtotal:</td>
-                      <td className="py-1 text-right">
-                        Rs.{(
-                          lastSale.discount_type === 'percentage'
-                            ? lastSale.total_amount / (1 - lastSale.discount_value / 100)
-                            : lastSale.total_amount + lastSale.discount_value
-                        ).toFixed(2)}
-                      </td>
-                    </tr>
-                    <tr className="text-green-700">
-                      <td className="py-1">
-                        Discount ({lastSale.discount_type === 'percentage' ? `${lastSale.discount_value}%` : 'Amount'}):
-                      </td>
-                      <td className="py-1 text-right">
-                        -Rs.{(
-                          lastSale.discount_type === 'percentage'
-                            ? (lastSale.total_amount / (1 - lastSale.discount_value / 100)) * (lastSale.discount_value / 100)
-                            : lastSale.discount_value
-                        ).toFixed(2)}
-                      </td>
-                    </tr>
-                  </>
-                )}
-                <tr className="text-lg font-bold border-t border-black">
-                  <td className="py-2">Total:</td>
-                  <td className="py-2 text-right">Rs. {lastSale.total_amount.toFixed(2)}</td>
-                </tr>
-                <tr>
-                  <td className="py-1">Amount Paid:</td>
-                  <td className="py-1 text-right">Rs. {lastSale.amount_paid.toFixed(2)}</td>
-                </tr>
-                {lastSale.payment_status === 'Partial' ? (
-                  <tr className="font-bold text-red-600">
-                    <td className="py-1">Amount Due:</td>
-                    <td className="py-1 text-right">Rs. {lastSale.amount_due.toFixed(2)}</td>
-                  </tr>
-                ) : (
-                  <tr>
-                    <td className="py-1">Change:</td>
-                    <td className="py-1 text-right">Rs. {(lastSale.amount_paid - lastSale.total_amount).toFixed(2)}</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          {/* Totals - right-aligned box */}
+          <div className="flex justify-end">
+            <div className="w-64 bg-gray-50 border border-gray-200 rounded p-3">
+              {lastSale.discount_value > 0 && lastSale.discount_type !== 'none' && (
+                <>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Subtotal:</span>
+                    <span>
+                      {currency} {(
+                        lastSale.discount_type === 'percentage'
+                          ? lastSale.total_amount / (1 - lastSale.discount_value / 100)
+                          : lastSale.total_amount + lastSale.discount_value
+                      ).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm text-red-600 mb-1">
+                    <span>
+                      Discount ({lastSale.discount_type === 'percentage' ? `${lastSale.discount_value}%` : 'Amt'}):
+                    </span>
+                    <span>
+                      -{currency} {(
+                        lastSale.discount_type === 'percentage'
+                          ? (lastSale.total_amount / (1 - lastSale.discount_value / 100)) * (lastSale.discount_value / 100)
+                          : lastSale.discount_value
+                      ).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="border-t border-gray-300 my-1"></div>
+                </>
+              )}
+              <div className="flex justify-between text-base font-bold mb-1">
+                <span>TOTAL:</span>
+                <span>{currency} {lastSale.total_amount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm mb-1">
+                <span>Amount Paid:</span>
+                <span>{currency} {lastSale.amount_paid.toFixed(2)}</span>
+              </div>
+              {lastSale.payment_status === 'Partial' ? (
+                <div className="flex justify-between text-sm font-bold text-red-600">
+                  <span>Amount Due:</span>
+                  <span>{currency} {lastSale.amount_due.toFixed(2)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-sm">
+                  <span>Change:</span>
+                  <span>{currency} {(lastSale.amount_paid - lastSale.total_amount).toFixed(2)}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Partial Warning */}
           {lastSale.payment_status === 'Partial' && (
-            <div className="mt-4 p-2 bg-red-600 text-white text-center font-bold">
-              ⚠ OUTSTANDING BALANCE DUE ⚠
+            <div className="mt-4 p-2 bg-red-600 text-white text-center font-bold text-sm rounded">
+              OUTSTANDING BALANCE DUE
             </div>
           )}
 
@@ -1146,7 +1180,7 @@ export default function POSPage() {
           <div className="text-center mt-4 pt-4 border-t border-gray-300">
             <p className="font-medium">{receiptSettings?.thank_you_message || 'Thank you for your business!'}</p>
             {receiptSettings?.return_policy && (
-              <p className="text-xs mt-2 text-gray-600">{receiptSettings.return_policy}</p>
+              <p className="text-xs mt-2 text-gray-500">{receiptSettings.return_policy}</p>
             )}
           </div>
         </div>
@@ -1155,43 +1189,13 @@ export default function POSPage() {
 
     return (
       <div className={isDarkMode ? 'bg-[#0f0f0f]' : ''}>
-        {/* Receipt Type Toggle - Print hidden */}
-        <div className="flex justify-center gap-2 mb-4 print:hidden">
-          <button
-            onClick={() => setReceiptType('pdf')}
-            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-              receiptType === 'pdf'
-                ? 'bg-cyan-600 text-white'
-                : isDarkMode
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            PDF Receipt
-          </button>
-          <button
-            onClick={() => setReceiptType('thermal')}
-            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
-              receiptType === 'thermal'
-                ? 'bg-cyan-600 text-white'
-                : isDarkMode
-                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Thermal Receipt
-          </button>
-        </div>
-
-        {/* Render Selected Receipt Type */}
-        {receiptType === 'thermal' ? <ThermalReceipt /> : <PDFReceipt />}
+        {/* Render receipt based on store default_format setting */}
+        {receiptSettings?.default_format === 'thermal' ? <ThermalReceipt /> : <PDFReceipt />}
 
         {/* Action Buttons */}
-        <div className={`flex gap-3 mt-5 print:hidden ${receiptType === 'thermal' ? 'max-w-[280px] mx-auto' : 'max-w-2xl mx-auto px-4'}`}>
+        <div className={`flex gap-3 mt-5 print:hidden ${receiptSettings?.default_format === 'thermal' ? 'max-w-[280px] mx-auto' : 'max-w-2xl mx-auto px-4'}`}>
           <PrintReceiptButton
             sale={lastSale}
-            showFormatOptions={true}
-            defaultFormat={receiptType}
             className="flex-1"
           />
           <button

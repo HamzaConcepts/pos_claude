@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { UsersIcon, ShieldIcon, UserIcon, ClockIcon, CheckCircleIcon, XCircleIcon, StorefrontIcon, TagIcon, GridFourIcon, PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, CurrencyDollarIcon, ReceiptIcon, FileTextIcon, PrinterIcon, UserPlusIcon } from '@phosphor-icons/react'
+import { UsersIcon, ShieldIcon, UserIcon, ClockIcon, CheckCircleIcon, XCircleIcon, StorefrontIcon, TagIcon, GridFourIcon, PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, CurrencyDollarIcon, UserPlusIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import AddStockModal from '@/components/AddStockModal'
 import PredefinedExpensesManager from '@/components/PredefinedExpensesManager'
@@ -1406,17 +1406,11 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
   const [saving, setSaving] = useState(false)
   const [cashiers, setCashiers] = useState<any[]>([])
   const [loadingCashiers, setLoadingCashiers] = useState(true)
-  const [receiptType, setReceiptType] = useState<'pdf' | 'thermal'>('pdf')
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(storeInfo?.logo_url || null)
 
   useEffect(() => {
     fetchCashiers()
-    // Load receipt type from localStorage
-    const savedReceiptType = localStorage.getItem('pos_receipt_type')
-    if (savedReceiptType === 'thermal' || savedReceiptType === 'pdf') {
-      setReceiptType(savedReceiptType)
-    }
   }, [])
 
   // Update state when storeInfo changes
@@ -1714,64 +1708,7 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
           </div>
         </div>
 
-        {/* Receipt Settings Card */}
-        <div className="bg-white rounded border border-gray-200 p-4">
-          <h2 className="text-base font-bold mb-3 flex items-center gap-2">
-            <ReceiptIcon size={18} />
-            Receipt Settings
-          </h2>
-
-          <div>
-            <label className="block text-xs font-medium mb-2 text-gray-600">Receipt Type</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => {
-                  setReceiptType('pdf')
-                  localStorage.setItem('pos_receipt_type', 'pdf')
-                }}
-                className={`p-3 rounded border-2 transition-all ${
-                  receiptType === 'pdf'
-                    ? 'border-cyan-600 bg-cyan-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-col items-center gap-1">
-                  <FileTextIcon size={24} className={receiptType === 'pdf' ? 'text-cyan-600' : 'text-gray-500'} />
-                  <span className={`font-medium text-sm ${receiptType === 'pdf' ? 'text-cyan-600' : 'text-gray-700'}`}>
-                    PDF
-                  </span>
-                  <span className="text-xs text-gray-500 text-center">
-                    A4/Letter
-                  </span>
-                </div>
-              </button>
-              <button
-                onClick={() => {
-                  setReceiptType('thermal')
-                  localStorage.setItem('pos_receipt_type', 'thermal')
-                }}
-                className={`p-3 rounded border-2 transition-all ${
-                  receiptType === 'thermal'
-                    ? 'border-cyan-600 bg-cyan-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-col items-center gap-1">
-                  <PrinterIcon size={24} className={receiptType === 'thermal' ? 'text-cyan-600' : 'text-gray-500'} />
-                  <span className={`font-medium text-sm ${receiptType === 'thermal' ? 'text-cyan-600' : 'text-gray-700'}`}>
-                    Thermal
-                  </span>
-                  <span className="text-xs text-gray-500 text-center">
-                    58mm/80mm
-                  </span>
-                </div>
-              </button>
-            </div>
-            <p className="text-xs text-text-secondary mt-2">
-              Select receipt format for your printer type.
-            </p>
-          </div>
-        </div>
+        {/* Receipt Settings Card - Removed: use /dashboard/receipt-settings instead */}
       </div>
 
       {/* Cashiers Information Card - Full Width */}

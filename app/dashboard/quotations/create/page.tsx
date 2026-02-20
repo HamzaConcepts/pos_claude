@@ -192,7 +192,7 @@ export default function CreateQuotationPage() {
       return
     }
     const price = parseFloat(manualPrice) || 0
-    const qty = parseFloat(manualQty) || 1
+    const qty = parseInt(manualQty) || 1
 
     const newItem: QuotationFormItem = {
       product_id: null,
@@ -221,12 +221,13 @@ export default function CreateQuotationPage() {
     setItems(prev => prev.filter(item => item.temp_id !== tempId))
   }
 
-  // Update item quantity
+  // Update item quantity (integer only)
   const updateItemQuantity = (tempId: string, qty: number) => {
+    const intQty = Math.max(1, Math.round(qty))
     setItems(prev =>
       prev.map(item =>
         item.temp_id === tempId
-          ? { ...item, quantity: qty, line_total: Math.round(qty * item.unit_price * 100) / 100 }
+          ? { ...item, quantity: intQty, line_total: Math.round(intQty * item.unit_price * 100) / 100 }
           : item
       )
     )
@@ -604,7 +605,7 @@ export default function CreateQuotationPage() {
                     value={manualQty}
                     onChange={(e) => setManualQty(e.target.value)}
                     placeholder="Qty"
-                    min="0.001"
+                    min="1"
                     step="1"
                     className={inputClasses}
                   />
@@ -617,7 +618,7 @@ export default function CreateQuotationPage() {
                     placeholder="Unit price"
                     min="0"
                     step="0.01"
-                    className={inputClasses}
+                    className={`${inputClasses} no-spinners`}
                   />
                 </div>
               </div>
@@ -689,8 +690,8 @@ export default function CreateQuotationPage() {
                         <input
                           type="number"
                           value={item.quantity}
-                          onChange={(e) => updateItemQuantity(item.temp_id!, parseFloat(e.target.value) || 0)}
-                          min="0.001"
+                          onChange={(e) => updateItemQuantity(item.temp_id!, parseInt(e.target.value) || 1)}
+                          min="1"
                           step="1"
                           className={`w-20 text-center px-2 py-1.5 rounded border text-sm ${
                             isDarkMode
@@ -706,7 +707,7 @@ export default function CreateQuotationPage() {
                           onChange={(e) => updateItemPrice(item.temp_id!, parseFloat(e.target.value) || 0)}
                           min="0"
                           step="0.01"
-                          className={`w-28 text-right px-2 py-1.5 rounded border text-sm ${
+                          className={`w-28 text-right px-2 py-1.5 rounded border text-sm no-spinners ${
                             isDarkMode
                               ? 'bg-[#2a2a2a] border-gray-600 text-white'
                               : 'bg-white border-gray-300 text-gray-900'

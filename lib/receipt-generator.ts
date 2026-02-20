@@ -124,20 +124,24 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
 
   const settings = data.settings
   const currency = data.currency || 'PKR'
-  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageWidth = doc.internal.pageSize.getWidth() // 210mm
+  const pageHeight = doc.internal.pageSize.getHeight() // 297mm
   const marginLeft = 15
   const marginRight = 15
   const contentWidth = pageWidth - marginLeft - marginRight
-  let yPos = 20
+  let yPos = 15
 
-  // ===== HEADER SECTION =====
+  // ===== TWO-COLUMN HEADER =====
+  // Left: Logo + Business Name | Right: Contact details
+  const headerLeftWidth = contentWidth * 0.5
+  const headerRightX = marginLeft + contentWidth * 0.55
 
-  // Logo (if available)
+  let logoLoaded = false
   if (settings.show_logo && settings.logo_url) {
     const logoData = await loadImageAsBase64(settings.logo_url)
     if (logoData) {
-      const maxLogoHeight = 20
-      const maxLogoWidth = 45
+      const maxLogoHeight = 18
+      const maxLogoWidth = 40
       const aspectRatio = logoData.width / logoData.height
       let logoWidth = maxLogoHeight * aspectRatio
       let logoHeight = maxLogoHeight
@@ -145,93 +149,111 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
         logoWidth = maxLogoWidth
         logoHeight = maxLogoWidth / aspectRatio
       }
-      const logoX = (pageWidth - logoWidth) / 2
-      doc.addImage(logoData.base64, 'PNG', logoX, yPos - 5, logoWidth, logoHeight)
-      yPos += logoHeight + 3
+      doc.addImage(logoData.base64, 'PNG', marginLeft, yPos, logoWidth, logoHeight)
+      // Business name next to logo
+      doc.setFontSize(18)
+      doc.setFont('helvetica', 'bold')
+      doc.text(settings.business_name, marginLeft + logoWidth + 4, yPos + logoHeight / 2 + 2)
+      logoLoaded = true
     }
   }
-  
-  // Business Name
-  doc.setFontSize(20)
-  doc.setFont('helvetica', 'bold')
-  doc.text(settings.business_name, pageWidth / 2, yPos, { align: 'center' })
-  yPos += 8
 
-  // Business Address
-  if (settings.business_address) {
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    const addressLines = doc.splitTextToSize(settings.business_address, contentWidth)
-    doc.text(addressLines, pageWidth / 2, yPos, { align: 'center' })
-    yPos += addressLines.length * 4 + 2
-  }
-
-  // Contact Info
-  const contactParts: string[] = []
-  if (settings.business_phone) contactParts.push(`Tel: ${settings.business_phone}`)
-  if (settings.business_email) contactParts.push(settings.business_email)
-  if (contactParts.length > 0) {
-    doc.setFontSize(9)
-    doc.text(contactParts.join(' | '), pageWidth / 2, yPos, { align: 'center' })
-    yPos += 5
-  }
-
-  // Tax ID
-  if (settings.show_tax_id && settings.tax_id) {
-    doc.setFontSize(9)
-    doc.text(`Tax ID: ${settings.tax_id}`, pageWidth / 2, yPos, { align: 'center' })
-    yPos += 5
-  }
-
-  // Separator line
-  yPos += 3
-  doc.setDrawColor(51, 51, 51)
-  doc.setLineWidth(0.5)
-  doc.line(marginLeft, yPos, pageWidth - marginRight, yPos)
-  yPos += 8
-
-  // ===== RECEIPT INFO BAR =====
-  doc.setFontSize(10)
-  
-  // Left side: Receipt number and Cashier
-  doc.setFont('helvetica', 'bold')
-  doc.text(`Receipt #: ${data.sale_number}`, marginLeft, yPos)
-  doc.setFont('helvetica', 'normal')
-  doc.text(`Date: ${formatDate(data.sale_date)}`, pageWidth - marginRight, yPos, { align: 'right' })
-  yPos += 5
-
-  doc.text(`Cashier: ${data.cashier_name || 'Unknown'}`, marginLeft, yPos)
-  doc.text(`Payment: ${data.payment_method}`, pageWidth - marginRight, yPos, { align: 'right' })
-  yPos += 5
-
-  // Payment status (highlighted if partial)
-  if (data.payment_status === 'Partial') {
-    doc.setTextColor(211, 47, 47) // Red
+  if (!logoLoaded) {
+    doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.text(`Status: PARTIAL PAYMENT`, marginLeft, yPos)
-    doc.setTextColor(0, 0, 0)
-    doc.setFont('helvetica', 'normal')
-  } else {
-    doc.text(`Status: ${data.payment_status}`, marginLeft, yPos)
+    doc.text(settings.business_name, marginLeft, yPos + 6)
   }
-  yPos += 8
 
-  // Separator line
-  doc.setDrawColor(204, 204, 204)
+  // Right column: contact info, right-aligned
+  let rightY = yPos + 2
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  if (settings.business_address) {
+    const addrLines = doc.splitTextToSize(settings.business_address, contentWidth * 0.4)
+    doc.text(addrLines, pageWidth - marginRight, rightY, { align: 'right' })
+    rightY += addrLines.length * 3.5
+  }
+  if (settings.business_phone) {
+    doc.text(`Tel: ${settings.business_phone}`, pageWidth - marginRight, rightY, { align: 'right' })
+    rightY += 3.5
+  }
+  if (settings.business_email) {
+    doc.text(settings.business_email, pageWidth - marginRight, rightY, { align: 'right' })
+    rightY += 3.5
+  }
+  if (settings.show_tax_id && settings.tax_id) {
+    doc.text(`Tax ID: ${settings.tax_id}`, pageWidth - marginRight, rightY, { align: 'right' })
+    rightY += 3.5
+  }
+
+  yPos = Math.max(yPos + 22, rightY + 4)
+
+  // ===== DARK TITLE BAR =====
+  doc.setFillColor(30, 30, 30)
+  doc.rect(marginLeft, yPos, contentWidth, 10, 'F')
+  doc.setFontSize(13)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(255, 255, 255)
+  doc.text('SALES RECEIPT', pageWidth / 2, yPos + 7, { align: 'center' })
+  doc.setTextColor(0, 0, 0)
+  yPos += 14
+
+  // ===== METADATA GRID (2×3) =====
+  doc.setFontSize(9)
+  const col1X = marginLeft
+  const col2X = marginLeft + contentWidth / 3
+  const col3X = marginLeft + (contentWidth * 2) / 3
+
+  // Row 1
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(120, 120, 120)
+  doc.text('Receipt #', col1X, yPos)
+  doc.text('Date', col2X, yPos)
+  doc.text('Cashier', col3X, yPos)
+  yPos += 4
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text(data.sale_number, col1X, yPos)
+  doc.text(formatDate(data.sale_date, 'short'), col2X, yPos)
+  doc.text(data.cashier_name || 'Unknown', col3X, yPos)
+  yPos += 6
+
+  // Row 2
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(120, 120, 120)
+  doc.text('Payment Method', col1X, yPos)
+  doc.text('Payment Status', col2X, yPos)
+  yPos += 4
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(0, 0, 0)
+  doc.text(data.payment_method, col1X, yPos)
+  if (data.payment_status === 'Partial') {
+    doc.setTextColor(211, 47, 47)
+    doc.text('PARTIAL PAYMENT', col2X, yPos)
+    doc.setTextColor(0, 0, 0)
+  } else {
+    doc.text(data.payment_status, col2X, yPos)
+  }
+  yPos += 7
+
+  // Separator
+  doc.setDrawColor(220, 220, 220)
   doc.setLineWidth(0.3)
   doc.line(marginLeft, yPos, pageWidth - marginRight, yPos)
   yPos += 5
 
   // ===== CUSTOMER INFO (if present) =====
   if (data.customer_name || data.customer_phone) {
-    doc.setFillColor(245, 245, 245)
-    doc.rect(marginLeft, yPos, contentWidth, 18, 'F')
-    yPos += 5
-    doc.setFontSize(10)
+    doc.setFillColor(248, 248, 248)
+    const custBoxHeight = 6 + (data.customer_name ? 5 : 0) + (data.customer_phone ? 5 : 0) + ((data as any).customer_cnic ? 5 : 0)
+    doc.rect(marginLeft, yPos, contentWidth, custBoxHeight, 'F')
+    yPos += 4
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
-    doc.text('Customer Information', marginLeft + 3, yPos)
+    doc.text('CUSTOMER', marginLeft + 3, yPos)
     yPos += 5
     doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
     if (data.customer_name) {
       doc.text(`Name: ${data.customer_name}`, marginLeft + 3, yPos)
       yPos += 4
@@ -240,12 +262,16 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
       doc.text(`Phone: ${data.customer_phone}`, marginLeft + 3, yPos)
       yPos += 4
     }
-    yPos += 5
+    if ((data as any).customer_cnic) {
+      doc.text(`CNIC: ${(data as any).customer_cnic}`, marginLeft + 3, yPos)
+      yPos += 4
+    }
+    yPos += 4
   }
 
   // ===== PARTIAL PAYMENT CUSTOMER (if present) =====
   if (data.partial_customer) {
-    doc.setFillColor(255, 235, 235) // Light red background
+    doc.setFillColor(255, 235, 235)
     doc.setDrawColor(211, 47, 47)
     doc.setLineWidth(0.5)
     doc.rect(marginLeft, yPos, contentWidth, 22, 'FD')
@@ -253,14 +279,14 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(211, 47, 47)
-    doc.text('⚠ PARTIAL PAYMENT - CREDIT SALE', marginLeft + 3, yPos)
+    doc.text('PARTIAL PAYMENT - CREDIT SALE', marginLeft + 3, yPos)
     doc.setTextColor(0, 0, 0)
     yPos += 5
     doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
     doc.text(`Customer: ${data.partial_customer.name}`, marginLeft + 3, yPos)
-    yPos += 4
-    doc.text(`Phone: ${data.partial_customer.phone}`, marginLeft + 3, yPos)
-    yPos += 4
+    doc.text(`Phone: ${data.partial_customer.phone}`, marginLeft + contentWidth / 2, yPos)
+    yPos += 5
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(211, 47, 47)
     doc.text(`Amount Due: ${formatCurrency(data.partial_customer.amount_remaining, currency)}`, marginLeft + 3, yPos)
@@ -268,8 +294,9 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
     yPos += 8
   }
 
-  // ===== ITEMS TABLE =====
-  const tableData = data.items.map((item) => [
+  // ===== ITEMS TABLE (5 columns: #, Description, Qty, Unit Price, Amount) =====
+  const tableData = data.items.map((item, idx) => [
+    (idx + 1).toString(),
     item.name,
     item.quantity.toString(),
     formatCurrency(item.unit_price, currency),
@@ -278,91 +305,114 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Item', 'Qty', 'Unit Price', 'Total']],
+    head: [['#', 'Item Description', 'Qty', 'Unit Price', 'Amount']],
     body: tableData,
     margin: { left: marginLeft, right: marginRight },
     headStyles: {
-      fillColor: [245, 245, 245],
-      textColor: [0, 0, 0],
+      fillColor: [30, 30, 30],
+      textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 10,
+      fontSize: 9,
+      cellPadding: 3,
     },
     bodyStyles: {
-      fontSize: 10,
+      fontSize: 9,
+      cellPadding: 2.5,
     },
     columnStyles: {
-      0: { cellWidth: 'auto' },
-      1: { cellWidth: 20, halign: 'center' },
-      2: { cellWidth: 35, halign: 'right' },
-      3: { cellWidth: 35, halign: 'right' },
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 'auto' },
+      2: { cellWidth: 18, halign: 'center' },
+      3: { cellWidth: 32, halign: 'right' },
+      4: { cellWidth: 32, halign: 'right' },
     },
     alternateRowStyles: {
-      fillColor: [250, 250, 250],
+      fillColor: [248, 248, 248],
+    },
+    styles: {
+      lineColor: [220, 220, 220],
+      lineWidth: 0.2,
     },
   })
 
-  yPos = (doc as any).lastAutoTable.finalY + 10
+  yPos = (doc as any).lastAutoTable.finalY + 8
 
-  // ===== TOTALS SECTION =====
-  const totalsX = pageWidth - marginRight - 80
-  const totalsWidth = 80
-  
-  // Subtotal (if discount applied)
+  // ===== TOTALS SUMMARY BOX (right-aligned) =====
+  const totalsBoxWidth = 85
+  const totalsX = pageWidth - marginRight - totalsBoxWidth
+
   const hasDiscount = data.discount_type !== 'none' && data.discount_value > 0
+
+  // Background box
+  let totalsBoxHeight = 30 // base: Total + Paid + Change/Due
+  if (hasDiscount) totalsBoxHeight += 12
+  if (data.payment_status === 'Partial') totalsBoxHeight += 2
+
+  doc.setFillColor(248, 248, 248)
+  doc.setDrawColor(220, 220, 220)
+  doc.setLineWidth(0.3)
+  doc.rect(totalsX, yPos, totalsBoxWidth, totalsBoxHeight, 'FD')
+
+  let tY = yPos + 5
+  doc.setFontSize(9)
+
+  // Subtotal (if discount applied)
   if (hasDiscount) {
     const subtotal = calculateSubtotal(data)
-    doc.setFontSize(10)
-    doc.text('Subtotal:', totalsX, yPos)
-    doc.text(formatCurrency(subtotal, currency), pageWidth - marginRight, yPos, { align: 'right' })
-    yPos += 5
+    doc.setFont('helvetica', 'normal')
+    doc.text('Subtotal:', totalsX + 3, tY)
+    doc.text(formatCurrency(subtotal, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
+    tY += 5
 
-    // Discount
-    doc.setTextColor(211, 47, 47) // Red
-    const discountLabel = data.discount_type === 'percentage' 
-      ? `Discount (${data.discount_value}%):` 
+    doc.setTextColor(211, 47, 47)
+    const discountLabel = data.discount_type === 'percentage'
+      ? `Discount (${data.discount_value}%):`
       : 'Discount:'
-    doc.text(discountLabel, totalsX, yPos)
-    doc.text(`-${formatCurrency(calculateDiscountAmount(data), currency)}`, pageWidth - marginRight, yPos, { align: 'right' })
+    doc.text(discountLabel, totalsX + 3, tY)
+    doc.text(`-${formatCurrency(calculateDiscountAmount(data), currency)}`, totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
     doc.setTextColor(0, 0, 0)
-    yPos += 5
+    tY += 6
+
+    // Inner separator
+    doc.setDrawColor(200, 200, 200)
+    doc.setLineWidth(0.2)
+    doc.line(totalsX + 3, tY, totalsX + totalsBoxWidth - 3, tY)
+    tY += 4
   }
 
   // Total
-  doc.setDrawColor(51, 51, 51)
-  doc.setLineWidth(0.5)
-  doc.line(totalsX, yPos, pageWidth - marginRight, yPos)
-  yPos += 6
-  doc.setFontSize(14)
+  doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('TOTAL:', totalsX, yPos)
-  doc.text(formatCurrency(data.total_amount, currency), pageWidth - marginRight, yPos, { align: 'right' })
-  yPos += 8
+  doc.text('TOTAL:', totalsX + 3, tY)
+  doc.text(formatCurrency(data.total_amount, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
+  tY += 6
 
   // Amount Paid
-  doc.setFontSize(10)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text('Amount Paid:', totalsX, yPos)
-  doc.text(formatCurrency(data.amount_paid, currency), pageWidth - marginRight, yPos, { align: 'right' })
-  yPos += 5
+  doc.text('Amount Paid:', totalsX + 3, tY)
+  doc.text(formatCurrency(data.amount_paid, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
+  tY += 5
 
   // Change or Amount Due
   if (data.payment_status === 'Partial') {
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(211, 47, 47)
-    doc.text('Amount Due:', totalsX, yPos)
-    doc.text(formatCurrency(data.amount_due, currency), pageWidth - marginRight, yPos, { align: 'right' })
+    doc.text('Amount Due:', totalsX + 3, tY)
+    doc.text(formatCurrency(data.amount_due, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
     doc.setTextColor(0, 0, 0)
   } else {
-    doc.text('Change:', totalsX, yPos)
-    doc.text(formatCurrency(data.change_given, currency), pageWidth - marginRight, yPos, { align: 'right' })
+    doc.text('Change:', totalsX + 3, tY)
+    doc.text(formatCurrency(data.change_given, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
   }
-  yPos += 15
+
+  yPos += totalsBoxHeight + 10
 
   // ===== FOOTER SECTION =====
-  doc.setDrawColor(51, 51, 51)
+  doc.setDrawColor(30, 30, 30)
   doc.setLineWidth(0.3)
   doc.line(marginLeft, yPos, pageWidth - marginRight, yPos)
-  yPos += 8
+  yPos += 6
 
   // Thank you message
   doc.setFontSize(11)
@@ -377,8 +427,19 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
     doc.setTextColor(102, 102, 102)
     const policyLines = doc.splitTextToSize(settings.return_policy, contentWidth)
     doc.text(policyLines, pageWidth / 2, yPos, { align: 'center' })
+    yPos += policyLines.length * 3.5 + 4
     doc.setTextColor(0, 0, 0)
   }
+
+  // Generated timestamp (bottom-right)
+  doc.setFontSize(7)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(150, 150, 150)
+  doc.text(
+    `Generated: ${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi', dateStyle: 'medium', timeStyle: 'short' })}`,
+    pageWidth - marginRight, pageHeight - 10, { align: 'right' }
+  )
+  doc.setTextColor(0, 0, 0)
 
   return doc
 }
@@ -479,6 +540,15 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
     `
   }
 
+  // Logo HTML for thermal
+  let logoHTML = ''
+  if (settings.show_logo && settings.logo_url) {
+    const logoMaxWidth = paperWidth === '80mm' ? '100px' : '70px'
+    logoHTML = `<div style="text-align: center; margin-bottom: 4px;">
+      <img src="${escapeHTML(settings.logo_url)}" alt="Logo" style="max-width: ${logoMaxWidth}; max-height: 40px; object-fit: contain;" onerror="this.style.display='none'" />
+    </div>`
+  }
+
   return `
 <!DOCTYPE html>
 <html>
@@ -500,9 +570,11 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
       font-family: 'Courier New', monospace;
       width: ${receiptWidth};
       margin: 0 auto;
-      padding: 8px;
+      padding: 6px;
       background: white;
       color: black;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
     }
     .receipt {
       width: 100%;
@@ -512,12 +584,17 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
 <body>
   <div class="receipt">
     <!-- Header -->
-    <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 8px; margin-bottom: 8px;">
-      <div style="font-weight: bold; font-size: 14px;">${escapeHTML(settings.business_name)}</div>
-      ${settings.business_address ? `<div style="font-size: 10px;">${escapeHTML(settings.business_address)}</div>` : ''}
+    <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
+      ${logoHTML}
+      <div style="font-weight: bold; font-size: 13px; letter-spacing: 1px;">${escapeHTML(settings.business_name)}</div>
+      ${settings.business_address ? `<div style="font-size: 10px; margin-top: 2px;">${escapeHTML(settings.business_address)}</div>` : ''}
       ${settings.business_phone ? `<div style="font-size: 10px;">Tel: ${escapeHTML(settings.business_phone)}</div>` : ''}
-      ${settings.show_tax_id && settings.tax_id ? `<div style="font-size: 9px;">Tax ID: ${escapeHTML(settings.tax_id)}</div>` : ''}
+      ${settings.business_email ? `<div style="font-size: 9px;">${escapeHTML(settings.business_email)}</div>` : ''}
+      ${settings.show_tax_id && settings.tax_id ? `<div style="font-size: 9px; margin-top: 2px;">Tax ID: ${escapeHTML(settings.tax_id)}</div>` : ''}
     </div>
+
+    <!-- Receipt Title -->
+    <div style="text-align: center; font-weight: bold; font-size: 12px; letter-spacing: 2px; margin-bottom: 6px;">SALES RECEIPT</div>
 
     <!-- Sale Info -->
     <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Printer, File, DownloadSimple, CircleNotch, X, CheckCircle, CaretDown } from '@phosphor-icons/react'
+import { Printer, DownloadSimple, CircleNotch, CheckCircle } from '@phosphor-icons/react'
 import type { ReceiptData, ReceiptFormat, ReceiptSettings } from '@/lib/types'
 import {
   printPDFReceipt,
@@ -23,10 +23,6 @@ interface PrintReceiptButtonProps {
   settings?: ReceiptSettings
   // Button style variant
   variant?: 'default' | 'icon' | 'small'
-  // Whether to show dropdown for format selection
-  showFormatOptions?: boolean
-  // Default format to use
-  defaultFormat?: ReceiptFormat
   // Callback after successful print
   onPrintComplete?: () => void
   // Custom class name
@@ -38,8 +34,6 @@ export default function PrintReceiptButton({
   saleId,
   settings: propSettings,
   variant = 'default',
-  showFormatOptions = false,
-  defaultFormat = 'pdf',
   onPrintComplete,
   className = '',
 }: PrintReceiptButtonProps) {
@@ -47,8 +41,6 @@ export default function PrintReceiptButton({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [selectedFormat, setSelectedFormat] = useState<ReceiptFormat>(defaultFormat)
 
   // Fetch receipt data from API if saleId is provided
   const fetchReceiptData = async (): Promise<{ data: ReceiptData; settings: ReceiptSettings } | null> => {
@@ -76,9 +68,14 @@ export default function PrintReceiptButton({
       }
 
       if (sale) {
-        // Have sale but need settings
-        const settingsResponse = await fetch(`/api/receipt-settings?store_id=${storeId}`)
+        // Have sale but need settings — fetch receipt settings and store logo
+        const [settingsResponse, storeInfoResponse] = await Promise.all([
+          fetch(`/api/receipt-settings?store_id=${storeId}`),
+          fetch(`/api/store-info?store_id=${storeId}`),
+        ])
         const settingsResult = await settingsResponse.json()
+        const storeInfoResult = await storeInfoResponse.json()
+        const storeLogo = storeInfoResult?.success ? storeInfoResult.data?.logo_url : null
 
         let settings: ReceiptSettings
         if (settingsResult.success) {
@@ -88,12 +85,14 @@ export default function PrintReceiptButton({
             ...settingsResult.data,
             business_name: settingsResult.data.business_name || DEFAULT_RECEIPT_SETTINGS.business_name,
             thank_you_message: settingsResult.data.thank_you_message || DEFAULT_RECEIPT_SETTINGS.thank_you_message,
+            logo_url: settingsResult.data.logo_url || storeLogo,
           }
         } else {
           settings = {
             ...DEFAULT_RECEIPT_SETTINGS,
             id: 0,
             store_id: parseInt(String(storeId || '0')),
+            logo_url: storeLogo,
             created_at: getPKTNow(),
             updated_at: getPKTNow(),
           }
@@ -128,8 +127,7 @@ export default function PrintReceiptButton({
     }
   }
 
-  const handlePrint = async (format?: ReceiptFormat) => {
-    const printFormat = format || selectedFormat
+  const handlePrint = async () => {
     setLoading(true)
     setError('')
     setSuccess(false)
@@ -141,13 +139,14 @@ export default function PrintReceiptButton({
         return
       }
 
-      const { data } = result
+      const { data, settings } = result
+      const printFormat: ReceiptFormat = settings.default_format || 'pdf'
 
       if (printFormat === 'pdf') {
         await printPDFReceipt(data)
       } else {
         printThermalReceipt(data, {
-          paperWidth: data.settings.thermal_paper_width,
+          paperWidth: settings.thermal_paper_width,
         })
       }
 
@@ -159,7 +158,6 @@ export default function PrintReceiptButton({
       setError(err.message || 'Print failed')
     } finally {
       setLoading(false)
-      setShowDropdown(false)
     }
   }
 
@@ -182,7 +180,6 @@ export default function PrintReceiptButton({
       setError(err.message || 'Download failed')
     } finally {
       setLoading(false)
-      setShowDropdown(false)
     }
   }
 
@@ -232,110 +229,39 @@ export default function PrintReceiptButton({
     )
   }
 
-  // Default button with optional dropdown
+  // Default button with download option
   return (
-    <div className="relative inline-block">
-      {showFormatOptions ? (
-        <>
-          <div className="flex">
-            <button
-              onClick={() => handlePrint()}
-              disabled={loading}
-              className={`px-4 py-2 rounded-l-md flex items-center gap-2 transition-colors ${
-                isDarkMode
-                  ? 'bg-white text-black hover:bg-zinc-200'
-                  : 'bg-black text-white hover:bg-gray-800'
-              } ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
-            >
-              {loading ? (
-                <CircleNotch className="w-4 h-4 animate-spin" />
-              ) : success ? (
-                <CheckCircle className="w-4 h-4" weight="fill" />
-              ) : (
-                <Printer className="w-4 h-4" />
-              )}
-              Print {selectedFormat === 'pdf' ? 'PDF' : 'Thermal'}
-            </button>
-            <button
-              onClick={() => setShowDropdown(!showDropdown)}
-              disabled={loading}
-              className={`px-2 py-2 rounded-r-md border-l transition-colors ${
-                isDarkMode
-                  ? 'bg-white text-black hover:bg-zinc-200 border-zinc-300'
-                  : 'bg-black text-white hover:bg-gray-800 border-gray-700'
-              } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              title="Print options"
-              aria-label="Print options dropdown"
-            >
-              <CaretDown className="w-4 h-4" />
-            </button>
-          </div>
-
-          {showDropdown && (
-            <div
-              className={`absolute top-full right-0 mt-1 w-48 rounded-md shadow-lg z-50 ${
-                isDarkMode ? 'bg-zinc-800 border border-zinc-700' : 'bg-white border border-gray-200'
-              }`}
-            >
-              <div className="py-1">
-                <button
-                  onClick={() => {
-                    setSelectedFormat('pdf')
-                    handlePrint('pdf')
-                  }}
-                  className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
-                    isDarkMode ? 'hover:bg-zinc-700' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  <File className="w-4 h-4" />
-                  Print as PDF (A4)
-                </button>
-                <button
-                  onClick={() => {
-                    setSelectedFormat('thermal')
-                    handlePrint('thermal')
-                  }}
-                  className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
-                    isDarkMode ? 'hover:bg-zinc-700' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  <Printer className="w-4 h-4" />
-                  Print Thermal (80mm)
-                </button>
-                <div className={`border-t my-1 ${isDarkMode ? 'border-zinc-700' : 'border-gray-200'}`} />
-                <button
-                  onClick={handleDownload}
-                  className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 ${
-                    isDarkMode ? 'hover:bg-zinc-700' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  <DownloadSimple className="w-4 h-4" />
-                  Download PDF
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <button
-          onClick={() => handlePrint()}
-          disabled={loading}
-          className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${
-            isDarkMode
-              ? 'bg-white text-black hover:bg-zinc-200'
-              : 'bg-black text-white hover:bg-gray-800'
-          } ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
-        >
-          {loading ? (
-            <CircleNotch className="w-4 h-4 animate-spin" />
-          ) : success ? (
-            <CheckCircle className="w-4 h-4" weight="fill" />
-          ) : (
-            <Printer className="w-4 h-4" />
-          )}
-          Print Receipt
-        </button>
-      )}
+    <div className="relative inline-flex gap-2">
+      <button
+        onClick={() => handlePrint()}
+        disabled={loading}
+        className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${
+          isDarkMode
+            ? 'bg-white text-black hover:bg-zinc-200'
+            : 'bg-black text-white hover:bg-gray-800'
+        } ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+      >
+        {loading ? (
+          <CircleNotch className="w-4 h-4 animate-spin" />
+        ) : success ? (
+          <CheckCircle className="w-4 h-4" weight="fill" />
+        ) : (
+          <Printer className="w-4 h-4" />
+        )}
+        Print Receipt
+      </button>
+      <button
+        onClick={handleDownload}
+        disabled={loading}
+        className={`px-3 py-2 rounded-md flex items-center gap-1.5 transition-colors text-sm ${
+          isDarkMode
+            ? 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600'
+            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+        } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        title="Download PDF"
+      >
+        <DownloadSimple className="w-4 h-4" />
+      </button>
 
       {error && (
         <div className="absolute top-full left-0 mt-1 p-2 text-xs text-red-500 bg-red-50 rounded-md whitespace-nowrap">
