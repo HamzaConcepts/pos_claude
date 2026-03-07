@@ -12,6 +12,7 @@
     "@phosphor-icons/react": "^2.1.10",
     "@supabase/supabase-js": "^2.39.3",
     "@types/jsbarcode": "^3.11.4",
+    "jose": "^6.2.0",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",

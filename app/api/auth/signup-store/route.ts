@@ -165,10 +165,11 @@ export async function POST(request: Request) {
     // ═══════════════════════════════════════════════════════
     // STEP 4: Create Supabase Auth User (Manager)
     // ═══════════════════════════════════════════════════════
+    // email_confirm: false — account stays locked until super-admin approves the signup
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email.toLowerCase().trim(),
       password,
-      email_confirm: true, // Auto-confirm for now
+      email_confirm: false,
       user_metadata: {
         full_name: ownerName,
         phone_number: phoneNumber,
@@ -201,12 +202,14 @@ export async function POST(request: Request) {
       // ═══════════════════════════════════════════════════════
       // STEP 6: Insert Store
       // ═══════════════════════════════════════════════════════
+      // is_active: false — store stays inactive until super-admin approves
       const { data: store, error: storeError } = await supabaseAdmin
         .from('stores')
         .insert([{
           store_code: storeCode,
           store_name: storeName.trim(),
           created_by: managerUuid,
+          is_active: false,
         }])
         .select()
         .single()
@@ -229,6 +232,7 @@ export async function POST(request: Request) {
           store_name: storeName.trim(),
           store_id: store.id,
           store_code: storeCode,
+          is_active: false,
         }])
 
       if (managerError) {
@@ -247,6 +251,7 @@ export async function POST(request: Request) {
           phone_number: cashierAccount.accountPhone,
           password_hash: cashierAccount.accountPassword, // Auto-hashed by trigger
           store_id: store.id,
+          is_active: false,
         }])
         .select()
         .single()
@@ -265,6 +270,7 @@ export async function POST(request: Request) {
         phone_number: cashier.phone,
         commission_rate: cashier.commissionRate || 0,
         salary: 0,
+        is_active: false,
       }))
 
       const { data: staffData, error: staffError } = await supabaseAdmin
@@ -278,21 +284,33 @@ export async function POST(request: Request) {
       }
 
       // ═══════════════════════════════════════════════════════
-      // STEP 10: Success Response
+      // STEP 10: Create Signup Request for Super-Admin Approval
+      // ═══════════════════════════════════════════════════════
+      // Reuses join_requests table (user_type='Manager') so super-admin can
+      // approve or deny without any schema changes.
+      await supabaseAdmin
+        .from('join_requests')
+        .insert([{
+          store_id: store.id,
+          user_id: managerUuid,
+          user_type: 'Manager',
+          user_name: ownerName.trim(),
+          user_phone: phoneNumber,
+          user_email: email.toLowerCase().trim(),
+          status: 'pending',
+        }])
+
+      // ═══════════════════════════════════════════════════════
+      // STEP 11: Return Pending Response
       // ═══════════════════════════════════════════════════════
       return NextResponse.json({
         success: true,
+        pending: true,
         data: {
-          storeId: store.id,
-          storeCode: storeCode,
           storeName: storeName.trim(),
-          managerId: managerUuid,
           managerEmail: email.toLowerCase().trim(),
-          cashierAccountId: cashierAcct.id,
-          cashierAccountPhone: cashierAccount.accountPhone,
-          staffCount: staffData?.length || 0,
         },
-        message: `Store "${storeName}" created successfully! Your store code is: ${storeCode}`,
+        message: `Your application for "${storeName}" has been submitted and is pending approval.`,
       }, { status: 201 })
 
     } catch (dbError: any) {

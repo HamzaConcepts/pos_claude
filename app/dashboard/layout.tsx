@@ -130,11 +130,17 @@ export default function DashboardLayout({
       })
       
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
         // Session check failed
         await supabase.auth.signOut()
         setIsAuthenticated(false)
         setLoading(false)
-        router.replace('/login')
+        if (response.status === 403) {
+          // Account or store deactivated
+          router.replace('/login?error=' + encodeURIComponent(errorData.error || 'Account deactivated'))
+        } else {
+          router.replace('/login')
+        }
         return
       }
 

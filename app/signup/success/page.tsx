@@ -3,34 +3,37 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle, Copy, Check } from '@phosphor-icons/react'
+import { CheckCircle, HourglassIcon, Copy, Check } from '@phosphor-icons/react'
 
 function SuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const storeCode = searchParams.get('code')
   const storeName = searchParams.get('name')
+  const isPending = searchParams.get('pending') === 'true'
   const [countdown, setCountdown] = useState(10)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (!storeCode) {
+    if (!storeCode && !isPending) {
       router.replace('/signup')
       return
     }
 
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === 1) {
-          clearInterval(timer)
-          router.push('/login')
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [router, storeCode])
+    // Only auto-redirect for the legacy flow (store code present)
+    if (storeCode && !isPending) {
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === 1) {
+            clearInterval(timer)
+            router.push('/login')
+          }
+          return prev - 1
+        })
+      }, 1000)
+      return () => clearInterval(timer)
+    }
+  }, [router, storeCode, isPending])
 
   const handleCopyCode = async () => {
     if (storeCode) {
@@ -44,7 +47,7 @@ function SuccessContent() {
     }
   }
 
-  if (!storeCode) {
+  if (!storeCode && !isPending) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-gray-600">Redirecting...</div>
@@ -52,21 +55,60 @@ function SuccessContent() {
     )
   }
 
+  // ── Pending approval view ────────────────────────────────
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-full mb-6">
+            <HourglassIcon size={48} weight="fill" className="text-amber-500" />
+          </div>
+
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Application Submitted!</h1>
+          <p className="text-gray-600 mb-6">
+            Your store <span className="font-semibold text-gray-900">{storeName ? decodeURIComponent(storeName) : ''}</span> is pending approval.
+          </p>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
+            <h3 className="font-semibold text-amber-900 mb-2">What happens next?</h3>
+            <ul className="text-sm text-amber-800 space-y-2">
+              <li>⏳ Your application has been sent to the platform admin</li>
+              <li>✉️ You will be notified by email once it has been reviewed</li>
+              <li>✅ After approval, you can log in with your credentials</li>
+              <li>❌ If denied, your account will be removed</li>
+            </ul>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 text-left">
+            <p className="text-sm text-gray-600">
+              <span className="font-medium">Account created for:</span> login will be available using the email address you registered with.
+            </p>
+          </div>
+
+          <Link
+            href="/login"
+            className="inline-block w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            Back to Login
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Legacy: store code view (kept for backward compatibility) ──
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full text-center">
-        {/* Success Icon */}
         <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
           <CheckCircle size={48} weight="fill" className="text-green-600" />
         </div>
 
-        {/* Success Message */}
         <h1 className="text-3xl font-bold text-green-600 mb-2">Success!</h1>
         <p className="text-gray-700 mb-6">
           Your store <span className="font-semibold">{storeName ? decodeURIComponent(storeName) : ''}</span> has been created successfully.
         </p>
 
-        {/* Store Code Display */}
         <div className="bg-gray-50 border-2 border-gray-200 rounded-lg p-6 mb-6">
           <p className="text-sm text-gray-600 mb-2">Your Store Code</p>
           <div className="flex items-center justify-center gap-3">
@@ -88,7 +130,6 @@ function SuccessContent() {
           </p>
         </div>
 
-        {/* Info Cards */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
           <h3 className="font-semibold text-blue-900 mb-2">What's Next?</h3>
           <ul className="text-sm text-blue-800 space-y-1">
@@ -102,16 +143,14 @@ function SuccessContent() {
           <h3 className="font-semibold text-amber-900 mb-2">Login Credentials</h3>
           <div className="text-sm text-amber-800 space-y-1">
             <p><strong>Manager:</strong> Use your email to login</p>
-            <p><strong>Cashiers:</strong> Use the shared cashier phone & password</p>
+            <p><strong>Cashiers:</strong> Use the shared cashier phone &amp; password</p>
           </div>
         </div>
 
-        {/* Countdown */}
         <p className="text-gray-600 mb-4">
           Redirecting to login in <span className="font-bold text-cyan-600">{countdown}</span> seconds...
         </p>
 
-        {/* Login Button */}
         <Link
           href="/login"
           className="inline-block w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"

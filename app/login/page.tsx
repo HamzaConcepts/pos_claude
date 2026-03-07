@@ -107,6 +107,13 @@ export default function LoginPage() {
       if (cashierData && cashierData.length > 0) {
         const cashier = cashierData[0]
         
+        // Check if cashier account is deactivated
+        if (cashier.is_active === false) {
+          setError('Your account has been deactivated. Please contact support.')
+          setLoading(false)
+          return
+        }
+        
         // Check if cashier has store_id (approved)
         if (!cashier.store_id) {
           setError('Your account is pending approval from the store manager.')
@@ -173,7 +180,7 @@ export default function LoginPage() {
         // Now with auth.uid() set, query manager data (RLS will allow access)
         const { data: managerData, error: managerCheckError } = await supabase
           .from('managers')
-          .select('store_id')
+          .select('store_id, is_active')
           .eq('id', data.user.id)
           .maybeSingle()
 
@@ -188,6 +195,13 @@ export default function LoginPage() {
         if (!managerData) {
           await supabase.auth.signOut()
           setError('Manager account not found. Please contact support.')
+          setLoading(false)
+          return
+        }
+
+        if (managerData.is_active === false) {
+          await supabase.auth.signOut()
+          setError('Your account has been deactivated. Please contact support.')
           setLoading(false)
           return
         }

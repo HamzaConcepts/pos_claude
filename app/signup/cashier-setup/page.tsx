@@ -234,7 +234,7 @@ export default function SignupStep3() {
       sessionStorage.removeItem('signup_step2')
 
       // Redirect to success page with store code
-      router.push(`/signup/success?code=${result.data.storeCode}&name=${encodeURIComponent(result.data.storeName)}`)
+      router.push(`/signup/success?pending=true&name=${encodeURIComponent(result.data.storeName)}`)
     } catch (error) {
       console.error('Signup error:', error)
       setGeneralError('Network error. Please check your connection and try again.')

@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     // Use admin client to fetch manager data (bypasses RLS)
     const { data: manager, error } = await supabaseAdmin
       .from('managers')
-      .select('full_name, store_id')
+      .select('full_name, store_id, is_active')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -53,6 +53,29 @@ export async function GET(request: Request) {
         { error: 'Manager not found' },
         { status: 404 }
       )
+    }
+
+    if (manager.is_active === false) {
+      return NextResponse.json(
+        { error: 'Account deactivated' },
+        { status: 403 }
+      )
+    }
+
+    // Check if the store is active
+    if (manager.store_id) {
+      const { data: store } = await supabaseAdmin
+        .from('stores')
+        .select('is_active')
+        .eq('id', manager.store_id)
+        .maybeSingle()
+
+      if (store && store.is_active === false) {
+        return NextResponse.json(
+          { error: 'Store deactivated' },
+          { status: 403 }
+        )
+      }
     }
 
     return NextResponse.json({
