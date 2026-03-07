@@ -45,22 +45,6 @@ export default function PredefinedExpensesManager() {
   const [description, setDescription] = useState('')
   const [isActive, setIsActive] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [isDarkMode, setIsDarkMode] = useState(false)
-
-  // Dark mode detection
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('dark_mode')
-    if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
-    }
-    
-    const handleDarkModeChange = (event: any) => {
-      setIsDarkMode(event.detail.isDarkMode)
-    }
-    
-    window.addEventListener('darkModeChange', handleDarkModeChange)
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
-  }, [])
 
   useEffect(() => {
     fetchCurrentUser()
@@ -310,23 +294,15 @@ export default function PredefinedExpensesManager() {
       ) : (
         <div className="space-y-6">
           {Object.entries(groupedExpenses).map(([category, categoryExpenses]) => (
-            <div key={category} className={`border rounded-lg overflow-hidden ${
-              isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-            }`}>
-              <div className={`px-4 py-3 border-b ${
-                isDarkMode ? 'bg-gray-750 border-gray-700' : 'bg-gray-50 border-gray-200'
-              }`}>
+            <div key={category} className="border rounded-lg overflow-hidden bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+              <div className="px-4 py-3 border-b bg-gray-50 border-gray-200 dark:bg-gray-750 dark:border-gray-700">
                 <h3 className="font-semibold text-lg">{category}</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className={`border-b ${
-                    isDarkMode ? 'bg-gray-750 border-gray-700' : 'bg-gray-50 border-gray-200'
-                  }`}>
+                  <thead className="border-b bg-gray-50 border-gray-200 dark:bg-gray-750 dark:border-gray-700">
                     <tr>
-                      <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
                         Name
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -343,9 +319,7 @@ export default function PredefinedExpensesManager() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className={`divide-y ${
-                    isDarkMode ? 'bg-gray-800 divide-gray-700' : 'bg-white divide-gray-200'
-                  }`}>
+                  <tbody className="divide-y bg-white divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                     {categoryExpenses.map((expense) => (
                       <tr key={expense.id} className={!expense.is_active ? 'opacity-50' : ''}>
                         <td className="px-4 py-3 whitespace-nowrap">
@@ -408,51 +382,39 @@ export default function PredefinedExpensesManager() {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`rounded-lg border w-full max-w-md p-5 shadow-2xl ${
-            isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'
-          }`}>
+          <div className="rounded-lg border w-full max-w-md p-5 shadow-2xl bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">
                 {editingExpense ? 'Edit Pre-defined Expense' : 'Add Pre-defined Expense'}
               </h2>
-              <button onClick={handleCloseModal} className={`p-1 rounded ${
-                isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-              }`}>
+              <button onClick={handleCloseModal} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  isDarkMode ? 'text-gray-300' : ''
-                }`}>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-300">
                   Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                   placeholder="e.g., Monthly Rent"
                   required
                 />
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  isDarkMode ? 'text-gray-300' : ''
-                }`}>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-300">
                   Category <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   required
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
@@ -464,18 +426,14 @@ export default function PredefinedExpensesManager() {
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  isDarkMode ? 'text-gray-300' : ''
-                }`}>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-300">
                   Default Amount (PKR) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   value={defaultAmount}
                   onChange={(e) => setDefaultAmount(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                   placeholder="0.00"
                   step="0.01"
                   min="0"
@@ -484,17 +442,13 @@ export default function PredefinedExpensesManager() {
               </div>
 
               <div>
-                <label className={`block text-sm font-medium mb-1 ${
-                  isDarkMode ? 'text-gray-300' : ''
-                }`}>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-300">
                   Description
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-black focus:border-transparent border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                   rows={3}
                   placeholder="Optional description"
                 />
@@ -523,9 +477,7 @@ export default function PredefinedExpensesManager() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className={`flex-1 px-4 py-2 border-2 rounded transition-colors ${
-                    isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'
-                  }`}
+                  className="flex-1 px-4 py-2 border-2 rounded transition-colors border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
                   disabled={submitting}
                 >
                   Cancel

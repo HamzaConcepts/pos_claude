@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { PackageIcon, TruckIcon, CalendarIcon, CurrencyDollarIcon, ShoppingCartIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import { useCurrency } from '@/lib/currency-context'
+import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton'
 
 interface InventoryPurchase {
   id: number
@@ -31,25 +31,18 @@ const formatCategory = (category: string): string => {
 }
 
 // Get appropriate styling for category badge
-const getCategoryStyle = (category: string, isDark: boolean): string => {
+const getCategoryStyle = (category: string): string => {
   if (category === 'new_product') {
-    return isDark 
-      ? 'bg-green-900/30 border-green-700 text-green-400' 
-      : 'bg-green-100 border-green-300 text-green-700'
+    return 'bg-green-100 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-400'
   }
   if (category === 'inventory_restock') {
-    return isDark 
-      ? 'bg-blue-900/30 border-blue-700 text-blue-400' 
-      : 'bg-blue-100 border-blue-300 text-blue-700'
+    return 'bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-400'
   }
-  return isDark 
-    ? 'bg-gray-800 border-gray-600 text-gray-300' 
-    : 'bg-gray-100 border-gray-200 text-gray-700'
+  return 'bg-gray-100 border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
 }
 
 export default function InventoryPurchasesPage() {
   const router = useRouter()
-  const isDarkMode = useDarkMode()
   const { currency, formatCurrency } = useCurrency()
   const [purchases, setPurchases] = useState<InventoryPurchase[]>([])
   const [loading, setLoading] = useState(true)
@@ -111,21 +104,14 @@ export default function InventoryPurchasesPage() {
   const stats = calculateStats()
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading inventory purchases...</p>
-        </div>
-      </div>
-    )
+    return <GenericPageSkeleton />
   }
 
   return (
     <div className="animate-fadeIn">
       <div className="mb-5">
-        <h1 className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Inventory Purchases</h1>
-        <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Inventory Purchases</h1>
+        <p className="text-sm mt-1 text-gray-600 dark:text-gray-400">
           Track all stock purchases and restocks. These are converted to COGS when items are sold.
         </p>
       </div>
@@ -137,14 +123,14 @@ export default function InventoryPurchasesPage() {
       )}
 
       {/* Info Banner */}
-      <div className={`mb-5 p-4 rounded border ${isDarkMode ? 'bg-blue-900/20 border-blue-700/50' : 'bg-blue-50 border-blue-200'}`}>
+      <div className="mb-5 p-4 rounded border bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700/50">
         <div className="flex items-start gap-3">
-          <ShoppingCartIcon className={`flex-shrink-0 mt-0.5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} size={20} />
+          <ShoppingCartIcon className="flex-shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" size={20} />
           <div>
-            <h3 className={`font-semibold text-sm ${isDarkMode ? 'text-blue-300' : 'text-blue-900'}`}>
+            <h3 className="font-semibold text-sm text-blue-900 dark:text-blue-300">
               About Inventory Purchases
             </h3>
-            <p className={`text-xs mt-1 ${isDarkMode ? 'text-blue-400' : 'text-blue-700'}`}>
+            <p className="text-xs mt-1 text-blue-700 dark:text-blue-400">
               • Buying inventory increases your stock and decreases cash (or increases supplier dues)
               <br />
               • These purchases do NOT reduce profit immediately
@@ -159,52 +145,52 @@ export default function InventoryPurchasesPage() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="p-4 rounded border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Today's Purchases</span>
-            <PackageIcon className={`${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} size={16} />
+            <span className="text-xs text-gray-600 dark:text-gray-400">Today's Purchases</span>
+            <PackageIcon className="text-blue-600 dark:text-blue-400" size={16} />
           </div>
-          <div className={`text-lg font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+          <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
             {formatCurrency(stats.today, 0)}
           </div>
         </div>
 
-        <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="p-4 rounded border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>This Month</span>
-            <CalendarIcon className={`${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} size={16} />
+            <span className="text-xs text-gray-600 dark:text-gray-400">This Month</span>
+            <CalendarIcon className="text-blue-600 dark:text-blue-400" size={16} />
           </div>
-          <div className={`text-lg font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+          <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
             {formatCurrency(stats.month, 0)}
           </div>
         </div>
 
-        <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="p-4 rounded border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>This Year</span>
-            <TruckIcon className={`${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} size={16} />
+            <span className="text-xs text-gray-600 dark:text-gray-400">This Year</span>
+            <TruckIcon className="text-blue-600 dark:text-blue-400" size={16} />
           </div>
-          <div className={`text-lg font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+          <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
             {formatCurrency(stats.year, 0)}
           </div>
         </div>
 
-        <div className={`p-4 rounded border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="p-4 rounded border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Investment</span>
-            <CurrencyDollarIcon className={`${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} size={16} />
+            <span className="text-xs text-gray-600 dark:text-gray-400">Total Investment</span>
+            <CurrencyDollarIcon className="text-blue-600 dark:text-blue-400" size={16} />
           </div>
-          <div className={`text-lg font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+          <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
             {formatCurrency(stats.total, 0)}
           </div>
         </div>
       </div>
 
       {/* Purchases List */}
-      <div className={`rounded border overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
-        <div className={`p-4 border-b ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-          <h2 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Purchase History</h2>
-          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+      <div className="rounded border overflow-hidden bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
+        <div className="p-4 border-b bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Purchase History</h2>
+          <p className="text-xs mt-1 text-gray-600 dark:text-gray-400">
             All inventory purchases are automatically tracked when adding stock or restocking products
           </p>
         </div>
@@ -216,7 +202,7 @@ export default function InventoryPurchasesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className={`border-b ${isDarkMode ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+              <thead className="border-b bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
                 <tr>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Date</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Description</th>
@@ -230,9 +216,9 @@ export default function InventoryPurchasesPage() {
                 {purchases.map((purchase) => (
                   <tr
                     key={purchase.id}
-                    className={`border-b ${isDarkMode ? 'border-gray-700 bg-[#0f0f0f] hover:bg-gray-800' : 'border-gray-100 bg-white hover:bg-gray-50'}`}
+                    className="border-b border-gray-100 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-[#0f0f0f] dark:hover:bg-gray-800"
                   >
-                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                    <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">
                       {new Date(purchase.expense_date).toLocaleDateString('en-PK', {
                         timeZone: 'Asia/Karachi',
                         month: 'short',
@@ -241,31 +227,31 @@ export default function InventoryPurchasesPage() {
                       })}
                     </td>
                     <td className="px-3 py-2.5 text-sm">
-                      <div className={isDarkMode ? 'text-gray-300' : 'text-gray-900'}>{purchase.description}</div>
+                      <div className="text-gray-900 dark:text-gray-300">{purchase.description}</div>
                       {purchase.product_display && (
-                        <div className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
+                        <div className="text-xs mt-0.5 text-gray-500">
                           Product: {purchase.product_display}
                         </div>
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-sm">
-                      <span className={`inline-block px-2 py-1 border rounded text-xs ${getCategoryStyle(purchase.category, isDarkMode)}`}>
+                      <span className={`inline-block px-2 py-1 border rounded text-xs ${getCategoryStyle(purchase.category)}`}>
                         {formatCategory(purchase.category)}
                       </span>
                     </td>
-                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                    <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">
                       {purchase.recorded_by_name || 'System'}
                     </td>
-                    <td className={`px-3 py-2.5 text-sm text-right font-semibold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                    <td className="px-3 py-2.5 text-sm text-right font-semibold text-blue-600 dark:text-blue-400">
                       {formatCurrency(purchase.amount, 0)}
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                         purchase.payment_method === 'Cash' 
-                          ? isDarkMode ? 'bg-green-900/30 text-green-400 border border-green-700' : 'bg-green-100 text-green-700 border border-green-300'
+                          ? 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700'
                           : purchase.payment_method === 'Digital' 
-                          ? isDarkMode ? 'bg-blue-900/30 text-blue-400 border border-blue-700' : 'bg-blue-100 text-blue-700 border border-blue-300'
-                          : isDarkMode ? 'bg-gray-800 text-gray-400 border border-gray-600' : 'bg-gray-100 text-gray-600 border border-gray-300'
+                          ? 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700'
+                          : 'bg-gray-100 text-gray-600 border border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
                       }`}>
                         {purchase.payment_method || 'N/A'}
                       </span>

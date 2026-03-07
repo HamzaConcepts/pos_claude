@@ -29,22 +29,6 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
-
-  // Dark mode detection
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('dark_mode')
-    if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
-    }
-    
-    const handleDarkModeChange = (event: any) => {
-      setIsDarkMode(event.detail.isDarkMode)
-    }
-    
-    window.addEventListener('darkModeChange', handleDarkModeChange)
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
-  }, [])
 
   useEffect(() => {
     if (product) {
@@ -119,19 +103,13 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`rounded-lg border w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl ${
-        isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'
-      }`}>
-        <div className={`flex justify-between items-center p-5 border-b ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
-        }`}>
+      <div className="rounded-lg border w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold">Edit Product</h2>
             {product ? 'Edit Product' : 'Add New Product'}
           <button
             onClick={() => onClose(false)}
-            className={`p-1 rounded transition-colors ${
-              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
-            }`}
+            className="p-1 rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             <XIcon size={24} />
           </button>
@@ -146,9 +124,7 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
             <div>
-              <label htmlFor="name" className={`block mb-2 font-medium ${
-                isDarkMode ? 'text-gray-300' : ''
-              }`}>
+              <label htmlFor="name" className="block mb-2 font-medium dark:text-gray-300">
                 Product Name *
               </label>
               <input
@@ -158,18 +134,14 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
                 autoFocus
                 value={formData.name}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border-2 rounded focus:outline-none ${
-                  isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-black'
-                }`}
+                className="w-full px-3 py-2 border-2 rounded focus:outline-none border-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                 required
                 disabled={loading}
               />
             </div>
 
             <div>
-              <label htmlFor="low_stock_threshold" className={`block mb-2 font-medium ${
-                isDarkMode ? 'text-gray-300' : ''
-              }`}>
+              <label htmlFor="low_stock_threshold" className="block mb-2 font-medium dark:text-gray-300">
                 Low Stock Alert Threshold *
               </label>
               <input
@@ -179,23 +151,17 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
                 min="0"
                 value={formData.low_stock_threshold}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border-2 rounded focus:outline-none ${
-                  isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-black'
-                }`}
+                className="w-full px-3 py-2 border-2 rounded focus:outline-none border-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                 required
                 disabled={loading}
               />
-              <p className={`text-xs mt-1 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}>
+              <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">
                 Alert when stock falls below this number
               </p>
             </div>
 
             <div>
-              <label htmlFor="description" className={`block mb-2 font-medium ${
-                isDarkMode ? 'text-gray-300' : ''
-              }`}>
+              <label htmlFor="description" className="block mb-2 font-medium dark:text-gray-300">
                 Description
               </label>
               <textarea
@@ -204,9 +170,7 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
-                className={`w-full px-3 py-2 border-2 rounded focus:outline-none ${
-                  isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'border-black'
-                }`}
+                className="w-full px-3 py-2 border-2 rounded focus:outline-none border-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                 disabled={loading}
               />
             </div>
@@ -216,9 +180,7 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
             <button
               type="button"
               onClick={() => onClose(false)}
-              className={`px-6 py-2 border-2 rounded transition-colors ${
-                isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'
-              }`}
+              className="px-6 py-2 border-2 rounded transition-colors border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
               disabled={loading}
             >
               Cancel

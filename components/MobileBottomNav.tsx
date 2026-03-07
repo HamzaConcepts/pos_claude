@@ -11,7 +11,6 @@ import {
   UsersIcon,
   StorefrontIcon
 } from '@phosphor-icons/react'
-import { useState, useEffect } from 'react'
 import { hasPermission, type UserRole } from '@/lib/supabase'
 
 interface NavItem {
@@ -25,22 +24,6 @@ interface NavItem {
 export default function MobileBottomNav({ userRole }: { userRole: UserRole }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [isDarkMode, setIsDarkMode] = useState(false)
-
-  // Load dark mode preference
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('dark_mode')
-    if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
-    }
-
-    // Listen for dark mode changes
-    const handleDarkModeChange = (e: any) => {
-      setIsDarkMode(e.detail.isDarkMode)
-    }
-    window.addEventListener('darkModeChange', handleDarkModeChange)
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
-  }, [])
 
   const navItems: NavItem[] = [
     { href: '/dashboard', label: 'Overview', icon: HouseIcon, permission: 'view_dashboard' },
@@ -62,11 +45,7 @@ export default function MobileBottomNav({ userRole }: { userRole: UserRole }) {
 
   return (
     <nav 
-      className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t ${
-        isDarkMode 
-          ? 'bg-gray-900 border-gray-800' 
-          : 'bg-white border-gray-200'
-      }`}
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t bg-white border-gray-200 dark:bg-gray-900 dark:border-gray-800"
     >
       <div className="flex items-center justify-around px-2 py-2 overflow-x-auto">
         {filteredNavItems.map((item) => {
@@ -79,12 +58,8 @@ export default function MobileBottomNav({ userRole }: { userRole: UserRole }) {
               onClick={() => router.push(item.href)}
               className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded min-w-[60px] transition-colors ${
                 isActive 
-                  ? (isDarkMode 
-                      ? 'text-cyan-400 bg-cyan-900/30' 
-                      : 'text-cyan-600 bg-cyan-50')
-                  : (isDarkMode 
-                      ? 'text-gray-400 hover:text-gray-200 hover:bg-gray-800' 
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50')
+                  ? 'text-cyan-600 bg-cyan-50 dark:text-cyan-400 dark:bg-cyan-900/30'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800'
               }`}
             >
               <Icon size={20} weight={isActive ? 'duotone' : 'regular'} />

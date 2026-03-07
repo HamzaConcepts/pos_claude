@@ -27,22 +27,6 @@ export default function BatchEditModal({ batch, onClose }: BatchEditModalProps) 
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
-
-  // Dark mode detection
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('dark_mode')
-    if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
-    }
-    
-    const handleDarkModeChange = (event: any) => {
-      setIsDarkMode(event.detail.isDarkMode)
-    }
-    
-    window.addEventListener('darkModeChange', handleDarkModeChange)
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
-  }, [])
 
   useEffect(() => {
     if (batch) {
@@ -123,20 +107,14 @@ export default function BatchEditModal({ batch, onClose }: BatchEditModalProps) 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`rounded-lg border w-full max-w-md shadow-2xl ${
-        isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'
-      }`}>
-        <div className={`flex justify-between items-center p-4 border-b ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
-        }`}>
+      <div className="rounded-lg border w-full max-w-md shadow-2xl bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+        <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold">
             Edit Batch Prices
           </h2>
           <button
             onClick={() => onClose(false)}
-            className={`p-1 rounded transition-colors ${
-              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
-            }`}
+            className="p-1 rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             <XIcon size={24} />
           </button>
@@ -149,12 +127,8 @@ export default function BatchEditModal({ batch, onClose }: BatchEditModalProps) 
         )}
 
         <form onSubmit={handleSubmit} className="p-6">
-          <div className={`mb-4 p-3 rounded border ${
-            isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-          }`}>
-            <div className={`text-sm space-y-1 ${
-              isDarkMode ? 'text-gray-300' : 'text-gray-600'
-            }`}>
+          <div className="mb-4 p-3 rounded border bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+            <div className="text-sm space-y-1 text-gray-600 dark:text-gray-300">
               <div>
                 <span className="font-medium">Batch:</span> {batch.batch_number || 'N/A'}
               </div>
@@ -169,9 +143,7 @@ export default function BatchEditModal({ batch, onClose }: BatchEditModalProps) 
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="cost_price" className={`block mb-2 font-medium ${
-                isDarkMode ? 'text-gray-300' : ''
-              }`}>
+              <label htmlFor="cost_price" className="block mb-2 font-medium dark:text-gray-300">
                 Cost Price *
               </label>
               <input
@@ -182,23 +154,17 @@ export default function BatchEditModal({ batch, onClose }: BatchEditModalProps) 
                 min="0"
                 value={formData.cost_price}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                  isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'
-                }`}
+                className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                 required
                 disabled={loading}
               />
-              <p className={`text-xs mt-1 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}>
+              <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">
                 What you paid for this batch
               </p>
             </div>
 
             <div>
-              <label htmlFor="selling_price" className={`block mb-2 font-medium ${
-                isDarkMode ? 'text-gray-300' : ''
-              }`}>
+              <label htmlFor="selling_price" className="block mb-2 font-medium dark:text-gray-300">
                 Selling Price *
               </label>
               <input
@@ -209,23 +175,17 @@ export default function BatchEditModal({ batch, onClose }: BatchEditModalProps) 
                 min="0"
                 value={formData.selling_price}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                  isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'
-                }`}
+                className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                 required
                 disabled={loading}
               />
-              <p className={`text-xs mt-1 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}>
+              <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">
                 Your target selling price for this batch
               </p>
             </div>
 
             <div>
-              <label htmlFor="lowest_negotiable_price" className={`block mb-2 font-medium ${
-                isDarkMode ? 'text-gray-300' : ''
-              }`}>
+              <label htmlFor="lowest_negotiable_price" className="block mb-2 font-medium dark:text-gray-300">
                 Lowest Negotiable Price *
               </label>
               <input
@@ -236,15 +196,11 @@ export default function BatchEditModal({ batch, onClose }: BatchEditModalProps) 
                 min="0"
                 value={formData.lowest_negotiable_price}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                  isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300'
-                }`}
+                className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                 required
                 disabled={loading}
               />
-              <p className={`text-xs mt-1 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}>
+              <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">
                 Minimum price you'll accept for this batch
               </p>
             </div>
@@ -254,9 +210,7 @@ export default function BatchEditModal({ batch, onClose }: BatchEditModalProps) 
             <button
               type="button"
               onClick={() => onClose(false)}
-              className={`px-6 py-2 border-2 rounded transition-colors ${
-                isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'
-              }`}
+              className="px-6 py-2 border-2 rounded transition-colors border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
               disabled={loading}
             >
               Cancel

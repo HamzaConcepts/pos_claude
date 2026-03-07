@@ -5,15 +5,14 @@ import { CalendarIcon, UserIcon, CurrencyDollarIcon, CreditCardIcon, CaretDownIc
 import { generateSalesPDF } from '@/lib/pdf-generator'
 import { getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import PrintReceiptButton from '@/components/PrintReceiptButton'
 import { getPKTDate } from '@/lib/date-utils'
 import { useCurrency } from '@/lib/currency-context'
+import SalesSkeleton from '@/components/skeletons/SalesSkeleton'
 
 
 export default function SalesPage() {
   const router = useRouter()
-  const isDarkMode = useDarkMode()
   const { currency, formatCurrency } = useCurrency()
   const [sales, setSales] = useState<any[]>([])
   const [filteredSales, setFilteredSales] = useState<any[]>([])
@@ -374,20 +373,13 @@ export default function SalesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading sales...</p>
-        </div>
-      </div>
-    )
+    return <SalesSkeleton />
   }
 
   return (
     <div className="animate-fadeIn">
       <div className="flex justify-between items-center mb-5">
-        <h1 className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Sales History</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Sales History</h1>
         <button
           onClick={() => setShowPdfModal(true)}
           className="px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors flex items-center gap-2"
@@ -404,10 +396,10 @@ export default function SalesPage() {
       )}
 
       {/* Filters */}
-      <div className={`p-4 rounded-lg mb-5 ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+      <div className="p-4 rounded-lg mb-5 bg-white shadow-sm dark:bg-[#0f0f0f] dark:dark-shadow dark:shadow-none">
         <div className="flex items-center gap-2 mb-4">
-          <FunnelIcon size={18} className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
-          <h2 className={`font-semibold text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>Filters</h2>
+          <FunnelIcon size={18} className="text-gray-600 dark:text-gray-400" />
+          <h2 className="font-semibold text-sm text-gray-900 dark:text-gray-300">Filters</h2>
           {(selectedCashier || selectedProduct || selectedPaymentMethod || selectedPaymentStatus || startDate || endDate) && (
             <button
               onClick={clearFilters}
@@ -421,11 +413,11 @@ export default function SalesPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {/* Cashier Filter */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Cashier</label>
+            <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-400">Cashier</label>
             <select
               value={selectedCashier}
               onChange={(e) => setSelectedCashier(e.target.value)}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-gray-300' : 'border-gray-300'}`}
+              className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300"
             >
               <option value="">All Cashiers</option>
               {cashiers.map((cashier) => (
@@ -438,11 +430,11 @@ export default function SalesPage() {
 
           {/* Product Filter */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Product</label>
+            <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Product</label>
             <select
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+              className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">All Products</option>
               {products.map((product) => (
@@ -455,11 +447,11 @@ export default function SalesPage() {
 
           {/* Payment Method Filter */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Payment Method</label>
+            <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Payment Method</label>
             <select
               value={selectedPaymentMethod}
               onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+              className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">All Methods</option>
               <option value="Cash">Cash</option>
@@ -469,11 +461,11 @@ export default function SalesPage() {
 
           {/* Payment Status Filter */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Payment Status</label>
+            <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Payment Status</label>
             <select
               value={selectedPaymentStatus}
               onChange={(e) => setSelectedPaymentStatus(e.target.value)}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
+              className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">All Statuses</option>
               <option value="Paid">Paid</option>
@@ -484,52 +476,52 @@ export default function SalesPage() {
 
           {/* Start Date Filter */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Start Date</label>
+            <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-400">Start Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-gray-300' : 'border-gray-300'}`}
+              className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300"
             />
           </div>
 
           {/* End Date Filter */}
           <div>
-            <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>End Date</label>
+            <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-400">End Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className={`w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-gray-300' : 'border-gray-300'}`}
+              className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300"
             />
           </div>
         </div>
 
         {/* Results Count */}
-        <div className={`mt-4 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+        <div className="mt-4 text-xs text-gray-600 dark:text-gray-400">
           Showing {filteredSales.length} of {sales.length} sales
         </div>
       </div>
 
       {filteredSales.length === 0 ? (
-        <div className={`p-6 rounded border text-center ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
-          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+        <div className="p-6 rounded border text-center bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow dark:shadow-none">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {sales.length === 0 ? 'No sales found' : 'No sales match the selected filters'}
           </p>
         </div>
       ) : (
-        <div className={`rounded-lg overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+        <div className="rounded-lg overflow-hidden bg-white shadow-sm dark:bg-[#0f0f0f] dark:dark-shadow dark:shadow-none">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className={`${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-gray-50'}`}>
+              <thead className="bg-gray-50 dark:bg-[#0f0f0f]">
                 <tr>
-                  <th className={`px-3 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Description</th>
-                  <th className={`px-3 py-3 text-left text-xs font-semibold hidden md:table-cell ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Date</th>
-                  <th className={`px-3 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Cashier</th>
-                  <th className={`px-3 py-3 text-right text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Total</th>
-                  <th className={`px-3 py-3 text-center text-xs font-semibold hidden md:table-cell ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Payment</th>
-                  <th className={`px-3 py-3 text-center text-xs font-semibold hidden md:table-cell ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Status</th>
-                  <th className={`px-3 py-3 text-center text-xs font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-700'}`}>Actions</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-400">Description</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold hidden md:table-cell text-gray-700 dark:text-gray-400">Date</th>
+                  <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-400">Cashier</th>
+                  <th className="px-3 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-400">Total</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold hidden md:table-cell text-gray-700 dark:text-gray-400">Payment</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold hidden md:table-cell text-gray-700 dark:text-gray-400">Status</th>
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-400">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -546,21 +538,19 @@ export default function SalesPage() {
                       <tr
                         key={sale.id}
                         onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
-                        className={`cursor-pointer transition-all border-b ${
-                          isDarkMode ? 'border-gray-800' : 'border-gray-100'
-                        } ${
+                        className={`cursor-pointer transition-all border-b border-gray-100 dark:border-gray-800 ${
                           sale.payment_status === 'Partial' 
-                            ? (isDarkMode ? 'bg-red-900/20 hover:bg-red-900/30 border-l-4 border-l-red-600' : 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-600')
-                            : (isDarkMode ? 'hover:bg-gray-800/50' : 'bg-white hover:bg-gray-50')
+                            ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/30'
+                            : 'bg-white hover:bg-gray-50 dark:bg-transparent dark:hover:bg-gray-800/50'
                         } ${isExpanded && sale.payment_status !== 'Partial' ? 'border-l-4 border-l-cyan-600' : ''}`}
                       >
                         <td className="px-3 py-2.5 text-sm">
                           <div className="flex items-center gap-2">
-                            {isExpanded ? <CaretUpIcon size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} /> : <CaretDownIcon size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />}
-                            <span className={`font-normal ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.sale_description || sale.sale_number}</span>
+                            {isExpanded ? <CaretUpIcon size={16} className="text-gray-400 dark:text-gray-500" /> : <CaretDownIcon size={16} className="text-gray-400 dark:text-gray-500" />}
+                            <span className="font-normal text-gray-900 dark:text-gray-300">{sale.sale_description || sale.sale_number}</span>
                           </div>
                         </td>
-                        <td className={`px-3 py-2.5 hidden md:table-cell text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <td className="px-3 py-2.5 hidden md:table-cell text-sm text-gray-600 dark:text-gray-400">
                           {new Date(sale.sale_date).toLocaleString('en-PK', {
                             timeZone: 'Asia/Karachi',
                             month: 'short',
@@ -571,8 +561,8 @@ export default function SalesPage() {
                             hour12: true
                           })}
                         </td>
-                        <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.cashier_name || 'Unknown'}</td>
-                        <td className={`px-3 py-2.5 text-right font-semibold text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                        <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">{sale.cashier_name || 'Unknown'}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900 dark:text-gray-300">
                           {formatCurrency(sale.total_amount, 2)}
                         </td>
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">

@@ -13,8 +13,8 @@ import {
   WarningCircleIcon,
 } from '@phosphor-icons/react'
 import { getStoreId, getManagerId, getCashierId } from '@/lib/supabase'
+import PageLoader from '@/components/ui/PageLoader'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import { useCurrency } from '@/lib/currency-context'
 import type { QuotationFormItem, ProductWithBackwardCompatibility } from '@/lib/types'
 
@@ -22,7 +22,6 @@ export default function CreateQuotationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const editId = searchParams.get('edit')
-  const isDarkMode = useDarkMode()
   const { formatCurrency } = useCurrency()
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -369,28 +368,20 @@ export default function CreateQuotationPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
-      </div>
-    )
+    return <PageLoader message="Loading quotation form" />
   }
 
-  const inputClasses = `w-full px-3 py-2.5 rounded-lg border text-sm ${
-    isDarkMode
-      ? 'bg-[#2a2a2a] border-gray-600 text-white placeholder-gray-500'
-      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-  } focus:outline-none focus:ring-1 focus:ring-gray-400`
+  const inputClasses = `w-full px-3 py-2.5 rounded-lg border text-sm bg-white border-gray-300 text-gray-900 placeholder-gray-400 dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400`
 
-  const labelClasses = `block text-sm font-medium mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`
+  const labelClasses = `block text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300`
 
   return (
-    <div className={`p-4 md:p-6 max-w-5xl mx-auto ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+    <div className="p-4 md:p-6 max-w-5xl mx-auto text-gray-900 dark:text-white">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => router.push('/dashboard/quotations')}
-          className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <ArrowLeftIcon size={20} />
         </button>
@@ -398,7 +389,7 @@ export default function CreateQuotationPage() {
           <h1 className="text-2xl font-bold">
             {editId ? 'Edit Quotation' : 'New Quotation'}
           </h1>
-          <p className={`text-sm mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <p className="text-sm mt-0.5 text-gray-500 dark:text-gray-400">
             {editId ? 'Update quotation details' : 'Create a price estimate for your customer'}
           </p>
         </div>
@@ -424,7 +415,7 @@ export default function CreateQuotationPage() {
 
       <div className="space-y-6">
         {/* Section 1: Customer Information */}
-        <div className={`rounded-lg border p-5 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="rounded-lg border p-5 bg-white border-gray-200 dark:bg-[#1a1a1a] dark:border-gray-700">
           <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -471,7 +462,7 @@ export default function CreateQuotationPage() {
         </div>
 
         {/* Section 2: Quotation Details */}
-        <div className={`rounded-lg border p-5 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="rounded-lg border p-5 bg-white border-gray-200 dark:bg-[#1a1a1a] dark:border-gray-700">
           <h2 className="text-lg font-semibold mb-4">Quotation Details</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -507,16 +498,12 @@ export default function CreateQuotationPage() {
         </div>
 
         {/* Section 3: Add Products */}
-        <div className={`rounded-lg border p-5 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="rounded-lg border p-5 bg-white border-gray-200 dark:bg-[#1a1a1a] dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Products</h2>
             <button
               onClick={() => setShowManualForm(!showManualForm)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border ${
-                isDarkMode
-                  ? 'border-gray-600 text-gray-300 hover:bg-[#2a2a2a]'
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-[#2a2a2a]"
             >
               <PlusIcon size={16} />
               Add Manual Item
@@ -527,7 +514,7 @@ export default function CreateQuotationPage() {
           <div className="relative mb-4">
             <MagnifyingGlassIcon
               size={18}
-              className={`absolute left-3 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
             />
             <input
               ref={searchRef}
@@ -537,33 +524,25 @@ export default function CreateQuotationPage() {
               onKeyDown={handleSearchKeyDown}
               onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
               placeholder="Search products by name or SKU..."
-              className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm ${
-                isDarkMode
-                  ? 'bg-[#2a2a2a] border-gray-600 text-white placeholder-gray-500'
-                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-              } focus:outline-none focus:ring-1 focus:ring-gray-400`}
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border text-sm bg-white border-gray-300 text-gray-900 placeholder-gray-400 dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-400"
             />
 
             {/* Product Search Dropdown */}
             {showDropdown && filteredProducts.length > 0 && (
-              <div className={`absolute top-full left-0 right-0 mt-1 rounded-lg border shadow-xl z-30 max-h-60 overflow-y-auto ${
-                isDarkMode ? 'bg-[#2a2a2a] border-gray-600' : 'bg-white border-gray-200'
-              }`}>
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border shadow-xl z-30 max-h-60 overflow-y-auto bg-white border-gray-200 dark:bg-[#2a2a2a] dark:border-gray-600">
                 {filteredProducts.map((product, idx) => (
                   <button
                     key={product.id}
                     onMouseDown={() => addProduct(product)}
-                    className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm border-b last:border-b-0 ${
-                      isDarkMode
-                        ? `border-gray-700 ${idx === highlightedIndex ? 'bg-[#333]' : 'hover:bg-[#333]'}`
-                        : `border-gray-100 ${idx === highlightedIndex ? 'bg-gray-100' : 'hover:bg-gray-50'}`
+                    className={`w-full text-left px-4 py-3 flex items-center justify-between text-sm border-b last:border-b-0 border-gray-100 dark:border-gray-700 ${
+                      idx === highlightedIndex ? 'bg-gray-100 dark:bg-[#333]' : 'hover:bg-gray-50 dark:hover:bg-[#333]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <PackageIcon size={18} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />
+                      <PackageIcon size={18} className="text-gray-400 dark:text-gray-500" />
                       <div>
                         <div className="font-medium">{product.name}</div>
-                        <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <div className="text-xs text-gray-400 dark:text-gray-500">
                           SKU: {product.sku} · Stock: {product.stock_quantity || 0}
                         </div>
                       </div>
@@ -577,9 +556,7 @@ export default function CreateQuotationPage() {
             )}
 
             {showDropdown && searchTerm.length > 0 && filteredProducts.length === 0 && (
-              <div className={`absolute top-full left-0 right-0 mt-1 rounded-lg border p-4 text-center text-sm ${
-                isDarkMode ? 'bg-[#2a2a2a] border-gray-600 text-gray-400' : 'bg-white border-gray-200 text-gray-500'
-              }`}>
+              <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border p-4 text-center text-sm bg-white border-gray-200 text-gray-500 dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-gray-400">
                 No products found for &ldquo;{searchTerm}&rdquo;
               </div>
             )}
@@ -587,7 +564,7 @@ export default function CreateQuotationPage() {
 
           {/* Manual Item Form */}
           {showManualForm && (
-            <div className={`mb-4 p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="mb-4 p-4 rounded-lg border bg-gray-50 border-gray-200 dark:bg-[#0f0f0f] dark:border-gray-700">
               <h4 className="text-sm font-medium mb-3">Add Manual Item</h4>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="sm:col-span-2">
@@ -638,9 +615,7 @@ export default function CreateQuotationPage() {
                 </button>
                 <button
                   onClick={() => setShowManualForm(false)}
-                  className={`px-4 py-2 rounded-lg text-sm ${
-                    isDarkMode ? 'bg-[#2a2a2a] text-gray-300 hover:bg-[#333]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className="px-4 py-2 rounded-lg text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-[#2a2a2a] dark:text-gray-300 dark:hover:bg-[#333]"
                 >
                   Cancel
                 </button>
@@ -652,27 +627,27 @@ export default function CreateQuotationPage() {
           {items.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className={isDarkMode ? 'bg-[#2a2a2a]' : 'bg-gray-50'}>
+                <thead className="bg-gray-50 dark:bg-[#2a2a2a]">
                   <tr>
-                    <th className={`text-left text-xs font-medium uppercase tracking-wider px-3 py-2.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>#</th>
-                    <th className={`text-left text-xs font-medium uppercase tracking-wider px-3 py-2.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Item</th>
-                    <th className={`text-center text-xs font-medium uppercase tracking-wider px-3 py-2.5 w-24 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Qty</th>
-                    <th className={`text-right text-xs font-medium uppercase tracking-wider px-3 py-2.5 w-32 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Unit Price</th>
-                    <th className={`text-right text-xs font-medium uppercase tracking-wider px-3 py-2.5 w-32 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total</th>
-                    <th className={`text-center text-xs font-medium uppercase tracking-wider px-3 py-2.5 w-12 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}></th>
+                    <th className="text-left text-xs font-medium uppercase tracking-wider px-3 py-2.5 text-gray-500 dark:text-gray-400">#</th>
+                    <th className="text-left text-xs font-medium uppercase tracking-wider px-3 py-2.5 text-gray-500 dark:text-gray-400">Item</th>
+                    <th className="text-center text-xs font-medium uppercase tracking-wider px-3 py-2.5 w-24 text-gray-500 dark:text-gray-400">Qty</th>
+                    <th className="text-right text-xs font-medium uppercase tracking-wider px-3 py-2.5 w-32 text-gray-500 dark:text-gray-400">Unit Price</th>
+                    <th className="text-right text-xs font-medium uppercase tracking-wider px-3 py-2.5 w-32 text-gray-500 dark:text-gray-400">Total</th>
+                    <th className="text-center text-xs font-medium uppercase tracking-wider px-3 py-2.5 w-12 text-gray-500 dark:text-gray-400"></th>
                   </tr>
                 </thead>
-                <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {items.map((item, idx) => (
                     <tr key={item.temp_id}>
-                      <td className={`px-3 py-3 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <td className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
                         {idx + 1}
                       </td>
                       <td className="px-3 py-3 text-sm">
                         <div className="font-medium">{item.product_name}</div>
                         <div className="flex items-center gap-2 mt-0.5">
                           {item.product_sku && (
-                            <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
                               SKU: {item.product_sku}
                             </span>
                           )}
@@ -680,7 +655,7 @@ export default function CreateQuotationPage() {
                             <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Manual</span>
                           )}
                           {!item.is_manual_item && item.stock_available !== undefined && (
-                            <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">
                               Stock: {item.stock_available}
                             </span>
                           )}
@@ -693,11 +668,7 @@ export default function CreateQuotationPage() {
                           onChange={(e) => updateItemQuantity(item.temp_id!, parseInt(e.target.value) || 1)}
                           min="1"
                           step="1"
-                          className={`w-20 text-center px-2 py-1.5 rounded border text-sm ${
-                            isDarkMode
-                              ? 'bg-[#2a2a2a] border-gray-600 text-white'
-                              : 'bg-white border-gray-300 text-gray-900'
-                          }`}
+                          className="w-20 text-center px-2 py-1.5 rounded border text-sm bg-white border-gray-300 text-gray-900 dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white"
                         />
                       </td>
                       <td className="px-3 py-3">
@@ -707,11 +678,7 @@ export default function CreateQuotationPage() {
                           onChange={(e) => updateItemPrice(item.temp_id!, parseFloat(e.target.value) || 0)}
                           min="0"
                           step="0.01"
-                          className={`w-28 text-right px-2 py-1.5 rounded border text-sm no-spinners ${
-                            isDarkMode
-                              ? 'bg-[#2a2a2a] border-gray-600 text-white'
-                              : 'bg-white border-gray-300 text-gray-900'
-                          }`}
+                          className="w-28 text-right px-2 py-1.5 rounded border text-sm no-spinners bg-white border-gray-300 text-gray-900 dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white"
                         />
                       </td>
                       <td className="px-3 py-3 text-sm text-right font-medium">
@@ -731,7 +698,7 @@ export default function CreateQuotationPage() {
               </table>
             </div>
           ) : (
-            <div className={`text-center py-10 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <div className="text-center py-10 text-sm text-gray-400 dark:text-gray-500">
               <PackageIcon size={40} className="mx-auto mb-3 opacity-50" />
               <p>No items added yet</p>
               <p className="mt-1">Search for products above or add a manual item</p>
@@ -740,7 +707,7 @@ export default function CreateQuotationPage() {
         </div>
 
         {/* Section 5: Summary */}
-        <div className={`rounded-lg border p-5 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="rounded-lg border p-5 bg-white border-gray-200 dark:bg-[#1a1a1a] dark:border-gray-700">
           <h2 className="text-lg font-semibold mb-4">Summary</h2>
 
           <div className="flex flex-col md:flex-row gap-6">
@@ -751,11 +718,7 @@ export default function CreateQuotationPage() {
                 <select
                   value={discountType}
                   onChange={(e) => setDiscountType(e.target.value as 'none' | 'fixed' | 'percentage')}
-                  className={`px-3 py-2.5 rounded-lg border text-sm ${
-                    isDarkMode
-                      ? 'bg-[#2a2a2a] border-gray-600 text-white'
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className="px-3 py-2.5 rounded-lg border text-sm bg-white border-gray-300 text-gray-900 dark:bg-[#2a2a2a] dark:border-gray-600 dark:text-white"
                 >
                   <option value="none">No Discount</option>
                   <option value="fixed">Fixed Amount</option>
@@ -779,7 +742,7 @@ export default function CreateQuotationPage() {
             {/* Totals */}
             <div className="w-full md:w-72 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Subtotal</span>
+                <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
                 <span className="font-medium">{formatCurrency(roundedSubtotal)}</span>
               </div>
               {discountType !== 'none' && discountAmount > 0 && (
@@ -791,7 +754,7 @@ export default function CreateQuotationPage() {
                   <span>-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
-              <div className={`flex justify-between pt-2 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
                 <span className="text-lg font-bold">Grand Total</span>
                 <span className="text-lg font-bold">{formatCurrency(total)}</span>
               </div>
@@ -803,11 +766,7 @@ export default function CreateQuotationPage() {
         <div className={`flex flex-col sm:flex-row justify-end gap-3 pb-8`}>
           <button
             onClick={() => router.push('/dashboard/quotations')}
-            className={`px-6 py-2.5 rounded-lg text-sm font-medium ${
-              isDarkMode
-                ? 'bg-[#2a2a2a] text-gray-300 hover:bg-[#333] border border-gray-600'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-            }`}
+            className="px-6 py-2.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 dark:bg-[#2a2a2a] dark:text-gray-300 dark:hover:bg-[#333] dark:border-gray-600"
           >
             Cancel
           </button>
@@ -833,21 +792,17 @@ export default function CreateQuotationPage() {
       {/* Finalize Confirmation Modal */}
       {showFinalizeConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`rounded-lg border w-full max-w-md shadow-2xl ${isDarkMode ? 'bg-[#1a1a1a] border-gray-700' : 'bg-white border-gray-200'}`}>
+          <div className="rounded-lg border w-full max-w-md shadow-2xl bg-white border-gray-200 dark:bg-[#1a1a1a] dark:border-gray-700">
             <div className="p-6">
               <h3 className="text-lg font-bold mb-2">Finalize Quotation</h3>
-              <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 Once finalized, this quotation cannot be edited unless reopened by a manager.
                 Are you sure you want to finalize?
               </p>
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => setShowFinalizeConfirm(false)}
-                  className={`px-4 py-2 rounded-lg text-sm ${
-                    isDarkMode
-                      ? 'bg-[#2a2a2a] text-gray-300 hover:bg-[#333]'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className="px-4 py-2 rounded-lg text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-[#2a2a2a] dark:text-gray-300 dark:hover:bg-[#333]"
                 >
                   Cancel
                 </button>

@@ -69,6 +69,15 @@ export default function DashboardLayout({
     return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
   }, [])
 
+  // Sync dark class on <html> element whenever isDarkMode changes
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [isDarkMode])
+
   useEffect(() => {
     // Prevent double execution in React Strict Mode
     if (hasChecked.current) {
@@ -158,8 +167,24 @@ export default function DashboardLayout({
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] dark:bg-[#0f0f0f]">
+        <div className="text-center">
+          <div className="relative mx-auto w-20 h-20 mb-5">
+            <div className="absolute inset-0 rounded-full border-[3px] border-gray-200 dark:border-gray-700" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-cyan-500 animate-spin" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-3 h-3 rounded-full bg-cyan-500 animate-pulse" />
+            </div>
+          </div>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            Loading POS System
+          </p>
+          <div className="flex items-center justify-center gap-1 mt-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+        </div>
       </div>
     )
   }
@@ -172,11 +197,11 @@ export default function DashboardLayout({
   // User is authenticated, show dashboard
   return (
     <CurrencyProvider>
-      <div className={`flex flex-row min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#F5F5F5]'}`}>
+      <div className="flex flex-row min-h-screen transition-colors duration-300 bg-[#F5F5F5] dark:bg-[#0f0f0f]">
         <Sidebar userRole={user.role} userName={user.name} />
         <main 
           {...swipeHandlers}
-          className={`flex-1 p-4 sm:p-5 md:p-6 pb-20 lg:pb-6 transition-all duration-300 lg:ml-[var(--sidebar-width,13rem)] ${isDarkMode ? 'bg-[#0f0f0f]' : 'bg-[#F5F5F5]'}`}
+          className="flex-1 p-4 sm:p-5 md:p-6 pb-20 lg:pb-6 transition-all duration-300 lg:ml-[var(--sidebar-width,13rem)] bg-[#F5F5F5] dark:bg-[#0f0f0f]"
         >
           {children}
         </main>

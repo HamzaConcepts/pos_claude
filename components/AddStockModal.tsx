@@ -67,23 +67,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [generatedSKU, setGeneratedSKU] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const [imeiErrors, setImeiErrors] = useState<string[]>([])
-
-  // Dark mode detection
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('dark_mode')
-    if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
-    }
-    
-    const handleDarkModeChange = (event: any) => {
-      setIsDarkMode(event.detail.isDarkMode)
-    }
-    
-    window.addEventListener('darkModeChange', handleDarkModeChange)
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
-  }, [])
 
   useEffect(() => {
     fetchCategories()
@@ -480,14 +464,8 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`rounded-lg border w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl ${
-        isDarkMode 
-          ? 'bg-gray-800 border-gray-700 text-white' 
-          : 'bg-white border-gray-300'
-      }`}>
-        <div className={`flex justify-between items-center p-5 border-b ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
-        }`}>
+      <div className="rounded-lg border w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
           <div>
             <h2 className="text-xl font-semibold">Add Stock</h2>
             <p className="text-xs text-text-secondary mt-1">
@@ -496,9 +474,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
           </div>
           <button
             onClick={() => onClose(false)}
-            className={`p-1 rounded transition-colors ${
-              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
-            }`}
+            className="p-1 rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
             disabled={loading}
           >
             <XIcon size={24} />
@@ -521,11 +497,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 <label className="block mb-2 font-medium">
                   SKU (Auto-generated)
                 </label>
-                <div className={`w-full px-3 py-2 border-2 rounded font-mono ${
-                  isDarkMode
-                    ? 'border-gray-600 bg-gray-700 text-gray-400'
-                    : 'border-gray-300 bg-gray-100 text-text-secondary'
-                }`}>
+                <div className="w-full px-3 py-2 border-2 rounded font-mono border-gray-300 bg-gray-100 text-text-secondary dark:border-gray-600 dark:bg-gray-700 dark:text-gray-400">
                   {generatedSKU || 'Loading...'}
                 </div>
               </div>
@@ -558,11 +530,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       }
                     }
                   }}
-                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   disabled={loading}
                 >
                   <option value="">Select a category</option>
@@ -594,11 +562,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         }
                       }
                     }}
-                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     disabled={loading || subcategories.length === 0}
                   >
                     <option value="">Select a subcategory (optional)</option>
@@ -628,11 +592,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         document.getElementById('name')?.focus()
                       }
                     }}
-                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     disabled={loading}
                     placeholder="Scan barcode or leave empty to auto-generate"
                   />
@@ -657,11 +617,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       document.getElementById('description')?.focus()
                     }
                   }}
-                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   disabled={loading}
                   placeholder="Enter product name"
                 />
@@ -683,11 +639,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                     }
                   }}
                   rows={3}
-                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   disabled={loading}
                   placeholder="Optional product description"
                 />
@@ -718,11 +670,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       document.getElementById('selling_price')?.focus()
                     }
                   }}
-                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   disabled={loading}
                   placeholder="Purchase price"
                 />
@@ -748,11 +696,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       document.getElementById('lowest_negotiable_price')?.focus()
                     }
                   }}
-                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   disabled={loading}
                   placeholder="Regular selling price"
                 />
@@ -776,11 +720,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       nextBtn?.click()
                     }
                   }}
-                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   disabled={loading}
                   placeholder="Lowest negotiable price"
                 />
@@ -832,11 +772,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       }
                     }
                   }}
-                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   disabled={loading}
                   placeholder="Number of items"
                 />
@@ -858,11 +794,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       document.getElementById('supplier_phone')?.focus()
                     }
                   }}
-                  className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                    isDarkMode
-                      ? 'bg-gray-700 border-gray-600 text-white'
-                      : 'bg-white border-gray-300'
-                  }`}
+                  className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   disabled={loading}
                   placeholder="Alert when stock falls below this number"
                 />
@@ -892,11 +824,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         }
                       }
                     }}
-                    className={`w-full px-3 py-2 pr-10 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 pr-10 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     disabled={loading}
                     placeholder="Enter phone number"
                   />
@@ -936,11 +864,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         document.getElementById('amount_paid')?.focus()
                       }
                     }}
-                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     disabled={loading}
                     placeholder="New supplier name (optional)"
                   />
@@ -986,11 +910,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         document.getElementById('payment_method')?.focus()
                       }
                     }}
-                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     disabled={loading}
                     placeholder="Enter amount paid"
                   />
@@ -1019,11 +939,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         }
                       }
                     }}
-                    className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
-                      isDarkMode
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     disabled={loading}
                   >
                     <option value="Cash">Cash</option>
@@ -1069,9 +985,9 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
           {/* Step 4: IMEI Numbers (only for phones) */}
           {step === 4 && isPhoneCategory && (
             <div className="space-y-4">
-              <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-cyan-50 border-cyan-200'}`}>
-                <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>IMEI Numbers</h3>
-                <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <div className="p-4 rounded-lg border bg-cyan-50 border-cyan-200 dark:bg-gray-700/50 dark:border-gray-600">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">IMEI Numbers</h3>
+                <p className="text-sm mt-1 text-gray-600 dark:text-gray-300">
                   Enter {formData.quantity} IMEI number(s) for this phone stock
                 </p>
               </div>
@@ -1080,7 +996,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 {formData.imei_numbers.map((imei, index) => (
                   <div key={index} className="flex gap-2">
                     <div className="flex-1">
-                      <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                         IMEI {index + 1}
                       </label>
                       <input
@@ -1106,9 +1022,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500/20 font-mono text-lg ${
                           imeiErrors[index] && imei.trim().length > 0
                             ? 'border-red-500'
-                            : isDarkMode
-                            ? 'bg-[#1a1a1a] border-gray-600 text-white'
-                            : 'bg-white border-gray-300'
+                            : 'bg-white border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white'
                         }`}
                         disabled={loading}
                         placeholder="Enter 15-digit IMEI number"
@@ -1121,7 +1035,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                         </p>
                       )}
                       {imei.trim().length > 0 && imei.trim().length < 15 && !imeiErrors[index] && (
-                        <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">
                           {imei.trim().length}/15 digits
                         </p>
                       )}
@@ -1135,11 +1049,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                       <button
                         type="button"
                         onClick={() => removeIMEIField(index)}
-                        className={`mt-7 px-3 py-2 border rounded-lg transition-colors ${
-                          isDarkMode 
-                            ? 'border-red-500/50 text-red-400 hover:bg-red-900/30' 
-                            : 'border-red-300 text-red-500 hover:bg-red-50'
-                        }`}
+                        className="mt-7 px-3 py-2 border rounded-lg transition-colors border-red-300 text-red-500 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-900/30"
                         disabled={loading}
                       >
                         <XIcon size={20} />
@@ -1153,11 +1063,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 <button
                   type="button"
                   onClick={addIMEIField}
-                  className={`flex items-center gap-2 px-4 py-2.5 border rounded-lg transition-colors ${
-                    isDarkMode 
-                      ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className="flex items-center gap-2 px-4 py-2.5 border rounded-lg transition-colors border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                   disabled={loading}
                 >
                   <PlusIcon size={20} />
@@ -1174,11 +1080,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 <button
                   type="button"
                   onClick={prevStep}
-                  className={`px-6 py-2 border-2 rounded transition-colors font-medium ${
-                    isDarkMode
-                      ? 'border-gray-600 hover:bg-gray-700'
-                      : 'border-gray-300 hover:bg-gray-100'
-                  }`}
+                  className="px-6 py-2 border-2 rounded transition-colors font-medium border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
                   disabled={loading}
                 >
                   Back
@@ -1190,11 +1092,7 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
               <button
                 type="button"
                 onClick={() => onClose(false)}
-                className={`px-6 py-2 border-2 rounded transition-colors font-medium ${
-                  isDarkMode
-                    ? 'border-gray-600 hover:bg-gray-700'
-                    : 'border-gray-300 hover:bg-gray-100'
-                }`}
+                className="px-6 py-2 border-2 rounded transition-colors font-medium border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
                 disabled={loading}
               >
                 Cancel

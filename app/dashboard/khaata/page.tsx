@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { UserCircleIcon, BuildingsIcon, MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, PackageIcon, CurrencyDollarIcon } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
 import { getStoreId, getManagerId, getCashierId } from '@/lib/supabase'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import { useCurrency } from '@/lib/currency-context'
+import { Skeleton } from '@/components/ui/Skeleton'
 
 interface KhaataCustomer {
   id: number
@@ -78,7 +78,6 @@ interface AggregatedSupplier {
 
 export default function KhaataPage() {
   const router = useRouter()
-  const isDarkMode = useDarkMode()
   const { currency, formatCurrency } = useCurrency()
   const [activeTab, setActiveTab] = useState<'customers' | 'suppliers'>('customers')
   
@@ -569,9 +568,22 @@ export default function KhaataPage() {
 
           {/* Customers Table */}
           {loading ? (
-            <div className="text-center py-12">
-              <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-              <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading customers...</p>
+            <div className="space-y-3 py-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-lg bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div>
+                      <Skeleton className="h-4 w-32 mb-1.5" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Skeleton className="h-5 w-20 mb-1" />
+                    <Skeleton className="h-3 w-14" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredAggregatedCustomers.length === 0 ? (
             <div className="text-center py-8 border border-gray-200 rounded">
@@ -751,9 +763,22 @@ export default function KhaataPage() {
 
           {/* Suppliers Table */}
           {loading ? (
-            <div className="text-center py-12">
-              <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-              <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading suppliers...</p>
+            <div className="space-y-3 py-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-lg bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div>
+                      <Skeleton className="h-4 w-32 mb-1.5" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Skeleton className="h-5 w-20 mb-1" />
+                    <Skeleton className="h-3 w-14" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredSuppliers.length === 0 ? (
             <div className="text-center py-8 border border-dashed border-gray-300 rounded">

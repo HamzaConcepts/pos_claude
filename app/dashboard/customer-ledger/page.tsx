@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { UserCircleIcon, MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, CurrencyDollarIcon } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
 import { getStoreId, isManager, getCashierId } from '@/lib/supabase'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import { useCurrency } from '@/lib/currency-context'
 
 interface KhaataCustomer {
@@ -45,7 +44,6 @@ interface InitialCustomer {
 
 export default function CustomerLedgerPage() {
   const router = useRouter()
-  const isDarkMode = useDarkMode()
   const { formatCurrency } = useCurrency()
   const [customers, setCustomers] = useState<KhaataCustomer[]>([])
   const [initialCustomers, setInitialCustomers] = useState<InitialCustomer[]>([])
@@ -321,8 +319,8 @@ export default function CustomerLedgerPage() {
       {/* Customers Table */}
       {loading ? (
         <div className="text-center py-12">
-          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading customers...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-cyan-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading customers...</p>
         </div>
       ) : filteredAggregatedCustomers.length === 0 ? (
         <div className="text-center py-8 border border-gray-200 rounded">
@@ -470,14 +468,14 @@ export default function CustomerLedgerPage() {
       {initialCustomers.length > 0 && (
         <div className="mt-8">
           <div className="mb-4">
-            <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Initial Customers (Migration)</h2>
-            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Customers imported when you started using this POS system</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Initial Customers (Migration)</h2>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Customers imported when you started using this POS system</p>
           </div>
           
-          <div className={`border rounded overflow-hidden ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="border rounded overflow-hidden border-gray-200 dark:border-gray-700">
             <table className="w-full">
               <thead>
-                <tr className={`border-b ${isDarkMode ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                <tr className="border-b bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Customer Name</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Phone</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">CNIC</th>
@@ -490,24 +488,24 @@ export default function CustomerLedgerPage() {
                 {initialCustomers.map((customer) => (
                   <tr 
                     key={customer.id}
-                    className={`border-b ${isDarkMode ? 'bg-gray-900 border-gray-700 hover:bg-gray-800' : 'bg-white border-gray-100 hover:bg-gray-50'}`}
+                    className="border-b bg-white border-gray-100 hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-gray-800"
                   >
-                    <td className={`px-3 py-2.5 text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <td className="px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-white">
                       {customer.customer_name}
                     </td>
-                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300">
                       {customer.customer_phone || '-'}
                     </td>
-                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300">
                       {customer.customer_cnic || '-'}
                     </td>
                     <td className="px-3 py-2.5 text-sm text-right font-semibold text-orange-600">
                       {formatCurrency(customer.amount_owed, 2)}
                     </td>
-                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <td className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400">
                       {customer.notes || '-'}
                     </td>
-                    <td className={`px-3 py-2.5 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <td className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400">
                       {new Date(customer.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                     </td>
                   </tr>

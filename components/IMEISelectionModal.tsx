@@ -22,22 +22,6 @@ export default function IMEISelectionModal({
   const [selectedIMEIs, setSelectedIMEIs] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
-
-  // Dark mode detection
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('dark_mode')
-    if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
-    }
-    
-    const handleDarkModeChange = (event: any) => {
-      setIsDarkMode(event.detail.isDarkMode)
-    }
-    
-    window.addEventListener('darkModeChange', handleDarkModeChange)
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
-  }, [])
 
   useEffect(() => {
     fetchAvailableIMEIs()
@@ -94,12 +78,8 @@ export default function IMEISelectionModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`rounded-lg border w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl ${
-        isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'
-      }`}>
-        <div className={`sticky top-0 z-10 flex justify-between items-center p-5 border-b ${
-          isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-        }`}>
+      <div className="rounded-lg border w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+        <div className="sticky top-0 z-10 flex justify-between items-center p-5 border-b bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           <div>
             <h2 className="text-xl font-semibold">Select IMEI Numbers</h2>
             <p className="text-sm text-text-secondary mt-1">
@@ -108,9 +88,7 @@ export default function IMEISelectionModal({
           </div>
           <button
             onClick={onClose}
-            className={`p-1 rounded transition-colors ${
-              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
-            }`}
+            className="p-1 rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             <XIcon size={24} />
           </button>
@@ -147,9 +125,7 @@ export default function IMEISelectionModal({
             </div>
           ) : (
             <div>
-              <div className={`mb-4 p-3 rounded border ${
-                isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-bg-secondary border-gray-300'
-              }`}>
+              <div className="mb-4 p-3 rounded border bg-bg-secondary border-gray-300 dark:bg-gray-700 dark:border-gray-600">
                 <p className="text-sm">
                   Selected: <span className="font-bold">{selectedIMEIs.length}</span> / {quantity}
                 </p>
@@ -167,10 +143,10 @@ export default function IMEISelectionModal({
                       disabled={isDisabled}
                       className={`w-full p-4 rounded border-2 text-left transition-all ${
                         isSelected
-                          ? isDarkMode ? 'border-white bg-gray-700' : 'border-black bg-green-50'
+                          ? 'border-black bg-green-50 dark:border-white dark:bg-gray-700'
                           : isDisabled
-                          ? isDarkMode ? 'border-gray-700 bg-gray-800 cursor-not-allowed opacity-50' : 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
-                          : isDarkMode ? 'border-gray-600 hover:border-gray-500' : 'border-gray-300 hover:border-gray-500'
+                          ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50 dark:border-gray-700 dark:bg-gray-800'
+                          : 'border-gray-300 hover:border-gray-500 dark:border-gray-600 dark:hover:border-gray-500'
                       }`}
                     >
                       <div className="flex justify-between items-center">
@@ -193,14 +169,10 @@ export default function IMEISelectionModal({
                 })}
               </div>
 
-              <div className={`flex gap-4 mt-6 sticky bottom-0 pt-4 border-t-2 ${
-                isDarkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'
-              }`}>
+              <div className="flex gap-4 mt-6 sticky bottom-0 pt-4 border-t-2 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-600">
                 <button
                   onClick={onClose}
-                  className={`flex-1 px-4 py-3 border-2 rounded transition-colors ${
-                    isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'
-                  }`}
+                  className="flex-1 px-4 py-3 border-2 rounded transition-colors border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </button>

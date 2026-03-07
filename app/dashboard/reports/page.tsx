@@ -261,22 +261,22 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className={`animate-fadeIn p-4 max-w-7xl mx-auto ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50'}`}>
+    <div className="animate-fadeIn p-4 max-w-7xl mx-auto bg-gray-50 dark:bg-gray-900 dark:text-gray-100">
       {/* Header */}
       <div className="mb-4">
-        <h1 className={`text-2xl font-bold mb-1 ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Reports & Analytics</h1>
-        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Comprehensive business insights and reports</p>
+        <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">Reports & Analytics</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Comprehensive business insights and reports</p>
       </div>
 
       {/* Quick Period Buttons */}
-      <div className={`mb-4 p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+      <div className="mb-4 p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleQuickPeriodChange('today')}
             className={`px-4 py-2 text-sm rounded-lg transition-colors ${
               quickPeriod === 'today'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
-                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+                ? 'bg-black text-white dark:bg-cyan-600'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
             Today
@@ -285,8 +285,8 @@ export default function ReportsPage() {
             onClick={() => handleQuickPeriodChange('week')}
             className={`px-4 py-2 text-sm rounded-lg transition-colors ${
               quickPeriod === 'week'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
-                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+                ? 'bg-black text-white dark:bg-cyan-600'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
             This Week
@@ -295,8 +295,8 @@ export default function ReportsPage() {
             onClick={() => handleQuickPeriodChange('month')}
             className={`px-4 py-2 text-sm rounded-lg transition-colors ${
               quickPeriod === 'month'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
-                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+                ? 'bg-black text-white dark:bg-cyan-600'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
             This Month
@@ -305,8 +305,8 @@ export default function ReportsPage() {
             onClick={() => handleQuickPeriodChange('year')}
             className={`px-4 py-2 text-sm rounded-lg transition-colors ${
               quickPeriod === 'year'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
-                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+                ? 'bg-black text-white dark:bg-cyan-600'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
             This Year
@@ -315,8 +315,8 @@ export default function ReportsPage() {
             onClick={() => handleQuickPeriodChange('custom')}
             className={`px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-1 ${
               quickPeriod === 'custom'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-black text-white')
-                : (isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')
+                ? 'bg-black text-white dark:bg-cyan-600'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
             }`}
           >
             More
@@ -326,43 +326,31 @@ export default function ReportsPage() {
 
         {/* Custom Date Range Section */}
         {showCustomDates && (
-          <div className={`mt-3 pt-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Start Date</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Start Date</label>
                 <input
                   type="date"
                   value={filters.startDate}
                   onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm ${
-                    isDarkMode 
-                      ? 'bg-gray-700 border-gray-600 text-gray-100' 
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className="w-full border rounded-lg px-3 py-2 text-sm bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 />
               </div>
               <div>
-                <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>End Date</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">End Date</label>
                 <input
                   type="date"
                   value={filters.endDate}
                   onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                  className={`w-full border rounded-lg px-3 py-2 text-sm ${
-                    isDarkMode 
-                      ? 'bg-gray-700 border-gray-600 text-gray-100' 
-                      : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className="w-full border rounded-lg px-3 py-2 text-sm bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 />
               </div>
             </div>
             <button
               onClick={generateReport}
               disabled={loading}
-              className={`mt-3 px-4 py-2 text-sm rounded-lg transition-colors ${
-                isDarkMode 
-                  ? 'bg-cyan-600 text-white hover:bg-cyan-700 disabled:opacity-50' 
-                  : 'bg-black text-white hover:bg-gray-800 disabled:opacity-50'
-              }`}
+              className="mt-3 px-4 py-2 text-sm rounded-lg transition-colors bg-black text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-cyan-600 dark:hover:bg-cyan-700"
             >
               {loading ? 'Generating...' : 'Apply Custom Range'}
             </button>
@@ -371,14 +359,14 @@ export default function ReportsPage() {
       </div>
 
       {/* Tabs for Report Type */}
-      <div className={`mb-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex gap-1 overflow-x-auto">
           <button
             onClick={() => setFilters({ ...filters, type: 'summary' })}
             className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'summary'
-                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
-                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
             }`}
           >
             Summary
@@ -387,8 +375,8 @@ export default function ReportsPage() {
             onClick={() => setFilters({ ...filters, type: 'sales' })}
             className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'sales'
-                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
-                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
             }`}
           >
             Sales
@@ -397,8 +385,8 @@ export default function ReportsPage() {
             onClick={() => setFilters({ ...filters, type: 'expenses' })}
             className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'expenses'
-                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
-                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
             }`}
           >
             Expenses
@@ -407,8 +395,8 @@ export default function ReportsPage() {
             onClick={() => setFilters({ ...filters, type: 'inventory' })}
             className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'inventory'
-                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
-                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
             }`}
           >
             Inventory
@@ -417,8 +405,8 @@ export default function ReportsPage() {
             onClick={() => setFilters({ ...filters, type: 'profit' })}
             className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
               filters.type === 'profit'
-                ? (isDarkMode ? 'border-cyan-500 text-cyan-400' : 'border-black text-black')
-                : (isDarkMode ? 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300')
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
             }`}
           >
             Profit & Loss
@@ -428,15 +416,15 @@ export default function ReportsPage() {
 
       {/* Additional Filters - Compact */}
       {(filters.type === 'sales' || filters.type === 'expenses') && (
-        <div className={`mb-4 p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="mb-4 p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {(filters.type === 'sales' || filters.type === 'expenses') && (
               <div>
-                <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Payment Method</label>
+                <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Payment Method</label>
                 <select
                   value={filters.paymentMethod}
                   onChange={(e) => setFilters({ ...filters, paymentMethod: e.target.value })}
-                  className={`w-full border rounded px-2 py-1.5 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300'}`}
+                  className="w-full border rounded px-2 py-1.5 text-sm bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 >
                   <option value="">All</option>
                   <option value="Cash">Cash</option>
@@ -447,11 +435,11 @@ export default function ReportsPage() {
 
             {filters.type === 'sales' && (
               <div>
-                <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Cashier</label>
+                <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Cashier</label>
                 <select
                   value={filters.cashierId}
                   onChange={(e) => setFilters({ ...filters, cashierId: e.target.value })}
-                  className={`w-full border rounded px-2 py-1.5 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300'}`}
+                  className="w-full border rounded px-2 py-1.5 text-sm bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 >
                   <option value="">All</option>
                   {cashiers.map(cashier => (
@@ -463,11 +451,11 @@ export default function ReportsPage() {
 
             {filters.type === 'expenses' && (
               <div>
-                <label className={`block text-xs font-medium mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Category</label>
+                <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Category</label>
                 <select
                   value={filters.category}
                   onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                  className={`w-full border rounded px-2 py-1.5 text-sm ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-300'}`}
+                  className="w-full border rounded px-2 py-1.5 text-sm bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 >
                   <option value="">All</option>
                   {categories.map(cat => (
@@ -481,11 +469,7 @@ export default function ReportsPage() {
               <button
                 onClick={generateReport}
                 disabled={loading}
-                className={`w-full px-3 py-1.5 text-sm rounded transition-colors ${
-                  isDarkMode 
-                    ? 'bg-cyan-600 text-white hover:bg-cyan-700 disabled:opacity-50' 
-                    : 'bg-black text-white hover:bg-gray-800 disabled:opacity-50'
-                }`}
+                className="w-full px-3 py-1.5 text-sm rounded transition-colors bg-black text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-cyan-600 dark:hover:bg-cyan-700"
               >
                 {loading ? 'Loading...' : 'Apply'}
               </button>
@@ -499,22 +483,14 @@ export default function ReportsPage() {
         <div className="flex gap-2 mb-4">
           <button
             onClick={handleExportCSV}
-            className={`px-3 py-1.5 text-sm border rounded flex items-center gap-1 ${
-              isDarkMode 
-                ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                : 'border-gray-300 hover:bg-gray-50'
-            }`}
+            className="px-3 py-1.5 text-sm border rounded flex items-center gap-1 border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             <DownloadSimpleIcon className="w-3 h-3" />
             CSV
           </button>
           <button
             onClick={handleExportPDF}
-            className={`px-3 py-1.5 text-sm border rounded flex items-center gap-1 ${
-              isDarkMode 
-                ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                : 'border-gray-300 hover:bg-gray-50'
-            }`}
+            className="px-3 py-1.5 text-sm border rounded flex items-center gap-1 border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
           >
             <FileTextIcon className="w-3 h-3" />
             PDF
@@ -525,8 +501,8 @@ export default function ReportsPage() {
       {/* Report Content */}
       {loading ? (
         <div className="text-center py-12">
-          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Generating report...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto border-black dark:border-cyan-500"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Generating report...</p>
         </div>
       ) : reportData ? (
         <div>
@@ -536,61 +512,61 @@ export default function ReportsPage() {
               {/* Cash Flow Summary */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Cash In Card */}
-                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+                <div className="p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash In (Sales)</h3>
-                    <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-green-900/30' : 'bg-green-50'}`}>
-                      <TrendUpIcon className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                    <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Cash In (Sales)</h3>
+                    <div className="p-1.5 rounded-lg bg-green-50 dark:bg-green-900/30">
+                      <TrendUpIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
                     </div>
                   </div>
-                  <div className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                  <div className="text-xl font-bold mb-2 text-green-600 dark:text-green-400">
                     {formatCurrency(reportData.sales?.totalRevenue ?? 0)}
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <div className={`p-1.5 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-0.5`}>Cash</div>
-                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                    <div className="p-1.5 rounded bg-gray-50 dark:bg-gray-700">
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Cash</div>
+                      <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
                         {formatCurrency(reportData.sales?.totalCash ?? 0)}
                       </div>
                     </div>
-                    <div className={`p-1.5 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-0.5`}>Digital</div>
-                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                    <div className="p-1.5 rounded bg-gray-50 dark:bg-gray-700">
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Digital</div>
+                      <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
                         {formatCurrency(reportData.sales?.totalDigital ?? 0)}
                       </div>
                     </div>
                   </div>
-                  <div className={`text-xs mt-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <div className="text-xs mt-1.5 text-gray-600 dark:text-gray-400">
                     {reportData.sales?.totalSales ?? 0} transactions
                   </div>
                 </div>
 
                 {/* Cash Out Card */}
-                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+                <div className="p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash Out (Expenses)</h3>
-                    <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-red-900/30' : 'bg-red-50'}`}>
-                      <TrendDownIcon className={`w-4 h-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+                    <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Cash Out (Expenses)</h3>
+                    <div className="p-1.5 rounded-lg bg-red-50 dark:bg-red-900/30">
+                      <TrendDownIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
                     </div>
                   </div>
-                  <div className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                  <div className="text-xl font-bold mb-2 text-red-600 dark:text-red-400">
                     {formatCurrency(reportData.expenses?.totalAmount ?? 0)}
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <div className={`p-1.5 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-0.5`}>Cash</div>
-                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                    <div className="p-1.5 rounded bg-gray-50 dark:bg-gray-700">
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Cash</div>
+                      <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
                         {formatCurrency(reportData.expenses?.totalCash ?? 0)}
                       </div>
                     </div>
-                    <div className={`p-1.5 rounded ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} mb-0.5`}>Digital</div>
-                      <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                    <div className="p-1.5 rounded bg-gray-50 dark:bg-gray-700">
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Digital</div>
+                      <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
                         {formatCurrency(reportData.expenses?.totalDigital ?? 0)}
                       </div>
                     </div>
                   </div>
-                  <div className={`text-xs mt-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <div className="text-xs mt-1.5 text-gray-600 dark:text-gray-400">
                     {reportData.expenses?.totalExpenses ?? 0} transactions
                   </div>
                 </div>
@@ -598,22 +574,22 @@ export default function ReportsPage() {
 
               {/* Net Position & Inventory */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
-                  <h3 className={`text-xs font-semibold mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Net Profit</h3>
-                  <div className={`text-xl font-bold ${reportData.profit?.netProfit >= 0 ? (isDarkMode ? 'text-cyan-400' : 'text-black') : (isDarkMode ? 'text-red-400' : 'text-red-600')}`}>
+                <div className="p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
+                  <h3 className="text-xs font-semibold mb-1.5 text-gray-700 dark:text-gray-300">Net Profit</h3>
+                  <div className={`text-xl font-bold ${reportData.profit?.netProfit >= 0 ? 'text-black dark:text-cyan-400' : 'text-red-600 dark:text-red-400'}`}>
                     {formatCurrency(reportData.profit?.netProfit ?? 0)}
                   </div>
-                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <div className="text-xs mt-1 text-gray-600 dark:text-gray-400">
                     Profit Margin: {reportData.profit?.profitMargin?.toFixed(2) ?? 0}%
                   </div>
                 </div>
 
-                <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
-                  <h3 className={`text-xs font-semibold mb-1.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Stock Value</h3>
-                  <div className={`text-xl font-bold ${isDarkMode ? 'text-cyan-400' : 'text-black'}`}>
+                <div className="p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
+                  <h3 className="text-xs font-semibold mb-1.5 text-gray-700 dark:text-gray-300">Stock Value</h3>
+                  <div className="text-xl font-bold text-black dark:text-cyan-400">
                     {formatCurrency(reportData.inventory?.totalStockValue ?? 0)}
                   </div>
-                  <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  <div className="text-xs mt-1 text-gray-600 dark:text-gray-400">
                     {reportData.inventory?.totalRemaining ?? 0} items in stock
                   </div>
                 </div>
@@ -621,8 +597,8 @@ export default function ReportsPage() {
 
               {/* Cash Flow Chart */}
               {reportData.cashFlowTrend && reportData.cashFlowTrend.length > 0 && (
-                <div className={`p-4 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
-                  <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>Cash Flow Trend</h3>
+                <div className="p-4 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
+                  <h3 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-100">Cash Flow Trend</h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={reportData.cashFlowTrend}>
                       <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#e5e7eb'} />
@@ -671,9 +647,9 @@ export default function ReportsPage() {
           {filters.type === 'profit' && <ProfitReport reportData={reportData} formatCurrency={formatCurrency} />}
         </div>
       ) : (
-        <div className={`text-center py-12 rounded-lg border ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
-          <FileTextIcon className={`w-16 h-16 mx-auto mb-4 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`} />
-          <p className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Select a period to view reports</p>
+        <div className="text-center py-12 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
+          <FileTextIcon className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-600" />
+          <p className="text-gray-600 dark:text-gray-400">Select a period to view reports</p>
         </div>
       )}
     </div>

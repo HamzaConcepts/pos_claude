@@ -6,7 +6,6 @@ import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import { supabase, getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import IMEISelectionModal from '@/components/IMEISelectionModal'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import PrintReceiptButton from '@/components/PrintReceiptButton'
 import { useCurrency } from '@/lib/currency-context'
 
@@ -18,7 +17,6 @@ interface CartItem {
 
 export default function POSPage() {
   const router = useRouter()
-  const isDarkMode = useDarkMode()
   const { currency, formatCurrency } = useCurrency()
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
@@ -1188,7 +1186,7 @@ export default function POSPage() {
     )
 
     return (
-      <div className={isDarkMode ? 'bg-[#0f0f0f]' : ''}>
+      <div className="dark:bg-[#0f0f0f]">
         {/* Render receipt based on store default_format setting */}
         {receiptSettings?.default_format === 'thermal' ? <ThermalReceipt /> : <PDFReceipt />}
 
@@ -1200,11 +1198,7 @@ export default function POSPage() {
           />
           <button
             onClick={handleNewSale}
-            className={`flex-1 px-4 py-2.5 rounded text-sm transition-colors ${
-              isDarkMode
-                ? 'bg-gray-700 text-white border border-gray-600 hover:bg-gray-600'
-                : 'bg-white border border-gray-300 hover:bg-gray-50'
-            }`}
+            className="flex-1 px-4 py-2.5 rounded text-sm transition-colors bg-white dark:bg-gray-700 dark:text-white border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
           >
             New Sale
           </button>
@@ -1218,16 +1212,16 @@ export default function POSPage() {
 
   return (
     <div className="animate-fadeIn">
-      <div className={`flex flex-col gap-4 ${isDarkMode ? 'text-white' : ''}`}>
-        <h1 className={`text-xl md:text-2xl font-bold mb-5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>New Sale</h1>
+      <div className={`flex flex-col gap-4 dark:text-white`}>
+        <h1 className={`text-xl md:text-2xl font-bold mb-5 text-gray-900 dark:text-white`}>New Sale</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Product Search and Cart */}
         <div className="lg:col-span-2 space-y-5">
           {/* Search */}
-          <div className={`p-5 rounded-lg ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className={`p-5 rounded-lg bg-white dark:bg-[#0f0f0f] shadow-sm dark:dark-shadow`}>
             <div className="relative">
-              <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
+              <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500`} size={16} />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -1266,18 +1260,16 @@ export default function POSPage() {
                 }}
                 autoFocus
                 autoComplete="off"
-                className={`w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 ${
-                  isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'
-                }`}
+                className="w-full pl-9 pr-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
               />
             </div>
             
-            <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className={`text-xs mt-2 text-gray-500 dark:text-gray-400`}>
               💡 Scan barcode or type to search. Use ↑↓ arrows to navigate, Enter to select.
             </p>
 
             {filteredProducts.length > 0 && (
-              <div className={`mt-3 border rounded-lg max-h-64 overflow-y-auto ${isDarkMode ? 'border-gray-700 bg-[#1a1a1a]' : 'border-gray-200 bg-white'}`}>
+              <div className={`mt-3 border rounded-lg max-h-64 overflow-y-auto border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a1a1a]`}>
                 {filteredProducts.map((product, index) => (
                   <button
                     key={product.id}
@@ -1287,18 +1279,18 @@ export default function POSPage() {
                     }}
                     className={`w-full p-3 text-left transition-colors border-b last:border-b-0 ${
                       index === highlightedIndex
-                        ? isDarkMode ? 'bg-cyan-900/50 border-gray-700' : 'bg-cyan-50 border-gray-200'
-                        : isDarkMode ? 'hover:bg-[#2a2a2a] border-gray-700' : 'hover:bg-gray-50 border-gray-200'
+                        ? 'bg-cyan-50 dark:bg-cyan-900/50 border-gray-200 dark:border-gray-700'
+                        : 'hover:bg-gray-50 dark:hover:bg-[#2a2a2a] border-gray-200 dark:border-gray-700'
                     }`}
                   >
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{product.name}</p>
-                        <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <p className={`font-medium text-gray-900 dark:text-white`}>{product.name}</p>
+                        <p className={`text-xs text-gray-600 dark:text-gray-400`}>
                           {product.sku} • Stock: {product.stock_quantity}
                         </p>
                       </div>
-                      <p className={`font-semibold ${isDarkMode ? 'text-gray-200' : ''}`}>Rs. {(product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)}</p>
+                      <p className={`font-semibold dark:text-gray-200`}>Rs. {(product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)}</p>
                     </div>
                   </button>
                 ))}
@@ -1307,14 +1299,13 @@ export default function POSPage() {
           </div>
 
           {/* Customer Details Section - Collapsible */}
-          <div className={`rounded-lg ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+          <div className={`rounded-lg bg-white dark:bg-[#0f0f0f] shadow-sm dark:dark-shadow`}>
             <button
-              type="button"
               onClick={() => setIsCustomerSectionExpanded(!isCustomerSectionExpanded)}
-              className={`w-full p-5 flex justify-between items-center ${isDarkMode ? '' : 'bg-gray-50/50'} rounded-t-lg`}
+              className="w-full flex items-center justify-between p-4"
             >
               <div className="text-left">
-                <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">
                   Customer Details (Optional)
                   {(customerDetails.name || customerDetails.phone) && (
                     <span className="ml-2 text-cyan-600 text-sm font-normal">
@@ -1322,12 +1313,12 @@ export default function POSPage() {
                     </span>
                   )}
                 </h2>
-                <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <p className="text-xs mt-1 text-gray-600 dark:text-gray-400">
                   {isCustomerSectionExpanded ? 'Click to collapse' : 'Click to add customer details'}
                 </p>
               </div>
               <svg
-                className={`w-5 h-5 transition-transform ${isCustomerSectionExpanded ? 'rotate-180' : ''} ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                className={`w-5 h-5 transition-transform ${isCustomerSectionExpanded ? 'rotate-180' : ''} text-gray-600 dark:text-gray-400`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1340,7 +1331,7 @@ export default function POSPage() {
               <div className="p-5 space-y-4 border-t border-gray-200 dark:border-gray-700">
                 {/* Customer Search/Name */}
                 <div className="relative" ref={customerSearchRef}>
-                  <label className={`block mb-1 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className="block mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">
                     Customer Name
                   </label>
                   <input
@@ -1359,21 +1350,21 @@ export default function POSPage() {
                         phoneInput?.focus()
                       }
                     }}
-                    className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
+                    className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
                     placeholder="Search or enter new customer name"
                   />
                   
                   {/* Customer Search Results Dropdown */}
                   {showCustomerResults && customerSearchResults.length > 0 && (
-                    <div className={`absolute z-10 w-full mt-1 border rounded-lg shadow-lg max-h-48 overflow-y-auto ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600' : 'bg-white border-gray-300'}`}>
+                    <div className="absolute z-10 w-full mt-1 border rounded-lg shadow-lg max-h-48 overflow-y-auto bg-white border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600">
                       {customerSearchResults.map((customer, index) => (
                         <button
                           key={index}
                           onClick={() => selectCustomer(customer)}
-                          className={`w-full text-left px-3 py-2 border-b last:border-b-0 ${isDarkMode ? 'hover:bg-[#2a2a2a] border-gray-700' : 'hover:bg-cyan-50 border-gray-200'}`}
+                          className="w-full text-left px-3 py-2 border-b last:border-b-0 hover:bg-cyan-50 border-gray-200 dark:hover:bg-[#2a2a2a] dark:border-gray-700"
                         >
-                          <div className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{customer.name}</div>
-                          <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{customer.phone}</div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">{customer.name}</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">{customer.phone}</div>
                         </button>
                       ))}
                     </div>
@@ -1382,7 +1373,7 @@ export default function POSPage() {
 
                 {/* Customer Phone */}
                 <div>
-                  <label className={`block mb-1 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className="block mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">
                     Phone Number
                   </label>
                   <input
@@ -1397,14 +1388,14 @@ export default function POSPage() {
                         cnicInput?.focus()
                       }
                     }}
-                    className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
+                    className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
                     placeholder="e.g., 03001234567"
                   />
                 </div>
 
                 {/* Customer CNIC */}
                 <div>
-                  <label className={`block mb-1 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className="block mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">
                     CNIC (Optional)
                   </label>
                   <input
@@ -1419,7 +1410,7 @@ export default function POSPage() {
                         setIsCustomerSectionExpanded(false)
                       }
                     }}
-                    className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
+                    className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
                     placeholder="e.g., 12345-1234567-1"
                   />
                 </div>
@@ -1428,7 +1419,7 @@ export default function POSPage() {
                 {(customerDetails.name || customerDetails.phone || customerDetails.cnic) && (
                   <button
                     onClick={clearCustomer}
-                    className={`w-full px-3 py-2 text-xs border rounded-lg transition-colors ${isDarkMode ? 'text-gray-300 hover:bg-[#2a2a2a] border-gray-600' : 'text-gray-600 hover:bg-gray-100 border-gray-300'}`}
+                    className="w-full px-3 py-2 text-xs border rounded-lg transition-colors text-gray-600 hover:bg-gray-100 border-gray-300 dark:text-gray-300 dark:hover:bg-[#2a2a2a] dark:border-gray-600"
                   >
                     Clear Customer Details
                   </button>
@@ -1438,11 +1429,11 @@ export default function POSPage() {
           </div>
 
           {/* Cart */}
-          <div className={`rounded-lg ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
-            <div className={`p-5 flex justify-between items-center ${isDarkMode ? '' : 'bg-cyan-50/50'}`}>
+          <div className="rounded-lg bg-white shadow-sm dark:bg-[#0f0f0f] dark:dark-shadow">
+            <div className="p-5 flex justify-between items-center bg-cyan-50/50 dark:bg-transparent">
               <div className="flex items-center gap-2">
                 <ShoppingCartIcon size={18} className="text-cyan-600" />
-                <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Cart</h2>
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">Cart</h2>
                 <span className="bg-cyan-600 text-white px-2 py-0.5 rounded text-xs font-medium">
                   {cart.length}
                 </span>
@@ -1450,7 +1441,7 @@ export default function POSPage() {
               {cart.length > 0 && (
                 <button
                   onClick={clearCart}
-                  className={`text-xs px-3 py-1.5 rounded-lg transition-colors font-medium ${isDarkMode ? 'text-gray-300 hover:bg-[#2a2a2a]' : 'text-gray-600 hover:bg-cyan-100'}`}
+                  className="text-xs px-3 py-1.5 rounded-lg transition-colors font-medium text-gray-600 hover:bg-cyan-100 dark:text-gray-300 dark:hover:bg-[#2a2a2a]"
                 >
                   Clear All
                 </button>
@@ -1459,7 +1450,7 @@ export default function POSPage() {
 
             <div className="p-5">
               {cart.length === 0 ? (
-                <p className={`text-center py-12 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <p className="text-center py-12 text-sm text-gray-500 dark:text-gray-400">
                   Cart is empty. Search and add products.
                 </p>
               ) : (
@@ -1467,12 +1458,12 @@ export default function POSPage() {
                   {cart.map((item) => (
                     <div
                       key={item.product.id}
-                      className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700/20' : 'bg-gray-50'}`}
+                      className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/20"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.product.name}</p>
-                          <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <p className="font-medium text-gray-900 dark:text-white">{item.product.name}</p>
+                          <p className="text-xs mt-1 text-gray-600 dark:text-gray-400">
                             Rs. {(item.product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)} each
                           </p>
                           {item.product.is_phone && (
@@ -1506,35 +1497,35 @@ export default function POSPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <div className={`flex items-center gap-1 border rounded-lg ${isDarkMode ? 'border-gray-600' : 'border-gray-300'}`}>
+                          <div className="flex items-center gap-1 border rounded-lg border-gray-300 dark:border-gray-600">
                             <button
                               onClick={() =>
                                 updateQuantity(item.product.id, item.quantity - 1)
                               }
-                              className={`p-1.5 transition-colors ${isDarkMode ? 'hover:bg-[#2a2a2a] text-gray-300' : 'hover:bg-gray-100'}`}
+                              className="p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-[#2a2a2a] dark:text-gray-300"
                             >
                               <MinusIcon size={14} />
                             </button>
-                            <span className={`font-medium w-8 text-center ${isDarkMode ? 'text-white' : ''}`}>
+                            <span className="font-medium w-8 text-center dark:text-white">
                               {item.quantity}
                             </span>
                             <button
                               onClick={() =>
                                 updateQuantity(item.product.id, item.quantity + 1)
                               }
-                              className={`p-1.5 transition-colors ${isDarkMode ? 'hover:bg-[#2a2a2a] text-gray-300' : 'hover:bg-gray-100'}`}
+                              className="p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-[#2a2a2a] dark:text-gray-300"
                             >
                               <PlusIcon size={14} />
                             </button>
                           </div>
 
-                          <p className={`font-semibold w-20 text-right ${isDarkMode ? 'text-gray-200' : ''}`}>
+                          <p className="font-semibold w-20 text-right dark:text-gray-200">
                             {formatCurrency((item.product.aggregated_stock?.aggregated_selling_price || 0) * item.quantity, 2)}
                           </p>
 
                           <button
                             onClick={() => removeFromCart(item.product.id)}
-                            className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-600'}`}
+                            className="p-1.5 rounded-lg transition-colors hover:bg-red-50 text-red-600 dark:hover:bg-red-900/30 dark:text-red-400"
                           >
                             <TrashIcon size={16} />
                           </button>
@@ -1550,31 +1541,29 @@ export default function POSPage() {
 
         {/* Payment Section */}
         <div className="lg:col-span-1">
-          <div className={`p-6 rounded-lg sticky top-4 ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
-            <h2 className={`text-base font-bold mb-5 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Payment</h2>
+          <div className="p-6 rounded-lg sticky top-4 bg-white shadow-sm dark:bg-[#0f0f0f] dark:dark-shadow">
+            <h2 className="text-base font-bold mb-5 text-gray-900 dark:text-white">Payment</h2>
 
             {error && (
-              <div className={`mb-4 p-3 rounded-lg text-sm ${isDarkMode ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-600'}`}>
+              <div className="mb-4 p-3 rounded-lg text-sm bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
                 {error}
               </div>
             )}
 
             <div className="mb-5">
-              <p className={`text-xs mb-2 font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Amount</p>
-              <p className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(total, 2)}</p>
+              <p className="text-xs mb-2 font-medium text-gray-600 dark:text-gray-400">Total Amount</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(total, 2)}</p>
             </div>
 
             <div className="mb-4">
-              <label className={`block mb-2 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Payment Method</label>
+              <label className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setPaymentMethod('Cash')}
                   className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
                     paymentMethod === 'Cash'
                       ? 'bg-cyan-600 text-white border-cyan-600'
-                      : isDarkMode 
-                        ? 'bg-[#1a1a1a] border-gray-600 hover:bg-[#2a2a2a] text-gray-300'
-                        : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
+                      : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:hover:bg-[#2a2a2a] dark:text-gray-300'
                   }`}
                 >
                   Cash
@@ -1584,9 +1573,7 @@ export default function POSPage() {
                   className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
                     paymentMethod === 'Digital'
                       ? 'bg-cyan-600 text-white border-cyan-600'
-                      : isDarkMode 
-                        ? 'bg-[#1a1a1a] border-gray-600 hover:bg-[#2a2a2a] text-gray-300'
-                        : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
+                      : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:hover:bg-[#2a2a2a] dark:text-gray-300'
                   }`}
                 >
                   Digital
@@ -1595,7 +1582,7 @@ export default function POSPage() {
             </div>
 
             <div className="mb-4">
-              <label htmlFor="amountPaid" className={`block mb-2 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <label htmlFor="amountPaid" className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
                 Amount Paid
               </label>
               <input
@@ -1605,13 +1592,13 @@ export default function POSPage() {
                 min="0"
                 value={amountPaid}
                 onChange={(e) => setAmountPaid(e.target.value)}
-                className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
+                className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
                 placeholder="0.00"
               />
             </div>
 
             <div className="mb-4">
-              <label htmlFor="saleDescription" className={`block mb-2 text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <label htmlFor="saleDescription" className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
                 Sale Description {cart.length > 1 && <span className="text-red-600">*</span>}
               </label>
               <input
@@ -1619,20 +1606,20 @@ export default function POSPage() {
                 type="text"
                 value={saleDescription}
                 onChange={(e) => setSaleDescription(e.target.value)}
-                className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
+                className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
                 placeholder={cart.length === 1 ? "Optional (will use product name)" : "Required for multiple items"}
               />
               {cart.length === 1 && !saleDescription && (
-                <p className={`text-xs mt-1.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <p className="text-xs mt-1.5 text-gray-500 dark:text-gray-400">
                   Will default to: {cart[0].product.name}
                 </p>
               )}
             </div>
 
             {amountPaid && parseFloat(amountPaid) >= total && (
-              <div className={`mb-4 p-4 border rounded-lg ${isDarkMode ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'}`}>
-                <p className={`text-xs mb-1 font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Change</p>
-                <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{formatCurrency(change, 2)}</p>
+              <div className="mb-4 p-4 border rounded-lg bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
+                <p className="text-xs mb-1 font-medium text-gray-600 dark:text-gray-300">Change</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(change, 2)}</p>
               </div>
             )}
 

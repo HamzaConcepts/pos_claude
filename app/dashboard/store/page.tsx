@@ -5,7 +5,7 @@ import { UsersIcon, ShieldIcon, UserIcon, ClockIcon, CheckCircleIcon, XCircleIco
 import { getStoreId } from '@/lib/supabase'
 import AddStockModal from '@/components/AddStockModal'
 import PredefinedExpensesManager from '@/components/PredefinedExpensesManager'
-import { useDarkMode } from '@/hooks/useDarkMode'
+import StoreSkeleton from '@/components/skeletons/StoreSkeleton'
 
 interface UserData {
   id: string
@@ -88,7 +88,6 @@ interface SupplierPayment {
 }
 
 export default function StorePage() {
-  const isDarkMode = useDarkMode()
   const [users, setUsers] = useState<UserData[]>([])
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -493,22 +492,15 @@ export default function StorePage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading store data...</p>
-        </div>
-      </div>
-    )
+    return <StoreSkeleton />
   }
 
   return (
     <div className="animate-fadeIn">
       <div className="flex justify-between items-center mb-5">
         <div>
-          <h1 className={`text-2xl font-bold mb-1.5 ${isDarkMode ? 'text-white' : ''}`}>Store Management</h1>
-          <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-text-secondary'}`}>Manage users, categories, and store settings</p>
+          <h1 className="text-2xl font-bold mb-1.5 dark:text-white">Store Management</h1>
+          <p className="text-sm text-text-secondary dark:text-gray-300">Manage users, categories, and store settings</p>
         </div>
       </div>
 
@@ -519,14 +511,14 @@ export default function StorePage() {
       )}
 
       {/* Tab Navigation - Simplified with 4 main tabs */}
-      <div className={`mb-5 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className="mb-5 border-b border-gray-200 dark:border-gray-700">
         <div className="flex gap-1">
           <button
             onClick={() => setActiveTab('team')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'team'
-                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700 dark:border-cyan-500 dark:bg-gray-700 dark:text-cyan-400'
+                : 'border-transparent hover:bg-gray-50 text-gray-600 dark:hover:bg-gray-800 dark:text-gray-400'
             }`}>
             <UsersIcon size={16} />
             Team
@@ -535,8 +527,8 @@ export default function StorePage() {
             onClick={() => setActiveTab('products')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'products'
-                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700 dark:border-cyan-500 dark:bg-gray-700 dark:text-cyan-400'
+                : 'border-transparent hover:bg-gray-50 text-gray-600 dark:hover:bg-gray-800 dark:text-gray-400'
             }`}>
             <GridFourIcon size={16} />
             Products
@@ -545,8 +537,8 @@ export default function StorePage() {
             onClick={() => setActiveTab('partners')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'partners'
-                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700 dark:border-cyan-500 dark:bg-gray-700 dark:text-cyan-400'
+                : 'border-transparent hover:bg-gray-50 text-gray-600 dark:hover:bg-gray-800 dark:text-gray-400'
             }`}>
             <UserPlusIcon size={16} />
             Partners
@@ -555,8 +547,8 @@ export default function StorePage() {
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 px-4 py-2.5 font-medium border-b-2 transition-colors text-sm ${
               activeTab === 'settings'
-                ? (isDarkMode ? 'border-cyan-500 bg-gray-700 text-cyan-400' : 'border-cyan-600 bg-cyan-50 text-cyan-700')
-                : (isDarkMode ? 'border-transparent hover:bg-gray-800 text-gray-400' : 'border-transparent hover:bg-gray-50 text-gray-600')
+                ? 'border-cyan-600 bg-cyan-50 text-cyan-700 dark:border-cyan-500 dark:bg-gray-700 dark:text-cyan-400'
+                : 'border-transparent hover:bg-gray-50 text-gray-600 dark:hover:bg-gray-800 dark:text-gray-400'
             }`}>
             <StorefrontIcon size={16} />
             Settings
@@ -566,13 +558,13 @@ export default function StorePage() {
 
       {/* Sub-tab Navigation */}
       {activeTab === 'team' && (
-        <div className={`mb-4 flex gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className="mb-4 flex gap-2 text-gray-700 dark:text-gray-300">
           <button
             onClick={() => setTeamSubTab('users')}
             className={`px-3 py-1.5 text-sm rounded ${
               teamSubTab === 'users'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             }`}>
             Users
           </button>
@@ -580,8 +572,8 @@ export default function StorePage() {
             onClick={() => setTeamSubTab('cashiers')}
             className={`px-3 py-1.5 text-sm rounded ${
               teamSubTab === 'cashiers'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             }`}>
             Cashiers
           </button>
@@ -589,13 +581,13 @@ export default function StorePage() {
       )}
 
       {activeTab === 'products' && (
-        <div className={`mb-4 flex gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className="mb-4 flex gap-2 text-gray-700 dark:text-gray-300">
           <button
             onClick={() => setProductsSubTab('categories')}
             className={`px-3 py-1.5 text-sm rounded ${
               productsSubTab === 'categories'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             }`}>
             Categories
           </button>
@@ -603,8 +595,8 @@ export default function StorePage() {
             onClick={() => setProductsSubTab('initial-stock')}
             className={`px-3 py-1.5 text-sm rounded ${
               productsSubTab === 'initial-stock'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             }`}>
             Initial Stock
           </button>
@@ -612,13 +604,13 @@ export default function StorePage() {
       )}
 
       {activeTab === 'partners' && (
-        <div className={`mb-4 flex gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className="mb-4 flex gap-2 text-gray-700 dark:text-gray-300">
           <button
             onClick={() => setPartnersSubTab('initial-suppliers')}
             className={`px-3 py-1.5 text-sm rounded ${
               partnersSubTab === 'initial-suppliers'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             }`}>
             Initial Suppliers
           </button>
@@ -626,8 +618,8 @@ export default function StorePage() {
             onClick={() => setPartnersSubTab('initial-customers')}
             className={`px-3 py-1.5 text-sm rounded ${
               partnersSubTab === 'initial-customers'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             }`}>
             Initial Customers
           </button>
@@ -635,13 +627,13 @@ export default function StorePage() {
       )}
 
       {activeTab === 'settings' && (
-        <div className={`mb-4 flex gap-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        <div className="mb-4 flex gap-2 text-gray-700 dark:text-gray-300">
           <button
             onClick={() => setSettingsSubTab('info')}
             className={`px-3 py-1.5 text-sm rounded ${
               settingsSubTab === 'info'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             }`}>
             Store Info
           </button>
@@ -649,8 +641,8 @@ export default function StorePage() {
             onClick={() => setSettingsSubTab('expenses')}
             className={`px-3 py-1.5 text-sm rounded ${
               settingsSubTab === 'expenses'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             }`}>
             Expense Types
           </button>
@@ -658,8 +650,8 @@ export default function StorePage() {
             onClick={() => setSettingsSubTab('withdrawals')}
             className={`px-3 py-1.5 text-sm rounded ${
               settingsSubTab === 'withdrawals'
-                ? (isDarkMode ? 'bg-cyan-600 text-white' : 'bg-cyan-100 text-cyan-700')
-                : (isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200')
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
             }`}>
             Owner Withdrawals
           </button>
@@ -964,18 +956,18 @@ export default function StorePage() {
 
       {/* Settings Tab - Expense Types */}
       {activeTab === 'settings' && settingsSubTab === 'expenses' && (
-        <div className={`rounded border p-6 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="rounded border p-6 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           <PredefinedExpensesManager />
         </div>
       )}
 
       {/* Settings Tab - Owner Withdrawals */}
       {activeTab === 'settings' && settingsSubTab === 'withdrawals' && (
-        <div className={`rounded border p-6 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="rounded border p-6 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Owner Withdrawals</h2>
-              <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Owner Withdrawals</h2>
+              <p className="text-sm mt-1 text-gray-600 dark:text-gray-400">
                 Record money withdrawn from cash or bank. These do NOT affect profit/loss.
               </p>
             </div>
@@ -989,21 +981,21 @@ export default function StorePage() {
           </div>
 
           {/* Info Banner */}
-          <div className={`mb-6 p-4 rounded border ${isDarkMode ? 'bg-blue-900/20 border-blue-700/50' : 'bg-blue-50 border-blue-200'}`}>
-            <p className={`text-sm ${isDarkMode ? 'text-blue-400' : 'text-blue-700'}`}>
+          <div className="mb-6 p-4 rounded border bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700/50">
+            <p className="text-sm text-blue-700 dark:text-blue-400">
               <strong>Important:</strong> Owner withdrawals only reduce cash in hand or bank balance. They do not affect profit/loss calculations since they are capital outflows, not business expenses.
             </p>
           </div>
 
           {/* Withdrawals List */}
           {withdrawals.length === 0 ? (
-            <div className={`text-center py-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               No withdrawals recorded yet.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className={`border-b ${isDarkMode ? 'bg-gray-700 text-gray-300 border-gray-600' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                <thead className="border-b bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Amount</th>
@@ -1017,9 +1009,9 @@ export default function StorePage() {
                   {withdrawals.map((withdrawal: any) => (
                     <tr
                       key={withdrawal.id}
-                      className={`border-b ${isDarkMode ? 'border-gray-700 bg-gray-800 hover:bg-gray-750' : 'border-gray-100 bg-white hover:bg-gray-50'}`}
+                      className="border-b border-gray-100 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750"
                     >
-                      <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
                         {new Date(withdrawal.withdrawal_date).toLocaleDateString('en-PK', {
                           timeZone: 'Asia/Karachi',
                           month: 'short',
@@ -1027,28 +1019,28 @@ export default function StorePage() {
                           year: 'numeric'
                         })}
                       </td>
-                      <td className={`px-4 py-3 text-sm font-semibold ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                      <td className="px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-400">
                         PKR {withdrawal.amount.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
                           withdrawal.withdrawal_from === 'Cash'
-                            ? isDarkMode ? 'bg-green-900/30 text-green-400 border border-green-700' : 'bg-green-100 text-green-700 border border-green-300'
-                            : isDarkMode ? 'bg-blue-900/30 text-blue-400 border border-blue-700' : 'bg-blue-100 text-blue-700 border border-blue-300'
+                            ? 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700'
+                            : 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700'
                         }`}>
                           {withdrawal.withdrawal_from}
                         </span>
                       </td>
-                      <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
                         {withdrawal.description || '-'}
                       </td>
-                      <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                         {withdrawal.recorded_by_name || 'System'}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => deleteWithdrawal(withdrawal.id)}
-                          className={`p-1.5 rounded hover:bg-red-100 ${isDarkMode ? 'text-red-400 hover:bg-red-900/30' : 'text-red-600'}`}
+                          className="p-1.5 rounded text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30"
                         >
                           <TrashIcon size={18} />
                         </button>
@@ -1065,20 +1057,20 @@ export default function StorePage() {
       {/* Withdrawal Modal */}
       {showWithdrawalModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`rounded-lg p-6 max-w-md w-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+          <div className="rounded-lg p-6 max-w-md w-full bg-white dark:bg-gray-800">
             <div className="flex justify-between items-center mb-4">
-              <h3 className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Record Owner Withdrawal</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Record Owner Withdrawal</h3>
               <button
                 onClick={() => setShowWithdrawalModal(false)}
-                className={`p-1 rounded ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <XIcon size={20} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
+                <XIcon size={20} className="text-gray-600 dark:text-gray-400" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Amount <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -1087,23 +1079,19 @@ export default function StorePage() {
                   min="0"
                   value={withdrawalForm.amount}
                   onChange={(e) => setWithdrawalForm({ ...withdrawalForm, amount: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className="w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="Enter amount"
                 />
               </div>
 
               <div>
-                <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Withdraw From <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={withdrawalForm.withdrawal_from}
                   onChange={(e) => setWithdrawalForm({ ...withdrawalForm, withdrawal_from: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className="w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
                   <option value="Cash">Cash</option>
                   <option value="Bank">Bank</option>
@@ -1111,29 +1099,25 @@ export default function StorePage() {
               </div>
 
               <div>
-                <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Date <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="date"
                   value={withdrawalForm.withdrawal_date}
                   onChange={(e) => setWithdrawalForm({ ...withdrawalForm, withdrawal_date: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className="w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className={`block mb-1 text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                   Description (Optional)
                 </label>
                 <textarea
                   value={withdrawalForm.description}
                   onChange={(e) => setWithdrawalForm({ ...withdrawalForm, description: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                  }`}
+                  className="w-full px-3 py-2 border rounded focus:outline-none focus:border-cyan-600 bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   rows={3}
                   placeholder="Enter description (optional)"
                 />
@@ -1148,9 +1132,7 @@ export default function StorePage() {
                 </button>
                 <button
                   onClick={() => setShowWithdrawalModal(false)}
-                  className={`flex-1 px-4 py-2 rounded ${
-                    isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                  }`}
+                  className="flex-1 px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
                 >
                   Cancel
                 </button>

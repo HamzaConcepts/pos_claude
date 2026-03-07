@@ -74,7 +74,9 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
   useEffect(() => {
     const savedDarkMode = localStorage.getItem('dark_mode')
     if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
+      const darkModeOn = savedDarkMode === 'true'
+      setIsDarkMode(darkModeOn)
+      document.documentElement.classList.toggle('dark', darkModeOn)
     }
   }, [])
 
@@ -138,6 +140,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     const newDarkMode = !isDarkMode
     setIsDarkMode(newDarkMode)
     localStorage.setItem('dark_mode', newDarkMode.toString())
+    document.documentElement.classList.toggle('dark', newDarkMode)
     // Dispatch custom event to notify dashboard page
     window.dispatchEvent(new CustomEvent('darkModeChange', { detail: { isDarkMode: newDarkMode } }))
   }
@@ -191,20 +194,20 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
           fixed inset-y-0 left-0 z-40
           flex-col transition-all duration-300
           ${isCollapsed ? 'w-16' : 'w-52'}
-          ${isDarkMode ? 'bg-[#1a1a1a] border-r border-gray-700' : 'bg-white border-r border-gray-200'}
+          bg-white border-r border-gray-200 dark:bg-[#1a1a1a] dark:border-gray-700
         `}
       >
         {/* Logo */}
-        <div className={`p-4 border-b flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className={`p-4 border-b border-gray-200 dark:border-gray-700 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!isCollapsed && (
-            <h1 className={`text-lg font-bold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{storeName}</h1>
+            <h1 className="text-lg font-bold truncate text-gray-900 dark:text-white">{storeName}</h1>
           )}
           <button
             onClick={toggleSidebar}
-            className={`p-1.5 rounded transition-colors flex-shrink-0 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+            className="p-1.5 rounded transition-colors flex-shrink-0 hover:bg-gray-100 dark:hover:bg-gray-700"
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <ListIcon size={20} className={`flex-shrink-0 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+            <ListIcon size={20} className="flex-shrink-0 text-gray-600 dark:text-gray-400" />
           </button>
         </div>
 
@@ -213,40 +216,30 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
           {/* Cashier Selector - Only show for cashier accounts */}
           {userRole === 'Cashier' && cashiers.length > 0 && (
             <div className="mb-3">
-              <label className={`text-xs mb-1.5 block ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Active Cashier</label>
+              <label className="text-xs mb-1.5 block text-gray-500 dark:text-gray-400">Active Cashier</label>
               <div className="relative">
                 <button
                   onClick={() => setShowCashierDropdown(!showCashierDropdown)}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 border rounded text-sm transition-colors ${
-                    isDarkMode 
-                      ? 'bg-gray-800 hover:bg-gray-700 border-gray-700' 
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-200'
-                  }`}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2 border rounded text-sm transition-colors bg-gray-50 hover:bg-gray-100 border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-700"
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <UserIcon size={14} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
-                    <span className={`truncate ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <UserIcon size={14} className="text-gray-600 dark:text-gray-400" />
+                    <span className="truncate text-gray-700 dark:text-gray-300">
                       {selectedCashier ? selectedCashier.full_name : 'Select Cashier'}
                     </span>
                   </div>
-                  <CaretDownIcon size={14} className={`transition-transform ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} ${showCashierDropdown ? 'rotate-180' : ''}`} />
+                  <CaretDownIcon size={14} className={`transition-transform text-gray-500 dark:text-gray-400 ${showCashierDropdown ? 'rotate-180' : ''}`} />
                 </button>
 
                 {showCashierDropdown && (
-                  <div className={`absolute top-full left-0 right-0 mt-1 border rounded z-50 max-h-64 overflow-y-auto ${
-                    isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                  }`}>
+                  <div className="absolute top-full left-0 right-0 mt-1 border rounded z-50 max-h-64 overflow-y-auto bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                     <div
                       onClick={() => {
                         setSelectedCashier(null)
                         localStorage.removeItem('selected_cashier')
                         setShowCashierDropdown(false)
                       }}
-                      className={`px-3 py-2 cursor-pointer text-sm border-b ${
-                        isDarkMode 
-                          ? 'hover:bg-gray-700 text-gray-400 border-gray-700' 
-                          : 'hover:bg-gray-50 text-gray-500 border-gray-100'
-                      }`}
+                      className="px-3 py-2 cursor-pointer text-sm border-b hover:bg-gray-50 text-gray-500 border-gray-100 dark:hover:bg-gray-700 dark:text-gray-400 dark:border-gray-700"
                     >
                       No Cashier Selected
                     </div>
@@ -256,15 +249,15 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                         onClick={() => handleCashierSelect(cashier)}
                         className={`px-3 py-2 cursor-pointer transition-colors ${
                           selectedCashier?.id === cashier.id 
-                            ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-50')
-                            : (isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50')
+                            ? 'bg-gray-50 dark:bg-gray-700'
+                            : 'hover:bg-gray-50 dark:hover:bg-gray-700'
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <UserIcon size={14} className={isDarkMode ? 'text-gray-400' : 'text-gray-600'} />
+                          <UserIcon size={14} className="text-gray-600 dark:text-gray-400" />
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium truncate ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{cashier.full_name}</p>
-                            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{cashier.phone_number}</p>
+                            <p className="text-sm font-medium truncate text-gray-900 dark:text-gray-200">{cashier.full_name}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{cashier.phone_number}</p>
                           </div>
                         </div>
                       </div>
@@ -287,12 +280,8 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                     className={`
                       flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-colors relative group
                       ${isActive 
-                        ? (isDarkMode 
-                            ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-700' 
-                            : 'bg-cyan-50 text-cyan-700 border border-cyan-200')
-                        : (isDarkMode 
-                            ? 'text-gray-300 hover:bg-[#2a2a2a] hover:text-white' 
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900')
+                        ? 'bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-600/20 dark:text-cyan-400 dark:border-cyan-700'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-[#2a2a2a] dark:hover:text-white'
                       }
                       ${isCollapsed ? 'justify-center px-0' : ''}
                     `}
@@ -302,8 +291,8 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                       size={20} 
                       weight={isActive ? 'duotone' : 'regular'}
                       className={`flex-shrink-0 ${isActive 
-                        ? (isDarkMode ? 'text-cyan-400' : 'text-cyan-600')
-                        : (isDarkMode ? 'text-gray-400 group-hover:text-white' : 'text-gray-500')
+                        ? 'text-cyan-600 dark:text-cyan-400'
+                        : 'text-gray-500 dark:text-gray-400 dark:group-hover:text-white'
                       }`} 
                     />
                     {!isCollapsed && <span>{item.label}</span>}
@@ -315,15 +304,11 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
         </nav>
 
         {/* User section */}
-        <div className={`p-3 border-t ${isDarkMode ? 'border-gray-700 bg-[#151515]' : 'border-gray-200 bg-gray-50'}`}>
+        <div className="p-3 border-t border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-[#151515]">
           {/* Dark Mode Toggle */}
           <button
             onClick={toggleDarkMode}
-            className={`flex items-center gap-2 w-full px-3 py-2 mb-2 border rounded transition-colors text-sm font-medium ${isCollapsed ? 'justify-center px-0' : ''} ${
-              isDarkMode 
-                ? 'bg-[#0f0f0f] hover:bg-[#2a2a2a] border-gray-600 text-gray-200' 
-                : 'bg-white hover:bg-gray-100 border-gray-200 text-gray-700'
-            }`}
+            className={`flex items-center gap-2 w-full px-3 py-2 mb-2 border rounded transition-colors text-sm font-medium bg-white hover:bg-gray-100 border-gray-200 text-gray-700 dark:bg-[#0f0f0f] dark:hover:bg-[#2a2a2a] dark:border-gray-600 dark:text-gray-200 ${isCollapsed ? 'justify-center px-0' : ''}`}
             title={isCollapsed ? (isDarkMode ? 'Light Mode' : 'Dark Mode') : ''}
           >
             {isDarkMode ? <SunIcon size={20} weight="duotone" className="flex-shrink-0 text-yellow-500" /> : <MoonIcon size={20} weight="regular" className="flex-shrink-0 text-blue-500" />}
@@ -332,17 +317,13 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
 
           {!isCollapsed && (
             <div className="mb-2">
-              <p className={`font-medium text-sm ${isDarkMode ? 'text-gray-200' : 'text-gray-900'}`}>{userName}</p>
-              <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{userRole}</p>
+              <p className="font-medium text-sm text-gray-900 dark:text-gray-200">{userName}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{userRole}</p>
             </div>
           )}
           <button
             onClick={handleLogout}
-            className={`flex items-center gap-2 w-full px-3 py-2 border rounded transition-colors text-sm font-medium ${isCollapsed ? 'justify-center px-0' : ''} ${
-              isDarkMode 
-                ? 'bg-[#0f0f0f] hover:bg-red-900/20 border-gray-600 hover:border-red-800 text-gray-200 hover:text-red-400' 
-                : 'bg-white hover:bg-red-50 border-gray-200 hover:border-red-200 text-gray-700 hover:text-red-600'
-            }`}
+            className={`flex items-center gap-2 w-full px-3 py-2 border rounded transition-colors text-sm font-medium bg-white hover:bg-red-50 border-gray-200 hover:border-red-200 text-gray-700 hover:text-red-600 dark:bg-[#0f0f0f] dark:hover:bg-red-900/20 dark:border-gray-600 dark:hover:border-red-800 dark:text-gray-200 dark:hover:text-red-400 ${isCollapsed ? 'justify-center px-0' : ''}`}
             title={isCollapsed ? 'Logout' : ''}
           >
             <SignOutIcon size={20} weight="regular" className="flex-shrink-0" />

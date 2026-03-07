@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { CurrencyDollarIcon, PlusIcon, PencilSimpleIcon, TrashIcon, XIcon, ToggleLeftIcon, ToggleRightIcon } from '@phosphor-icons/react'
 import { supabase, getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { useDarkMode } from '@/hooks/useDarkMode'
+import PageLoader from '@/components/ui/PageLoader'
 
 interface PredefinedExpense {
   id: number
@@ -32,7 +32,6 @@ const EXPENSE_CATEGORIES = [
 
 export default function StoreExpensesPage() {
   const router = useRouter()
-  const isDarkMode = useDarkMode()
   const [expenses, setExpenses] = useState<PredefinedExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -244,14 +243,7 @@ export default function StoreExpensesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading expenses...</p>
-        </div>
-      </div>
-    )
+    return <PageLoader message="Loading expenses" />
   }
 
   const groupedExpenses = groupByCategory()

@@ -10,7 +10,6 @@ import {
   EyeIcon,
 } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import {
   generateQuotationPDF,
   printQuotationPDF,
@@ -33,7 +32,6 @@ export default function PrintQuotationButton({
   variant = 'default',
   className = '',
 }: PrintQuotationButtonProps) {
-  const isDarkMode = useDarkMode()
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -155,37 +153,27 @@ export default function PrintQuotationButton({
         <button
           onClick={() => setShowDropdown(!showDropdown)}
           title="Print/Download PDF"
-          className={`p-1.5 rounded hover:bg-opacity-10 transition-colors ${
-            isDarkMode ? 'text-gray-400 hover:text-white hover:bg-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-          } ${className}`}
+          className={`p-1.5 rounded hover:bg-opacity-10 transition-colors text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white ${className}`}
         >
           <PrinterIcon size={18} />
         </button>
         {showDropdown && (
-          <div className={`absolute right-0 top-full mt-1 w-44 rounded-lg border shadow-xl z-50 ${
-            isDarkMode ? 'bg-[#2a2a2a] border-gray-600' : 'bg-white border-gray-200'
-          }`}>
+          <div className="absolute right-0 top-full mt-1 w-44 rounded-lg border shadow-xl z-50 bg-white border-gray-200 dark:bg-[#2a2a2a] dark:border-gray-600">
             <button
               onClick={() => handleAction('view')}
-              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
-                isDarkMode ? 'hover:bg-[#333] text-gray-300' : 'hover:bg-gray-50 text-gray-700'
-              }`}
+              className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 text-gray-700 dark:hover:bg-[#333] dark:text-gray-300"
             >
               <EyeIcon size={16} /> View PDF
             </button>
             <button
               onClick={() => handleAction('download')}
-              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
-                isDarkMode ? 'hover:bg-[#333] text-gray-300' : 'hover:bg-gray-50 text-gray-700'
-              }`}
+              className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 text-gray-700 dark:hover:bg-[#333] dark:text-gray-300"
             >
               <DownloadSimpleIcon size={16} /> Download PDF
             </button>
             <button
               onClick={() => handleAction('print')}
-              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
-                isDarkMode ? 'hover:bg-[#333] text-gray-300' : 'hover:bg-gray-50 text-gray-700'
-              }`}
+              className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-gray-50 text-gray-700 dark:hover:bg-[#333] dark:text-gray-300"
             >
               <PrinterIcon size={16} /> Print
             </button>
@@ -202,41 +190,29 @@ export default function PrintQuotationButton({
         onClick={() => setShowDropdown(!showDropdown)}
         className={`inline-flex items-center gap-1.5 rounded-lg border text-sm font-medium transition-colors ${
           variant === 'small' ? 'px-2.5 py-1.5' : 'px-4 py-2'
-        } ${
-          isDarkMode
-            ? 'border-gray-600 text-gray-300 hover:bg-[#2a2a2a]'
-            : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-        } ${className}`}
+        } border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-[#2a2a2a] ${className}`}
       >
         <PrinterIcon size={variant === 'small' ? 14 : 16} />
         {variant !== 'small' && 'PDF'}
         <CaretDownIcon size={12} />
       </button>
       {showDropdown && (
-        <div className={`absolute right-0 top-full mt-1 w-44 rounded-lg border shadow-xl z-50 ${
-          isDarkMode ? 'bg-[#2a2a2a] border-gray-600' : 'bg-white border-gray-200'
-        }`}>
+        <div className="absolute right-0 top-full mt-1 w-44 rounded-lg border shadow-xl z-50 bg-white border-gray-200 dark:bg-[#2a2a2a] dark:border-gray-600">
           <button
             onClick={() => handleAction('view')}
-            className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 rounded-t-lg ${
-              isDarkMode ? 'hover:bg-[#333] text-gray-300' : 'hover:bg-gray-50 text-gray-700'
-            }`}
+            className="w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 rounded-t-lg hover:bg-gray-50 text-gray-700 dark:hover:bg-[#333] dark:text-gray-300"
           >
             <EyeIcon size={16} /> View PDF
           </button>
           <button
             onClick={() => handleAction('download')}
-            className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 ${
-              isDarkMode ? 'hover:bg-[#333] text-gray-300' : 'hover:bg-gray-50 text-gray-700'
-            }`}
+            className="w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 hover:bg-gray-50 text-gray-700 dark:hover:bg-[#333] dark:text-gray-300"
           >
             <DownloadSimpleIcon size={16} /> Download PDF
           </button>
           <button
             onClick={() => handleAction('print')}
-            className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 rounded-b-lg ${
-              isDarkMode ? 'hover:bg-[#333] text-gray-300' : 'hover:bg-gray-50 text-gray-700'
-            }`}
+            className="w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 rounded-b-lg hover:bg-gray-50 text-gray-700 dark:hover:bg-[#333] dark:text-gray-300"
           >
             <PrinterIcon size={16} /> Print
           </button>

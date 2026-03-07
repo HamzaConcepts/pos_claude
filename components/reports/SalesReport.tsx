@@ -23,41 +23,41 @@ export function SalesReport({ reportData, formatCurrency }: SalesReportProps) {
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="p-3 rounded-lg border bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total Sales</h3>
-            <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <ShoppingCartIcon className={`w-4 h-4 ${isDarkMode ? 'text-cyan-400' : 'text-gray-700'}`} />
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Total Sales</h3>
+            <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700">
+              <ShoppingCartIcon className="w-4 h-4 text-gray-700 dark:text-cyan-400" />
             </div>
           </div>
-          <div className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {reportData.summary?.totalSales ?? 0}
           </div>
-          <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          <div className="text-xs mt-1 text-gray-600 dark:text-gray-400">
             {formatCurrency(reportData.summary?.totalRevenue ?? 0)}
           </div>
         </div>
         
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="p-3 rounded-lg border bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash Sales</h3>
-            <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <CurrencyDollarIcon className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Cash Sales</h3>
+            <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700">
+              <CurrencyDollarIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <div className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(reportData.summary?.totalCash ?? 0)}
           </div>
         </div>
         
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="p-3 rounded-lg border bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Digital Sales</h3>
-            <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <CreditCardIcon className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Digital Sales</h3>
+            <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700">
+              <CreditCardIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <div className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(reportData.summary?.totalDigital ?? 0)}
           </div>
         </div>
@@ -65,8 +65,8 @@ export function SalesReport({ reportData, formatCurrency }: SalesReportProps) {
 
       {/* Sales Trend Chart */}
       {salesTrendData.length > 0 && (
-        <div className={`p-4 rounded-lg border mb-4 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>Sales Trend</h3>
+        <div className="p-4 rounded-lg border mb-4 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+          <h3 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-100">Sales Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={salesTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#e5e7eb'} />
@@ -103,16 +103,16 @@ export function SalesReport({ reportData, formatCurrency }: SalesReportProps) {
 
       {/* Top Products */}
       {reportData.topProducts && Array.isArray(reportData.topProducts) && reportData.topProducts.length > 0 && (
-        <div className={`p-4 rounded-lg border mb-4 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>Top Products</h3>
+        <div className="p-4 rounded-lg border mb-4 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+          <h3 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-100">Top Products</h3>
           <div className="space-y-2">
             {reportData.topProducts.map((product: any, index: number) => (
-              <div key={index} className={`flex items-center justify-between py-2 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div key={index} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
                 <div>
-                  <p className={`font-medium text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{product.name}</p>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{product.quantity} units sold</p>
+                  <p className="font-medium text-sm text-gray-900 dark:text-gray-100">{product.name}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{product.quantity} units sold</p>
                 </div>
-                <p className={`font-semibold text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{formatCurrency(product.revenue)}</p>
+                <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{formatCurrency(product.revenue)}</p>
               </div>
             ))}
           </div>
@@ -120,36 +120,36 @@ export function SalesReport({ reportData, formatCurrency }: SalesReportProps) {
       )}
 
       {/* Sales List */}
-      <div className={`rounded-lg border overflow-hidden ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className="rounded-lg border overflow-hidden bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className={`border-b ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+            <thead className="border-b bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600">
               <tr>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Date</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cashier</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Payment</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Cashier</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Total</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Payment</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Status</th>
               </tr>
             </thead>
-            <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {Array.isArray(reportData.sales) && reportData.sales.slice(0, 50).map((sale: any) => (
-                <tr key={sale.id} className={isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
-                  <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                <tr key={sale.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
                     {new Date(sale.sale_date).toLocaleDateString()}
                   </td>
-                  <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.cashier_name || 'N/A'}</td>
-                  <td className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{sale.cashier_name || 'N/A'}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                     {formatCurrency(sale.total_amount)}
                   </td>
-                  <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{sale.payment_method}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{sale.payment_method}</td>
                   <td className="px-4 py-3 text-sm">
                     <span className={`px-2 py-1 rounded text-xs ${
                       sale.payment_status === 'Paid' 
-                        ? (isDarkMode ? 'bg-green-900/50 text-green-300' : 'bg-green-100 text-green-800')
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
                         : sale.payment_status === 'Partial' 
-                        ? (isDarkMode ? 'bg-yellow-900/50 text-yellow-300' : 'bg-yellow-100 text-yellow-800')
-                        : (isDarkMode ? 'bg-red-900/50 text-red-300' : 'bg-red-100 text-red-800')
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
                     }`}>
                       {sale.payment_status}
                     </span>

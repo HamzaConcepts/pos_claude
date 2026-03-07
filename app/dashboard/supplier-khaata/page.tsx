@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, PackageIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
-import { useDarkMode } from '@/hooks/useDarkMode'
 
 interface SupplierKhaata {
   id: number
@@ -49,7 +48,6 @@ interface AggregatedSupplier {
 }
 
 export default function SupplierKhaataPage() {
-  const isDarkMode = useDarkMode()
   const [suppliers, setSuppliers] = useState<SupplierKhaata[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -249,8 +247,8 @@ export default function SupplierKhaataPage() {
         {/* Loading State */}
         {loading ? (
           <div className="text-center py-12">
-            <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-            <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading supplier accounts...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-cyan-500 mx-auto"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading supplier accounts...</p>
           </div>
         ) : filteredSuppliers.length === 0 ? (
           <div className="text-center py-12 border border-dashed border-gray-300 rounded">

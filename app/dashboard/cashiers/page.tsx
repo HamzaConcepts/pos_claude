@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import { UsersIcon, CurrencyDollarIcon, TrendUpIcon, CalendarIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import { getPKTDate } from '@/lib/date-utils'
 import { useCurrency } from '@/lib/currency-context'
+import CashiersSkeleton from '@/components/skeletons/CashiersSkeleton'
 
 interface Cashier {
   id: number
@@ -26,7 +26,6 @@ interface CashierStats {
 }
 
 export default function CashiersManagementPage() {
-  const isDarkMode = useDarkMode()
   const { currency, formatCurrency } = useCurrency()
   const [cashiers, setCashiers] = useState<Cashier[]>([])
   const [stats, setStats] = useState<CashierStats[]>([])
@@ -91,14 +90,7 @@ export default function CashiersManagementPage() {
   const totalPayroll = totalSalaries + totalCommissions
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading cashiers...</p>
-        </div>
-      </div>
-    )
+    return <CashiersSkeleton />
   }
 
   return (
@@ -131,7 +123,7 @@ export default function CashiersManagementPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="border rounded p-4 bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-cyan-50 rounded">
               <UsersIcon size={18} className="text-cyan-600" />
@@ -141,7 +133,7 @@ export default function CashiersManagementPage() {
           <p className="text-2xl font-bold text-gray-900">{cashiers.filter(c => c.is_active).length}</p>
         </div>
 
-        <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="border rounded p-4 bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-green-50 rounded">
               <CurrencyDollarIcon size={18} className="text-green-600" />
@@ -151,7 +143,7 @@ export default function CashiersManagementPage() {
           <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalSalaries, 0)}</p>
         </div>
 
-        <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="border rounded p-4 bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-orange-50 rounded">
               <TrendUpIcon size={18} className="text-orange-600" />
@@ -161,7 +153,7 @@ export default function CashiersManagementPage() {
           <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalCommissions, 2)}</p>
         </div>
 
-        <div className={`border rounded p-4 ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+        <div className="border rounded p-4 bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-cyan-50 rounded">
               <CurrencyDollarIcon size={18} className="text-cyan-600" />
@@ -173,7 +165,7 @@ export default function CashiersManagementPage() {
       </div>
 
       {/* Cashiers Table */}
-      <div className={`border rounded overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700 dark-shadow' : 'bg-white border-gray-200 shadow-sm'}`}>
+      <div className="border rounded overflow-hidden bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
         <div className="p-4 bg-gray-50 border-b border-gray-200">
           <h2 className="text-base font-bold text-gray-900">Performance for {new Date(selectedMonth).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi', month: 'long', year: 'numeric' })}</h2>
         </div>

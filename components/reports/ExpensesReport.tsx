@@ -23,41 +23,41 @@ export function ExpensesReport({ reportData, formatCurrency }: ExpensesReportPro
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="p-3 rounded-lg border bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Total Expenses</h3>
-            <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <TrendDownIcon className={`w-4 h-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Total Expenses</h3>
+            <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700">
+              <TrendDownIcon className="w-4 h-4 text-red-600 dark:text-red-400" />
             </div>
           </div>
-          <div className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(reportData.summary?.totalAmount ?? 0)}
           </div>
-          <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          <div className="text-xs mt-1 text-gray-600 dark:text-gray-400">
             {reportData.summary?.totalExpenses ?? 0} transactions
           </div>
         </div>
         
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="p-3 rounded-lg border bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Cash Expenses</h3>
-            <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <CurrencyDollarIcon className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Cash Expenses</h3>
+            <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700">
+              <CurrencyDollarIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
             </div>
           </div>
-          <div className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(reportData.summary?.totalCash ?? 0)}
           </div>
         </div>
         
-        <div className={`p-3 rounded-lg border ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="p-3 rounded-lg border bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <h3 className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Digital Expenses</h3>
-            <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <CreditCardIcon className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-300">Digital Expenses</h3>
+            <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700">
+              <CreditCardIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          <div className={`text-xl font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">
             {formatCurrency(reportData.summary?.totalDigital ?? 0)}
           </div>
         </div>
@@ -65,8 +65,8 @@ export function ExpensesReport({ reportData, formatCurrency }: ExpensesReportPro
 
       {/* Expenses Trend Chart */}
       {expensesTrendData.length > 0 && (
-        <div className={`p-4 rounded-lg border mb-4 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>Expenses Trend</h3>
+        <div className="p-4 rounded-lg border mb-4 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+          <h3 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-100">Expenses Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={expensesTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#e5e7eb'} />
@@ -103,15 +103,15 @@ export function ExpensesReport({ reportData, formatCurrency }: ExpensesReportPro
 
       {/* Category Breakdown */}
       {reportData.categoryBreakdown && Array.isArray(reportData.categoryBreakdown) && reportData.categoryBreakdown.length > 0 && (
-        <div className={`p-4 rounded-lg border mb-4 ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <h3 className={`text-sm font-semibold mb-3 ${isDarkMode ? 'text-gray-100' : 'text-gray-700'}`}>Expenses by Category</h3>
+        <div className="p-4 rounded-lg border mb-4 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+          <h3 className="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-100">Expenses by Category</h3>
           <div className="space-y-2">
             {reportData.categoryBreakdown.map((cat: any, index: number) => (
-              <div key={index} className={`flex items-center justify-between py-2 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                <span className={`font-medium text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{cat.category}</span>
+              <div key={index} className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{cat.category}</span>
                 <div className="text-right">
-                  <p className={`font-semibold text-sm ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>{formatCurrency(cat.total)}</p>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{cat.count} expenses</p>
+                  <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">{formatCurrency(cat.total)}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{cat.count} expenses</p>
                 </div>
               </div>
             ))}
@@ -120,30 +120,30 @@ export function ExpensesReport({ reportData, formatCurrency }: ExpensesReportPro
       )}
 
       {/* Expenses List */}
-      <div className={`rounded-lg border overflow-hidden ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+      <div className="rounded-lg border overflow-hidden bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className={`border-b ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+            <thead className="border-b bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600">
               <tr>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Date</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Category</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Description</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Amount</th>
-                <th className={`px-4 py-3 text-left text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Payment</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Category</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Payment</th>
               </tr>
             </thead>
-            <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {Array.isArray(reportData.expenses) && reportData.expenses.slice(0, 50).map((expense: any) => (
-                <tr key={expense.id} className={isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'}>
-                  <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>
+                <tr key={expense.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
                     {new Date(expense.expense_date).toLocaleDateString()}
                   </td>
-                  <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{expense.category}</td>
-                  <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{expense.description}</td>
-                  <td className={`px-4 py-3 text-sm font-medium ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{expense.category}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{expense.description}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">
                     {formatCurrency(expense.amount)}
                   </td>
-                  <td className={`px-4 py-3 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-900'}`}>{expense.payment_method || 'N/A'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{expense.payment_method || 'N/A'}</td>
                 </tr>
               ))}
             </tbody>

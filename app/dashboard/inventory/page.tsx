@@ -11,12 +11,11 @@ import BatchEditModal from '@/components/BatchEditModal'
 import PrintLabelsModal from '@/components/PrintLabelsModal'
 import { getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import { useCurrency } from '@/lib/currency-context'
+import InventorySkeleton from '@/components/skeletons/InventorySkeleton'
 
 export default function InventoryPage() {
   const router = useRouter()
-  const isDarkMode = useDarkMode()
   const { currency, formatCurrency } = useCurrency()
   
   // State
@@ -297,26 +296,17 @@ export default function InventoryPage() {
 
   // Loading state
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto ${isDarkMode ? 'border-cyan-500' : 'border-black'}`}></div>
-          <p className={`mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading inventory...</p>
-        </div>
-      </div>
-    )
+    return <InventorySkeleton />
   }
 
   return (
     <div className="animate-fadeIn">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-3">
-        <h1 className={`text-xl md:text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Inventory Management</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Inventory Management</h1>
         
         <div className="flex flex-wrap gap-2">
-          <label className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors cursor-pointer ${
-            isDarkMode ? 'bg-gray-700/30 hover:bg-gray-700/50 text-gray-300' : 'bg-white border border-gray-300 hover:bg-gray-50 shadow-sm'
-          }`}>
+          <label className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 shadow-sm dark:bg-gray-700/30 dark:border-transparent dark:hover:bg-gray-700/50 dark:text-gray-300 dark:shadow-none">
             <PackageIcon size={16} />
             {importing ? 'Importing...' : 'Import CSV'}
             <input
@@ -330,7 +320,7 @@ export default function InventoryPage() {
           
           <button
             onClick={() => setIsRestockModalOpen(true)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors ${isDarkMode ? 'bg-gray-700/30 hover:bg-gray-700/50 text-gray-300' : 'bg-white border border-gray-300 hover:bg-gray-50 shadow-sm'}`}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors bg-white border border-gray-300 hover:bg-gray-50 shadow-sm dark:bg-gray-700/30 dark:border-transparent dark:hover:bg-gray-700/50 dark:text-gray-300 dark:shadow-none"
           >
             <PackageIcon size={16} />
             Restock
@@ -359,17 +349,17 @@ export default function InventoryPage() {
       )}
 
       {/* Filters */}
-      <div className={`p-5 rounded-lg mb-6 ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+      <div className="p-5 rounded-lg mb-6 bg-white shadow-sm dark:bg-[#0f0f0f] dark:dark-shadow dark:shadow-none">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {/* Search */}
           <div className="relative">
-            <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} size={16} />
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
             <input
               type="text"
               placeholder="Search by name or SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-9 pr-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300'}`}
+              className="w-full pl-9 pr-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
             />
           </div>
 
@@ -377,7 +367,7 @@ export default function InventoryPage() {
           <select
             value={categoryFilter}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className={`px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white' : 'border-gray-300'}`}
+            className="px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white"
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
@@ -394,7 +384,7 @@ export default function InventoryPage() {
               !categoryFilter || subcategories.length === 0 
                 ? 'opacity-50 cursor-not-allowed' 
                 : ''
-            } ${isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white' : 'border-gray-300'}`}
+            } border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white`}
           >
             <option value="">All Subcategories</option>
             {subcategories.map((sub) => (
@@ -403,7 +393,7 @@ export default function InventoryPage() {
           </select>
 
           {/* Low Stock Filter */}
-          <label className={`flex items-center gap-2 px-3 py-2.5 border rounded-lg cursor-pointer ${isDarkMode ? 'border-gray-600 hover:bg-[#2a2a2a] text-gray-300' : 'border-gray-300 hover:bg-gray-50'}`}>
+          <label className="flex items-center gap-2 px-3 py-2.5 border rounded-lg cursor-pointer border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-[#2a2a2a] dark:text-gray-300">
             <input
               type="checkbox"
               checked={showLowStock}
@@ -414,17 +404,17 @@ export default function InventoryPage() {
           </label>
 
           {/* Count */}
-          <div className={`flex items-center justify-end text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          <div className="flex items-center justify-end text-xs text-gray-600 dark:text-gray-400">
             Showing {filteredProducts.length} of {products.length} products
           </div>
         </div>
       </div>
 
       {/* Products Table */}
-      <div className={`rounded-lg overflow-hidden ${isDarkMode ? 'bg-[#0f0f0f] dark-shadow' : 'bg-white shadow-sm'}`}>
+      <div className="rounded-lg overflow-hidden bg-white shadow-sm dark:bg-[#0f0f0f] dark:dark-shadow dark:shadow-none">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className={`${isDarkMode ? 'bg-gray-700/30 text-gray-300' : 'bg-gray-50/50 text-gray-700'}`}>
+            <thead className="bg-gray-50/50 text-gray-700 dark:bg-gray-700/30 dark:text-gray-300">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-semibold">SKU</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
@@ -609,7 +599,7 @@ export default function InventoryPage() {
                                       {(product as any).batches
                                         .sort((a: any, b: any) => new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime())
                                         .map((batch: any, index: number) => (
-                                          <div key={batch.id} className={`p-3 rounded border text-sm ${isDarkMode ? 'bg-gray-800/30 border-gray-700' : 'bg-white border-gray-200'}`}>
+                                          <div key={batch.id} className="p-3 rounded border text-sm bg-white border-gray-200 dark:bg-gray-800/30 dark:border-gray-700">
                                             <div className="flex justify-between items-start mb-2">
                                               <div>
                                                 <div className="font-medium text-sm text-gray-900">
@@ -671,7 +661,7 @@ export default function InventoryPage() {
                                 <div className="flex flex-col gap-2">
                                   <button
                                     onClick={() => handleViewHistory(product)}
-                                    className={`flex items-center justify-center gap-2 px-3 py-2 border rounded hover:bg-opacity-80 transition-colors text-sm ${isDarkMode ? 'bg-gray-700/30 border-gray-600 text-gray-300 hover:bg-gray-700/50' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
+                                    className="flex items-center justify-center gap-2 px-3 py-2 border rounded hover:bg-opacity-80 transition-colors text-sm bg-white border-gray-300 hover:bg-gray-50 dark:bg-gray-700/30 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700/50"
                                   >
                                     <ClockCounterClockwiseIcon size={16} />
                                     <span>View History</span>

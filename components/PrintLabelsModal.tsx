@@ -17,24 +17,8 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
   const [printMode, setPrintMode] = useState<'individual' | 'grid'>('individual')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const [availableIMEIs, setAvailableIMEIs] = useState<ProductIMEI[]>([])
   const [loadingIMEIs, setLoadingIMEIs] = useState(false)
-
-  // Dark mode detection
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('dark_mode')
-    if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
-    }
-    
-    const handleDarkModeChange = (event: any) => {
-      setIsDarkMode(event.detail.isDarkMode)
-    }
-    
-    window.addEventListener('darkModeChange', handleDarkModeChange)
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
-  }, [])
 
   // Fetch IMEIs if product is a phone
   useEffect(() => {
@@ -339,20 +323,13 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
 
   return (
     <div 
-      className="fixed inset-0 flex items-center justify-center z-50"
+      className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 dark:bg-black/85"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
-      style={{
-        backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.5)',
-      }}
     >
       <div 
-        className="w-full max-w-md p-6 rounded-lg shadow-lg"
-        style={{
-          backgroundColor: isDarkMode ? '#1a1a1a' : 'white',
-          color: isDarkMode ? '#ffffff' : '#000000',
-        }}
+        className="w-full max-w-md p-6 rounded-lg shadow-lg bg-white text-black dark:bg-[#1a1a1a] dark:text-white"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -362,10 +339,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
           </div>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
-            style={{
-              backgroundColor: isDarkMode ? '#333' : '#f3f4f6',
-            }}
+            className="p-1 rounded bg-gray-100 hover:bg-gray-200 dark:bg-[#333] dark:hover:bg-gray-700"
           >
             <XIcon className="w-5 h-5" />
           </button>
@@ -373,10 +347,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
 
         {/* Product Info */}
         <div 
-          className="mb-4 p-3 rounded"
-          style={{
-            backgroundColor: isDarkMode ? '#2a2a2a' : '#f9fafb',
-          }}
+          className="mb-4 p-3 rounded bg-gray-50 dark:bg-[#2a2a2a]"
         >
           <p className="text-sm opacity-70">Product</p>
           <p className="font-semibold">{product.name}</p>
@@ -408,11 +379,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
               value={labelTitle}
               onChange={(e) => setLabelTitle(e.target.value)}
               placeholder="Enter label title"
-              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2"
-              style={{
-                backgroundColor: isDarkMode ? '#2a2a2a' : 'white',
-                borderColor: isDarkMode ? '#444' : '#d1d5db',
-              }}
+              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 bg-white border-gray-300 dark:bg-[#2a2a2a] dark:border-[#444]"
             />
             <p className="text-xs opacity-60 mt-1">
               Defaults to product name if left empty
@@ -484,11 +451,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value ? parseInt(e.target.value) : '')}
                 placeholder="Enter quantity"
-                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2"
-                style={{
-                  backgroundColor: isDarkMode ? '#2a2a2a' : 'white',
-                  borderColor: isDarkMode ? '#444' : '#d1d5db',
-                }}
+              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 bg-white border-gray-300 dark:bg-[#2a2a2a] dark:border-[#444]"
               />
               <p className="text-xs opacity-60 mt-1">
                 Current stock: {product.stock_quantity} units
@@ -499,10 +462,7 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
           {/* IMEI Info for phone products */}
           {product.is_phone && (
             <div 
-              className="p-3 rounded"
-              style={{
-                backgroundColor: isDarkMode ? '#2a2a2a' : '#eff6ff',
-              }}
+              className="p-3 rounded bg-blue-50 dark:bg-[#2a2a2a]"
             >
               <p className="text-sm font-medium mb-1">IMEI-Based Printing</p>
               <p className="text-xs opacity-70">
@@ -518,20 +478,14 @@ export default function PrintLabelsModal({ product, onClose }: PrintLabelsModalP
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-            style={{
-              borderColor: isDarkMode ? '#444' : '#d1d5db',
-            }}
+            className="flex-1 px-4 py-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-700 border-gray-300 dark:border-[#444]"
           >
             Cancel
           </button>
           <button
             onClick={handlePrint}
             disabled={loading || (product.is_phone && availableIMEIs.length === 0)}
-            className="flex-1 px-4 py-2 rounded text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: loading ? '#6b7280' : '#000000',
-            }}
+            className={`flex-1 px-4 py-2 rounded text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'bg-gray-500' : 'bg-black'}`}
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

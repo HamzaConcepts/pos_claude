@@ -15,7 +15,6 @@ import {
   CalendarIcon,
   HashIcon,
 } from '@phosphor-icons/react'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import { useCurrency } from '@/lib/currency-context'
 import { getStoreId, getManagerId, getCashierId } from '@/lib/supabase'
 import PrintQuotationButton from './PrintQuotationButton'
@@ -30,7 +29,6 @@ interface QuotationDetailModalProps {
 }
 
 export default function QuotationDetailModal({ quotation: initialQuotation, onClose, onRefresh, isManager: propIsManager }: QuotationDetailModalProps) {
-  const isDarkMode = useDarkMode()
   const { formatCurrency } = useCurrency()
   const router = useRouter()
 
@@ -197,19 +195,12 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
   }
 
   const statusBadge = (status: string) => {
-    const colors: Record<string, string> = isDarkMode
-      ? {
-          draft: 'bg-gray-700 text-gray-300',
-          finalized: 'bg-green-900 text-green-300',
-          expired: 'bg-red-900 text-red-300',
-          cancelled: 'bg-orange-900 text-orange-300',
-        }
-      : {
-          draft: 'bg-gray-100 text-gray-700',
-          finalized: 'bg-green-100 text-green-700',
-          expired: 'bg-red-100 text-red-700',
-          cancelled: 'bg-orange-100 text-orange-700',
-        }
+    const colors: Record<string, string> = {
+      draft: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+      finalized: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+      expired: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+      cancelled: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
+    }
     return (
       <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize ${colors[status] || colors.draft}`}>
         {status}
@@ -217,26 +208,26 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
     )
   }
 
-  const sectionClasses = `rounded-lg border p-4 ${isDarkMode ? 'bg-[#1a1a1a] border-gray-700' : 'bg-white border-gray-200'}`
-  const labelClasses = `text-xs font-medium ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`
-  const valueClasses = `text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`
+  const sectionClasses = 'rounded-lg border p-4 bg-white border-gray-200 dark:bg-[#1a1a1a] dark:border-gray-700'
+  const labelClasses = 'text-xs font-medium text-gray-400 dark:text-gray-500'
+  const valueClasses = 'text-sm font-medium text-gray-800 dark:text-gray-200'
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto">
-      <div className={`w-full max-w-3xl my-8 rounded-lg border shadow-2xl ${isDarkMode ? 'bg-[#0f0f0f] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+      <div className="w-full max-w-3xl my-8 rounded-lg border shadow-2xl bg-gray-50 border-gray-200 dark:bg-[#0f0f0f] dark:border-gray-700">
         {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div>
             <h2 className="text-xl font-bold">Quotation Details</h2>
             {quotation && (
-              <p className={`text-sm mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className="text-sm mt-0.5 text-gray-500 dark:text-gray-400">
                 {quotation.quotation_number}
               </p>
             )}
           </div>
           <button
             onClick={() => onClose()}
-            className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-200'}`}
+            className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800"
           >
             <XIcon size={20} />
           </button>
@@ -256,7 +247,7 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
               <div className={sectionClasses}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <HashIcon size={18} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />
+                    <HashIcon size={18} className="text-gray-400 dark:text-gray-500" />
                     <span className="text-lg font-bold">{quotation.quotation_number}</span>
                     {statusBadge(quotation.status)}
                   </div>
@@ -291,25 +282,25 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {quotation.customer_name && (
                       <div className="flex items-center gap-2">
-                        <UserIcon size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />
+                        <UserIcon size={16} className="text-gray-400 dark:text-gray-500" />
                         <span className={valueClasses}>{quotation.customer_name}</span>
                       </div>
                     )}
                     {quotation.customer_phone && (
                       <div className="flex items-center gap-2">
-                        <PhoneIcon size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />
+                        <PhoneIcon size={16} className="text-gray-400 dark:text-gray-500" />
                         <span className={valueClasses}>{quotation.customer_phone}</span>
                       </div>
                     )}
                     {quotation.customer_email && (
                       <div className="flex items-center gap-2">
-                        <EnvelopeSimpleIcon size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />
+                        <EnvelopeSimpleIcon size={16} className="text-gray-400 dark:text-gray-500" />
                         <span className={valueClasses}>{quotation.customer_email}</span>
                       </div>
                     )}
                     {quotation.customer_address && (
                       <div className="flex items-center gap-2">
-                        <MapPinIcon size={16} className={isDarkMode ? 'text-gray-500' : 'text-gray-400'} />
+                        <MapPinIcon size={16} className="text-gray-400 dark:text-gray-500" />
                         <span className={valueClasses}>{quotation.customer_address}</span>
                       </div>
                     )}
@@ -322,23 +313,23 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
                 <h3 className="text-sm font-semibold mb-3">Items ({items.length})</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className={isDarkMode ? 'bg-[#2a2a2a]' : 'bg-gray-100'}>
+                    <thead className="bg-gray-100 dark:bg-[#2a2a2a]">
                       <tr>
-                        <th className={`text-left px-3 py-2 text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>#</th>
-                        <th className={`text-left px-3 py-2 text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Item</th>
-                        <th className={`text-center px-3 py-2 text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Qty</th>
-                        <th className={`text-right px-3 py-2 text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Price</th>
-                        <th className={`text-right px-3 py-2 text-xs font-medium uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">#</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Item</th>
+                        <th className="text-center px-3 py-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Qty</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Price</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Total</th>
                       </tr>
                     </thead>
-                    <tbody className={`divide-y ${isDarkMode ? 'divide-gray-700' : 'divide-gray-100'}`}>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {items.map((item, idx) => (
                         <tr key={item.id}>
-                          <td className={`px-3 py-2.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{idx + 1}</td>
+                          <td className="px-3 py-2.5 text-gray-400 dark:text-gray-500">{idx + 1}</td>
                           <td className="px-3 py-2.5">
                             <div className="font-medium">{item.product_name}</div>
                             {item.product_sku && (
-                              <div className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              <div className="text-xs text-gray-400 dark:text-gray-500">
                                 SKU: {item.product_sku}
                               </div>
                             )}
@@ -353,9 +344,9 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
                 </div>
 
                 {/* Financial Summary */}
-                <div className={`mt-4 pt-3 border-t space-y-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <div className="mt-4 pt-3 border-t space-y-2 border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between text-sm">
-                    <span className={isDarkMode ? 'text-gray-400' : 'text-gray-500'}>Subtotal</span>
+                    <span className="text-gray-500 dark:text-gray-400">Subtotal</span>
                     <span className="font-medium">{formatCurrency(quotation.subtotal)}</span>
                   </div>
                   {quotation.discount_type !== 'none' && quotation.discount_amount > 0 && (
@@ -367,7 +358,7 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
                       <span>-{formatCurrency(quotation.discount_amount)}</span>
                     </div>
                   )}
-                  <div className={`flex justify-between text-base font-bold pt-2 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <div className="flex justify-between text-base font-bold pt-2 border-t border-gray-200 dark:border-gray-700">
                     <span>Grand Total</span>
                     <span>{formatCurrency(quotation.total)}</span>
                   </div>
@@ -379,20 +370,20 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
                 <div className={sectionClasses}>
                   {quotation.notes && (
                     <div className="mb-3">
-                      <h4 className={`text-xs font-medium uppercase mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      <h4 className="text-xs font-medium uppercase mb-1 text-gray-400 dark:text-gray-500">
                         Internal Notes
                       </h4>
-                      <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
                         {quotation.notes}
                       </p>
                     </div>
                   )}
                   {quotation.terms_and_conditions && (
                     <div>
-                      <h4 className={`text-xs font-medium uppercase mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                      <h4 className="text-xs font-medium uppercase mb-1 text-gray-400 dark:text-gray-500">
                         Terms & Conditions
                       </h4>
-                      <p className={`text-sm whitespace-pre-line ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <p className="text-sm whitespace-pre-line text-gray-700 dark:text-gray-300">
                         {quotation.terms_and_conditions}
                       </p>
                     </div>
@@ -414,9 +405,7 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
                     {auditLog.map((entry) => (
                       <div
                         key={entry.id}
-                        className={`flex items-start gap-3 text-sm py-2 border-b last:border-b-0 ${
-                          isDarkMode ? 'border-gray-700' : 'border-gray-100'
-                        }`}
+                        className="flex items-start gap-3 text-sm py-2 border-b last:border-b-0 border-gray-100 dark:border-gray-700"
                       >
                         <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${
                           entry.action === 'created' ? 'bg-blue-500' :
@@ -427,11 +416,11 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
                         <div className="flex-1">
                           <span className="capitalize font-medium">{entry.action}</span>
                           {entry.changes && (
-                            <span className={`ml-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                            <span className="ml-1 text-gray-400 dark:text-gray-500">
                               — {typeof entry.changes === 'string' ? entry.changes : JSON.stringify(entry.changes)}
                             </span>
                           )}
-                          <div className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+                          <div className="text-xs mt-0.5 text-gray-400 dark:text-gray-600">
                             {formatDateTime(entry.created_at)}
                           </div>
                         </div>
@@ -440,7 +429,7 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
                   </div>
                 )}
                 {showAuditLog && auditLog.length === 0 && (
-                  <p className={`mt-2 text-sm ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  <p className="mt-2 text-sm text-gray-400 dark:text-gray-500">
                     No activity recorded yet.
                   </p>
                 )}
@@ -451,16 +440,12 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
 
         {/* Action Bar */}
         {quotation && !loading && (
-          <div className={`flex flex-wrap items-center justify-end gap-2 px-6 py-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className="flex flex-wrap items-center justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
             {quotation.status === 'draft' && (
               <>
                 <button
                   onClick={() => router.push(`/dashboard/quotations/create?edit=${quotation.id}`)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border ${
-                    isDarkMode
-                      ? 'border-gray-600 text-gray-300 hover:bg-[#2a2a2a]'
-                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-[#2a2a2a]"
                 >
                   <PencilSimpleIcon size={16} /> Edit
                 </button>
@@ -477,11 +462,7 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
               <button
                 onClick={handleReopen}
                 disabled={actionLoading}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border ${
-                  isDarkMode
-                    ? 'border-gray-600 text-gray-300 hover:bg-[#2a2a2a]'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                } disabled:opacity-50`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-[#2a2a2a] disabled:opacity-50"
               >
                 <ArrowCounterClockwiseIcon size={16} /> Reopen
               </button>
@@ -489,11 +470,7 @@ export default function QuotationDetailModal({ quotation: initialQuotation, onCl
             <button
               onClick={handleDuplicate}
               disabled={actionLoading}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border ${
-                isDarkMode
-                  ? 'border-gray-600 text-gray-300 hover:bg-[#2a2a2a]'
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              } disabled:opacity-50`}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-[#2a2a2a] disabled:opacity-50"
             >
               <CopyIcon size={16} /> Duplicate
             </button>

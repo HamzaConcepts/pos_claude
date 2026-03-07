@@ -11,7 +11,6 @@ import {
   DEFAULT_RECEIPT_SETTINGS,
 } from '@/lib/receipt-generator'
 import { getStoreId } from '@/lib/supabase'
-import { useDarkMode } from '@/hooks/useDarkMode'
 import { getPKTNow } from '@/lib/date-utils'
 
 interface PrintReceiptButtonProps {
@@ -37,7 +36,6 @@ export default function PrintReceiptButton({
   onPrintComplete,
   className = '',
 }: PrintReceiptButtonProps) {
-  const isDarkMode = useDarkMode()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -189,11 +187,7 @@ export default function PrintReceiptButton({
       <button
         onClick={() => handlePrint()}
         disabled={loading}
-        className={`p-2 rounded-md transition-colors ${
-          isDarkMode
-            ? 'hover:bg-zinc-700 text-zinc-300'
-            : 'hover:bg-gray-100 text-gray-700'
-        } ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+        className={`p-2 rounded-md transition-colors hover:bg-gray-100 text-gray-700 dark:hover:bg-zinc-700 dark:text-zinc-300 ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
         title="Print Receipt"
       >
         {loading ? (
@@ -213,11 +207,7 @@ export default function PrintReceiptButton({
       <button
         onClick={() => handlePrint()}
         disabled={loading}
-        className={`px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors ${
-          isDarkMode
-            ? 'bg-zinc-700 hover:bg-zinc-600 text-white'
-            : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-        } ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+        className={`px-2 py-1 text-xs rounded flex items-center gap-1 transition-colors bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-zinc-700 dark:hover:bg-zinc-600 dark:text-white ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
       >
         {loading ? (
           <CircleNotch className="w-3 h-3 animate-spin" />
@@ -235,11 +225,7 @@ export default function PrintReceiptButton({
       <button
         onClick={() => handlePrint()}
         disabled={loading}
-        className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${
-          isDarkMode
-            ? 'bg-white text-black hover:bg-zinc-200'
-            : 'bg-black text-white hover:bg-gray-800'
-        } ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
+        className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 ${loading ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}
       >
         {loading ? (
           <CircleNotch className="w-4 h-4 animate-spin" />
@@ -253,11 +239,7 @@ export default function PrintReceiptButton({
       <button
         onClick={handleDownload}
         disabled={loading}
-        className={`px-3 py-2 rounded-md flex items-center gap-1.5 transition-colors text-sm ${
-          isDarkMode
-            ? 'bg-zinc-700 text-zinc-200 hover:bg-zinc-600'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-        } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`px-3 py-2 rounded-md flex items-center gap-1.5 transition-colors text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 dark:border-zinc-600 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
         title="Download PDF"
       >
         <DownloadSimple className="w-4 h-4" />

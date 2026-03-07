@@ -34,22 +34,6 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
   const [error, setError] = useState('')
   const [searching, setSearching] = useState(true)
   const [userRole, setUserRole] = useState<string>('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
-
-  // Dark mode detection
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('dark_mode')
-    if (savedDarkMode) {
-      setIsDarkMode(savedDarkMode === 'true')
-    }
-    
-    const handleDarkModeChange = (event: any) => {
-      setIsDarkMode(event.detail.isDarkMode)
-    }
-    
-    window.addEventListener('darkModeChange', handleDarkModeChange)
-    return () => window.removeEventListener('darkModeChange', handleDarkModeChange)
-  }, [])
 
   useEffect(() => {
     fetchAllProducts()
@@ -397,12 +381,8 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`rounded-lg border w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl ${
-        isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300'
-      }`}>
-        <div className={`flex justify-between items-center p-5 border-b ${
-          isDarkMode ? 'border-gray-700' : 'border-gray-200'
-        }`}>
+      <div className="rounded-lg border w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
           <div>
             <h2 className="text-xl font-semibold">
               {isInitialStock ? 'Add Initial Stock' : 'Restock Product'}
@@ -415,9 +395,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
           </div>
           <button
             onClick={() => onClose(false)}
-            className={`p-1 rounded transition-colors ${
-              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
-            }`}
+            className="p-1 rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             <XIcon size={24} />
           </button>
@@ -442,24 +420,18 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                   placeholder="Search by name or SKU..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-10 pr-3 py-3 border-2 rounded focus:outline-none ${
-                    isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-black'
-                  }`}
+                  className="w-full pl-10 pr-3 py-3 border-2 rounded focus:outline-none bg-white border-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                   autoFocus
                 />
               </div>
 
               {searchTerm && filteredProducts.length > 0 && (
-                <div className={`border-2 rounded max-h-64 overflow-y-auto ${
-                  isDarkMode ? 'border-gray-600' : 'border-black'
-                }`}>
+                <div className="border-2 rounded max-h-64 overflow-y-auto border-black dark:border-gray-600">
                   {filteredProducts.slice(0, 10).map((product) => (
                     <button
                       key={product.id}
                       onClick={() => handleProductSelect(product)}
-                      className={`w-full p-3 text-left transition-colors border-b last:border-b-0 ${
-                        isDarkMode ? 'hover:bg-gray-700 border-gray-600' : 'hover:bg-bg-secondary border-gray-300'
-                      }`}
+                      className="w-full p-3 text-left transition-colors border-b last:border-b-0 hover:bg-bg-secondary border-gray-300 dark:hover:bg-gray-700 dark:border-gray-600"
                     >
                       <div className="flex justify-between items-center">
                         <div>
@@ -492,9 +464,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
           ) : (
             <div>
               {/* Selected Product Info */}
-              <div className={`mb-6 p-4 rounded border-2 ${
-                isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-bg-secondary border-black'
-              }`}>
+              <div className="mb-6 p-4 rounded border-2 bg-bg-secondary border-black dark:bg-gray-700 dark:border-gray-600">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-bold text-lg">{selectedProduct.name}</h3>
@@ -509,9 +479,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                   </div>
                   <button
                     onClick={() => setSelectedProduct(null)}
-                    className={`text-sm transition-colors ${
-                      isDarkMode ? 'text-gray-400 hover:text-white' : 'text-text-secondary hover:text-black'
-                    }`}
+                    className="text-sm transition-colors text-text-secondary hover:text-black dark:text-gray-400 dark:hover:text-white"
                   >
                     Change
                   </button>
@@ -523,13 +491,9 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Cost Price */}
                   <div>
-                    <label htmlFor="cost_price" className={`block mb-2 font-medium ${
-                      isDarkMode ? 'text-gray-300' : ''
-                    }`}>
+                    <label htmlFor="cost_price" className="block mb-2 font-medium dark:text-gray-300">
                       Cost Price (C.P) *
-                      <span className={`ml-2 text-xs ${
-                        isDarkMode ? 'text-gray-400' : 'text-text-secondary'
-                      }`}>(Hidden from public view)</span>
+                      <span className="ml-2 text-xs text-text-secondary dark:text-gray-400">(Hidden from public view)</span>
                       {userRole === 'Cashier' && (
                         <span className="ml-2 text-xs text-status-warning">(View only)</span>
                       )}
@@ -543,18 +507,14 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       value={formData.cost_price}
                       onChange={handleChange}
                       disabled={userRole === 'Cashier'}
-                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
-                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
-                      }`}
+                      className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 disabled:bg-gray-100 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
                       required
                     />
                   </div>
 
                   {/* Target Price */}
                   <div>
-                    <label htmlFor="selling_price" className={`block mb-2 font-medium ${
-                      isDarkMode ? 'text-gray-300' : ''
-                    }`}>
+                    <label htmlFor="selling_price" className="block mb-2 font-medium dark:text-gray-300">
                       Selling Price *
                       {userRole === 'Cashier' && (
                         <span className="ml-2 text-xs text-status-warning">(View only)</span>
@@ -569,9 +529,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       value={formData.selling_price}
                       onChange={handleChange}
                       disabled={userRole === 'Cashier'}
-                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
-                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
-                      }`}
+                      className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 disabled:bg-gray-100 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
                       required
                     />
                     {formData.cost_price && formData.selling_price && (
@@ -583,9 +541,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
 
                   {/* Lowest Negotiable Price */}
                   <div>
-                    <label htmlFor="lowest_negotiable_price" className={`block mb-2 font-medium ${
-                      isDarkMode ? 'text-gray-300' : ''
-                    }`}>
+                    <label htmlFor="lowest_negotiable_price" className="block mb-2 font-medium dark:text-gray-300">
                       Lowest Negotiable Price *
                       {userRole === 'Cashier' && (
                         <span className="ml-2 text-xs text-status-warning">(View only)</span>
@@ -600,18 +556,14 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       value={formData.lowest_negotiable_price}
                       onChange={handleChange}
                       disabled={userRole === 'Cashier'}
-                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
-                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
-                      }`}
+                      className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 disabled:bg-gray-100 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
                       required
                     />
                   </div>
 
                   {/* Quantity */}
                   <div>
-                    <label htmlFor="quantity_added" className={`block mb-2 font-medium ${
-                      isDarkMode ? 'text-gray-300' : ''
-                    }`}>
+                    <label htmlFor="quantity_added" className="block mb-2 font-medium dark:text-gray-300">
                       Quantity to Add *
                     </label>
                     <input
@@ -621,18 +573,14 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       min="1"
                       value={formData.quantity_added}
                       onChange={handleChange}
-                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
-                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
-                      }`}
+                      className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
                       required
                     />
                   </div>
 
                   {/* Amount Paid to Supplier */}
                   <div>
-                    <label htmlFor="amount_paid" className={`block mb-2 font-medium ${
-                      isDarkMode ? 'text-gray-300' : ''
-                    }`}>
+                    <label htmlFor="amount_paid" className="block mb-2 font-medium dark:text-gray-300">
                       Amount Paid to Supplier *
                     </label>
                     <input
@@ -643,9 +591,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       min="0"
                       value={formData.amount_paid}
                       onChange={handleChange}
-                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
-                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
-                      }`}
+                      className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
                       required
                     />
                     {formData.cost_price && formData.quantity_added && (
@@ -657,9 +603,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
 
                   {/* Payment Method */}
                   <div>
-                    <label htmlFor="payment_method" className={`block mb-2 font-medium ${
-                      isDarkMode ? 'text-gray-300' : ''
-                    }`}>
+                    <label htmlFor="payment_method" className="block mb-2 font-medium dark:text-gray-300">
                       Payment Method *
                     </label>
                     <select
@@ -667,9 +611,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                       name="payment_method"
                       value={formData.payment_method}
                       onChange={handleChange}
-                      className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
-                        isDarkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-gray-500' : 'border-black focus:ring-black'
-                      }`}
+                      className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
                       required
                     >
                       <option value="Cash">Cash</option>
@@ -713,13 +655,9 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
 
                 {/* Supplier Section */}
                 <div className="mt-4">
-                  <label className={`block mb-2 font-medium ${
-                    isDarkMode ? 'text-gray-300' : ''
-                  }`}>
+                  <label className="block mb-2 font-medium dark:text-gray-300">
                     Supplier
-                    <span className={`ml-2 text-xs ${
-                      isDarkMode ? 'text-gray-400' : 'text-text-secondary'
-                    }`}>(Optional - search by phone)</span>
+                    <span className="ml-2 text-xs text-text-secondary dark:text-gray-400">(Optional - search by phone)</span>
                   </label>
                   
                   {formData.supplier_id ? (
@@ -746,23 +684,17 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                           value={formData.supplier_phone}
                           onChange={handleChange}
                           onFocus={() => formData.supplier_phone.length >= 3 && setShowSupplierDropdown(true)}
-                          className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
-                            isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-gray-500' : 'border-black focus:ring-black'
-                          }`}
+                          className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 dark:focus:ring-gray-500"
                         />
                         
                         {showSupplierDropdown && filteredSuppliers.length > 0 && (
-                          <div className={`absolute z-10 w-full mt-1 border-2 rounded shadow-lg max-h-48 overflow-y-auto ${
-                            isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-black'
-                          }`}>
+                          <div className="absolute z-10 w-full mt-1 border-2 rounded shadow-lg max-h-48 overflow-y-auto bg-white border-black dark:bg-gray-700 dark:border-gray-600">
                             {filteredSuppliers.map((supplier) => (
                               <button
                                 key={supplier.id}
                                 type="button"
                                 onClick={() => selectSupplier(supplier)}
-                                className={`w-full p-3 text-left border-b last:border-b-0 ${
-                                  isDarkMode ? 'hover:bg-gray-600 border-gray-600' : 'hover:bg-bg-secondary border-gray-200'
-                                }`}
+                                className="w-full p-3 text-left border-b last:border-b-0 hover:bg-bg-secondary border-gray-200 dark:hover:bg-gray-600 dark:border-gray-600"
                               >
                                 <p className="font-medium">{supplier.supplier_name}</p>
                                 <p className="text-sm text-text-secondary">{supplier.phone_number}</p>
@@ -774,18 +706,14 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
 
                       {formData.supplier_phone && filteredSuppliers.length === 0 && formData.supplier_phone.length >= 3 && (
                         <div className="mt-2">
-                          <p className={`text-sm mb-2 ${
-                            isDarkMode ? 'text-gray-400' : 'text-text-secondary'
-                          }`}>New supplier - enter name:</p>
+                          <p className="text-sm mb-2 text-text-secondary dark:text-gray-400">New supplier - enter name:</p>
                           <input
                             type="text"
                             name="supplier_name"
                             placeholder="Supplier name"
                             value={formData.supplier_name}
                             onChange={handleChange}
-                            className={`w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 ${
-                              isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-gray-500' : 'border-black focus:ring-black'
-                            }`}
+                            className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 dark:focus:ring-gray-500"
                           />
                         </div>
                       )}
@@ -796,19 +724,13 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                 {/* IMEI Section - Only for phones */}
                 {selectedProduct.is_phone && formData.quantity_added && parseInt(formData.quantity_added) > 0 && (
                   <div className="mt-4">
-                    <label className={`block mb-2 font-medium ${
-                      isDarkMode ? 'text-gray-300' : ''
-                    }`}>
+                    <label className="block mb-2 font-medium dark:text-gray-300">
                       IMEI Numbers *
-                      <span className={`ml-2 text-xs ${
-                        isDarkMode ? 'text-gray-400' : 'text-text-secondary'
-                      }`}>
+                      <span className="ml-2 text-xs text-text-secondary dark:text-gray-400">
                         ({formData.imei_numbers.filter(i => i.trim()).length}/{parseInt(formData.quantity_added)})
                       </span>
                     </label>
-                    <div className={`space-y-3 max-h-64 overflow-y-auto border rounded-lg p-4 ${
-                      isDarkMode ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50'
-                    }`}>
+                    <div className="space-y-3 max-h-64 overflow-y-auto border rounded-lg p-4 border-gray-300 bg-gray-50 dark:border-gray-600 dark:bg-gray-700/30">
                       {formData.imei_numbers.map((imei, index) => (
                         <div key={index} className="flex gap-2">
                           <input
@@ -827,9 +749,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                             }}
                             autoFocus={index === 0}
                             placeholder={`IMEI #${index + 1} (15 digits)`}
-                            className={`flex-1 px-3 py-2.5 border rounded-lg font-mono focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500/20 ${
-                              isDarkMode ? 'bg-[#1a1a1a] border-gray-600 text-white placeholder-gray-500' : 'border-gray-300 bg-white'
-                            }`}
+                            className="flex-1 px-3 py-2.5 border rounded-lg font-mono focus:outline-none focus:border-cyan-600 focus:ring-2 focus:ring-cyan-500/20 border-gray-300 bg-white dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
                             maxLength={15}
                             required
                           />
@@ -837,11 +757,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                             <button
                               type="button"
                               onClick={() => removeIMEIField(index)}
-                              className={`px-3 py-2 border rounded-lg transition-colors ${
-                                isDarkMode 
-                                  ? 'border-red-500/50 text-red-400 hover:bg-red-900/30' 
-                                  : 'border-red-300 text-red-500 hover:bg-red-50'
-                              }`}
+                              className="px-3 py-2 border rounded-lg transition-colors border-red-300 text-red-500 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-900/30"
                             >
                               <XIcon size={16} />
                             </button>
@@ -852,9 +768,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                         <button
                           type="button"
                           onClick={addIMEIField}
-                          className={`w-full px-3 py-2.5 border rounded-lg transition-colors ${
-                            isDarkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                          }`}
+                          className="w-full px-3 py-2.5 border rounded-lg transition-colors border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                         >
                           + Add IMEI
                         </button>
@@ -868,9 +782,7 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                   <button
                     type="button"
                     onClick={() => onClose(false)}
-                    className={`flex-1 px-4 py-3 border-2 rounded transition-colors font-medium ${
-                      isDarkMode ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300 hover:bg-gray-100'
-                    }`}
+                    className="flex-1 px-4 py-3 border-2 rounded transition-colors font-medium border-gray-300 hover:bg-gray-100 dark:border-gray-600 dark:hover:bg-gray-700"
                   >
                     Cancel
                   </button>
