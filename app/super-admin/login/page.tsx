@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShieldCheckIcon } from '@phosphor-icons/react'
+import Logo from '@/components/Logo'
 
 export default function SuperAdminLoginPage() {
   const router = useRouter()
@@ -42,8 +42,8 @@ export default function SuperAdminLoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0f0f0f] px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-900 dark:bg-white mb-4">
-            <ShieldCheckIcon size={32} className="text-white dark:text-gray-900" weight="bold" />
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
+            <Logo size={52} className="text-gray-900 dark:text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Super Admin</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Platform management console</p>

@@ -9,6 +9,8 @@ import MobileBottomNav from '@/components/MobileBottomNav'
 import { useSwipeable } from 'react-swipeable'
 import { CurrencyProvider } from '@/lib/currency-context'
 
+import Logo from '@/components/Logo'
+
 export default function DashboardLayout({
   children,
 }: {
@@ -173,23 +175,19 @@ export default function DashboardLayout({
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] dark:bg-[#0f0f0f]">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-cyan-50 dark:from-[#0a0a0a] dark:via-[#0f0f0f] dark:to-[#0a1628]">
         <div className="text-center">
-          <div className="relative mx-auto w-20 h-20 mb-5">
-            <div className="absolute inset-0 rounded-full border-[3px] border-gray-200 dark:border-gray-700" />
-            <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-cyan-500 animate-spin" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-3 h-3 rounded-full bg-cyan-500 animate-pulse" />
-            </div>
+          {/* Logo */}
+          <div className="mx-auto mb-5 animate-pulse">
+            <Logo size={56} className="text-cyan-500 mx-auto" />
+          </div>
+          {/* Progress bar */}
+          <div className="w-56 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mx-auto mb-4">
+            <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-600" style={{ animation: 'progressBar 1.5s ease-in-out infinite' }} />
           </div>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
             Loading POS System
           </p>
-          <div className="flex items-center justify-center gap-1 mt-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-          </div>
         </div>
       </div>
     )

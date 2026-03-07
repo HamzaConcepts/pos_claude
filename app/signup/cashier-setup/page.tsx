@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ProgressIndicator from '@/components/signup/ProgressIndicator'
 import { Eye, EyeSlash, Users, Plus, Trash } from '@phosphor-icons/react'
+import Logo from '@/components/Logo'
 
 interface StaffCashier {
   tempId: string
@@ -33,14 +34,11 @@ export default function SignupStep3() {
 
   const [cashierAccount, setCashierAccount] = useState({
     accountName: '',
-    accountPhone: '',
     accountPassword: '',
   })
   const [showAccountPassword, setShowAccountPassword] = useState(false)
 
-  const [staffCashiers, setStaffCashiers] = useState<StaffCashier[]>([
-    { tempId: crypto.randomUUID(), name: '', phone: '', commissionRate: 0 },
-  ])
+  const [staffCashiers, setStaffCashiers] = useState<StaffCashier[]>([])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [generalError, setGeneralError] = useState('')
@@ -84,12 +82,7 @@ export default function SignupStep3() {
   }
 
   const removeCashier = (tempId: string) => {
-    if (staffCashiers.length === 1) {
-      setErrors((prev) => ({ ...prev, staffCashiers: 'At least one cashier is required' }))
-      return
-    }
     setStaffCashiers(staffCashiers.filter((c) => c.tempId !== tempId))
-    // Clear the staff error if it exists
     if (errors.staffCashiers) {
       setErrors((prev) => ({ ...prev, staffCashiers: '' }))
     }
@@ -121,10 +114,6 @@ export default function SignupStep3() {
   }
 
   const handleAccountChange = (field: string, value: string) => {
-    if (field === 'accountPhone') {
-      // Only allow digits for phone
-      value = value.replace(/\D/g, '').slice(0, 11)
-    }
     setCashierAccount((prev) => ({ ...prev, [field]: value }))
     // Clear related error
     if (errors[field]) {
@@ -140,21 +129,13 @@ export default function SignupStep3() {
       newErrors.accountName = 'Account name is required'
     }
 
-    if (!cashierAccount.accountPhone) {
-      newErrors.accountPhone = 'Account phone is required'
-    } else if (!/^[0-9]{11}$/.test(cashierAccount.accountPhone)) {
-      newErrors.accountPhone = 'Phone must be 11 digits'
-    } else if (step2Data && cashierAccount.accountPhone === step2Data.phoneNumber) {
-      newErrors.accountPhone = 'Must be different from manager phone'
-    }
-
     if (!cashierAccount.accountPassword) {
       newErrors.accountPassword = 'Account password is required'
     } else if (cashierAccount.accountPassword.length < 6) {
       newErrors.accountPassword = 'Password must be at least 6 characters'
     }
 
-    // Staff cashiers validation
+    // Staff cashiers validation (optional — only validate populated entries)
     staffCashiers.forEach((cashier, idx) => {
       if (!cashier.name.trim()) {
         newErrors[`cashier_${idx}_name`] = 'Name required'
@@ -200,7 +181,6 @@ export default function SignupStep3() {
         // From Step 3
         cashierAccount: {
           accountName: cashierAccount.accountName.trim(),
-          accountPhone: cashierAccount.accountPhone,
           accountPassword: cashierAccount.accountPassword,
         },
         staffCashiers: staffCashiers.map(({ tempId, ...rest }) => ({
@@ -248,46 +228,46 @@ export default function SignupStep3() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
+        <div className="text-gray-600 dark:text-gray-400">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 max-w-2xl w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded-lg shadow-lg p-6 sm:p-8 max-w-2xl w-full">
         <ProgressIndicator currentStep={3} />
 
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-cyan-100 rounded-full mb-4">
-            <Users size={32} className="text-cyan-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
+            <Logo size={52} className="text-gray-900 dark:text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Cashier Setup</h1>
-          <p className="text-gray-600 mt-1">Step 3 of 3 - Setup cashier access & staff</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cashier Setup</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Step 3 of 3 - Setup cashier access &amp; staff</p>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Shared Cashier Account Section */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-            <h2 className="font-bold text-gray-900 mb-1">Shared Cashier Account</h2>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
+            <h2 className="font-bold text-gray-900 dark:text-white mb-1">Shared Cashier Account</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               This is the login account your cashiers will use to access the POS
             </p>
 
             <div className="space-y-4">
               {/* Account Name */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
                   Account Name <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="text"
                   value={cashierAccount.accountName}
                   onChange={(e) => handleAccountChange('accountName', e.target.value)}
-                  className={`w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
-                    errors.accountName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  className={`w-full border rounded-lg px-3 py-2 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
+                    errors.accountName ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600'
                   }`}
                   placeholder="e.g., Store Cashier"
                   maxLength={100}
@@ -297,63 +277,40 @@ export default function SignupStep3() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Account Phone */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Account Phone <span className="text-red-600">*</span>
-                  </label>
+              {/* Account Password */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Account Password <span className="text-red-600">*</span>
+                </label>
+                <div className="relative">
                   <input
-                    type="text"
-                    value={cashierAccount.accountPhone}
-                    onChange={(e) => handleAccountChange('accountPhone', e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
-                      errors.accountPhone ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    type={showAccountPassword ? 'text' : 'password'}
+                    value={cashierAccount.accountPassword}
+                    onChange={(e) => handleAccountChange('accountPassword', e.target.value)}
+                    className={`w-full border rounded-lg px-3 py-2 pr-10 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
+                      errors.accountPassword ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600'
                     }`}
-                    placeholder="03xxxxxxxxx"
-                    maxLength={11}
+                    placeholder="Min 6 characters"
                   />
-                  <p className="text-gray-500 text-xs mt-1">{cashierAccount.accountPhone.length}/11 digits</p>
-                  {errors.accountPhone && (
-                    <p className="text-red-600 text-xs mt-1">{errors.accountPhone}</p>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowAccountPassword(!showAccountPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                  >
+                    {showAccountPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
-
-                {/* Account Password */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Account Password <span className="text-red-600">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showAccountPassword ? 'text' : 'password'}
-                      value={cashierAccount.accountPassword}
-                      onChange={(e) => handleAccountChange('accountPassword', e.target.value)}
-                      className={`w-full border rounded-lg px-3 py-2 pr-10 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
-                        errors.accountPassword ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                      }`}
-                      placeholder="Min 6 characters"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowAccountPassword(!showAccountPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    >
-                      {showAccountPassword ? <EyeSlash size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                  {errors.accountPassword && (
-                    <p className="text-red-600 text-xs mt-1">{errors.accountPassword}</p>
-                  )}
-                </div>
+                {errors.accountPassword && (
+                  <p className="text-red-600 text-xs mt-1">{errors.accountPassword}</p>
+                )}
               </div>
             </div>
           </div>
 
           {/* Staff Cashiers Section */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-            <h2 className="font-bold text-gray-900 mb-1">Staff Members</h2>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-6">
+            <h2 className="font-bold text-gray-900 dark:text-white mb-1">Staff Members</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Add your cashier staff for performance tracking and commission calculation
             </p>
 
@@ -361,36 +318,36 @@ export default function SignupStep3() {
               {staffCashiers.map((cashier, idx) => (
                 <div
                   key={cashier.tempId}
-                  className="bg-white border border-gray-200 rounded-lg p-3"
+                  className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-lg p-3"
                 >
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-semibold text-gray-700">
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Cashier #{idx + 1}
                     </span>
-                    {staffCashiers.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeCashier(cashier.tempId)}
-                        className="text-red-600 hover:text-red-800 p-1"
-                        title="Remove cashier"
-                      >
-                        <Trash size={18} />
-                      </button>
-                    )}
+            {staffCashiers.length > 0 && (
+              <button
+                type="button"
+                onClick={() => removeCashier(cashier.tempId)}
+                className="text-red-600 hover:text-red-800 p-1"
+                title="Remove cashier"
+              >
+                <Trash size={18} />
+              </button>
+            )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {/* Name */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                         Name <span className="text-red-600">*</span>
                       </label>
                       <input
                         type="text"
                         value={cashier.name}
                         onChange={(e) => updateCashier(cashier.tempId, 'name', e.target.value)}
-                        className={`w-full border rounded px-2 py-1.5 text-sm text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
-                          errors[`cashier_${idx}_name`] ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                        className={`w-full border rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
+                          errors[`cashier_${idx}_name`] ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600'
                         }`}
                         placeholder="Full name"
                       />
@@ -401,15 +358,15 @@ export default function SignupStep3() {
 
                     {/* Phone */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                         Phone <span className="text-red-600">*</span>
                       </label>
                       <input
                         type="text"
                         value={cashier.phone}
                         onChange={(e) => updateCashier(cashier.tempId, 'phone', e.target.value)}
-                        className={`w-full border rounded px-2 py-1.5 text-sm text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
-                          errors[`cashier_${idx}_phone`] ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                        className={`w-full border rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
+                          errors[`cashier_${idx}_phone`] ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600'
                         }`}
                         placeholder="03xxxxxxxxx"
                         maxLength={11}
@@ -421,7 +378,7 @@ export default function SignupStep3() {
 
                     {/* Commission Rate */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                         Commission %
                       </label>
                       <div className="relative">
@@ -431,8 +388,8 @@ export default function SignupStep3() {
                           onChange={(e) =>
                             updateCashier(cashier.tempId, 'commissionRate', parseFloat(e.target.value) || 0)
                           }
-                          className={`w-full border rounded px-2 py-1.5 text-sm text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
-                            errors[`cashier_${idx}_commissionRate`] ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                          className={`w-full border rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
+                            errors[`cashier_${idx}_commissionRate`] ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600'
                           }`}
                           min="0"
                           max="100"
@@ -455,7 +412,7 @@ export default function SignupStep3() {
             <button
               type="button"
               onClick={addCashier}
-              className="w-full mt-3 border-2 border-dashed border-gray-300 hover:border-cyan-500 hover:bg-cyan-50 rounded-lg py-2 text-cyan-600 font-medium flex items-center justify-center gap-2 transition-colors"
+              className="w-full mt-3 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 rounded-lg py-2 text-cyan-600 font-medium flex items-center justify-center gap-2 transition-colors"
             >
               <Plus size={20} /> Add Another Cashier
             </button>
@@ -467,7 +424,7 @@ export default function SignupStep3() {
 
           {/* General Error */}
           {generalError && (
-            <div className="bg-red-50 border border-red-300 text-red-800 rounded-lg p-4 mb-4">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-400 rounded-lg p-4 mb-4">
               {generalError}
             </div>
           )}
@@ -477,7 +434,7 @@ export default function SignupStep3() {
             <button
               type="button"
               onClick={handleBack}
-              className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
+              className="flex-1 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold py-3 px-4 rounded-lg transition-colors disabled:opacity-50"
               disabled={submitting}
             >
               ← Back
@@ -516,7 +473,7 @@ export default function SignupStep3() {
 
         {/* Login Link */}
         <div className="mt-6 text-center">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
             <Link href="/login" className="text-cyan-600 hover:text-cyan-700 font-semibold">
               Sign in

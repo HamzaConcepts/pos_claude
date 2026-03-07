@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Progress bar animation for loading states */
+@keyframes progressBar {
+  0% { width: 0%; margin-left: 0%; }
+  50% { width: 60%; margin-left: 20%; }
+  100% { width: 0%; margin-left: 100%; }
+}
+
 /* Hide number input spinners */
 .no-spinners::-webkit-outer-spin-button,
 .no-spinners::-webkit-inner-spin-button {

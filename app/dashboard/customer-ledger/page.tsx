@@ -283,8 +283,8 @@ export default function CustomerLedgerPage() {
   return (
     <div className="animate-fadeIn">
       <div className="mb-5">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Customer Ledger</h1>
-        <p className="text-xs text-gray-600">View and manage customer accounts with outstanding balances</p>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-1">Customer Ledger</h1>
+        <p className="text-xs text-gray-600 dark:text-gray-400">View and manage customer accounts with outstanding balances</p>
       </div>
 
       {/* Search */}
@@ -296,7 +296,7 @@ export default function CustomerLedgerPage() {
             placeholder="Search by name or phone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
           />
         </div>
       </div>
@@ -319,18 +319,23 @@ export default function CustomerLedgerPage() {
       {/* Customers Table */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-cyan-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading customers...</p>
+          <div className="mx-auto mb-3 animate-pulse">
+            <svg width={40} height={Math.round(40 * (1196 / 1061))} viewBox="0 0 1061 1196" fill="none" xmlns="http://www.w3.org/2000/svg" className="fill-current text-cyan-500 mx-auto"><path d="M538.795 609.092L871.505 276.381C976.486 372.749 1042.32 511.172 1042.38 664.993C1041.64 664.973 1040.9 664.949 1040.16 664.926C1046.75 665.171 1053.37 665.296 1060.02 665.298C777.219 665.385 546.193 886.933 530.915 1165.94L530.096 1180.67C530.596 1189.81 530.158 1186.07 530.102 1193.71L530.096 1195.39C530.096 1190.47 529.746 1185.56 529.88 1180.67C522.081 894.715 287.839 665.299 0 665.299C6.05981 665.299 12.0958 665.194 18.1064 664.992C18.1652 506.975 88.0333 365.252 198.592 268.889L538.795 609.092ZM674.459 135.664L538.795 271.328L403.132 135.664L538.795 0L674.459 135.664Z" /></svg>
+          </div>
+          <div className="w-40 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mx-auto mb-3">
+            <div className="h-full bg-cyan-500 rounded-full" style={{ animation: 'progressBar 1.5s ease-in-out infinite' }} />
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading customers...</p>
         </div>
       ) : filteredAggregatedCustomers.length === 0 ? (
-        <div className="text-center py-8 border border-gray-200 rounded">
-          <p className="text-gray-500 text-sm">No customers found</p>
+        <div className="text-center py-8 border border-gray-200 dark:border-gray-700 rounded">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No customers found</p>
         </div>
       ) : (
-        <div className="border border-gray-200 rounded overflow-hidden">
+        <div className="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 text-gray-700 border-b border-gray-200">
+              <tr className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
                 <th className="px-3 py-2.5 text-left w-12"></th>
                 <th className="px-3 py-2.5 text-left text-sm font-semibold">Customer Name</th>
                 <th className="px-3 py-2.5 text-left text-sm font-semibold">Phone Number</th>
@@ -349,15 +354,15 @@ export default function CustomerLedgerPage() {
                     {/* Aggregated Row */}
                     <tr 
                       key={customer.customer_phone} 
-                      className="cursor-pointer hover:bg-gray-50 border-b border-gray-100 bg-white"
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a1a1a]"
                       onClick={() => toggleCustomerExpansion(customer.customer_phone)}
                     >
                       <td className="px-3 py-2.5">
                         {isExpanded ? <CaretDownIcon size={16} className="text-gray-400" /> : <CaretRightIcon size={16} className="text-gray-400" />}
                       </td>
-                      <td className="px-3 py-2.5 font-medium text-sm text-gray-900">{customer.customer_name}</td>
-                      <td className="px-3 py-2.5 text-sm text-gray-900">{customer.customer_phone}</td>
-                      <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900">{formatCurrency(customer.total_amount, 2)}</td>
+                      <td className="px-3 py-2.5 font-medium text-sm text-gray-900 dark:text-white">{customer.customer_name}</td>
+                      <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-white">{customer.customer_phone}</td>
+                      <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900 dark:text-white">{formatCurrency(customer.total_amount, 2)}</td>
                       <td className="px-3 py-2.5 text-right text-green-600 font-semibold text-sm">{formatCurrency(customer.amount_paid, 2)}</td>
                       <td className="px-3 py-2.5 text-right font-semibold text-sm text-orange-600">
                         {formatCurrency(customer.amount_remaining, 2)}
@@ -392,25 +397,25 @@ export default function CustomerLedgerPage() {
                     {isExpanded && customer.transactions.map((transaction) => (
                       <tr 
                         key={transaction.id}
-                        className="bg-cyan-50 border-t border-cyan-200"
+                        className="bg-cyan-50 dark:bg-cyan-900/20 border-t border-cyan-200 dark:border-cyan-800"
                       >
                         <td className="px-3 py-2"></td>
                         <td className="px-3 py-2" colSpan={2}>
                           <div className="flex items-center gap-2 text-sm">
-                            <span className="text-gray-700 font-medium">
+                            <span className="text-gray-700 dark:text-gray-300 font-medium">
                               {transaction.sales?.sale_description || `Sale #${transaction.sale_id}`}
                             </span>
                             <span className="text-gray-400">•</span>
-                            <span className="text-gray-600">{new Date(transaction.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
+                            <span className="text-gray-600 dark:text-gray-400">{new Date(transaction.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
                             {transaction.notes && (
                               <>
                                 <span className="text-gray-400">•</span>
-                                <span className="text-gray-600 italic">{transaction.notes}</span>
+                                <span className="text-gray-600 dark:text-gray-400 italic">{transaction.notes}</span>
                               </>
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-right text-sm text-gray-900">{formatCurrency(transaction.total_amount, 2)}</td>
+                        <td className="px-3 py-2 text-right text-sm text-gray-900 dark:text-white">{formatCurrency(transaction.total_amount, 2)}</td>
                         <td className="px-3 py-2 text-right text-sm text-green-600">{formatCurrency(transaction.amount_paid, 2)}</td>
                         <td className="px-3 py-2 text-right text-sm font-medium text-orange-600">
                           {formatCurrency(transaction.amount_remaining, 2)}
@@ -528,8 +533,8 @@ export default function CustomerLedgerPage() {
       {/* Pay Dues Modal */}
       {showPayDuesModal && selectedForPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Pay Dues - {selectedForPayment.customer_name}
             </h2>
 
@@ -539,20 +544,20 @@ export default function CustomerLedgerPage() {
               </div>
             )}
 
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
-              <p className="text-blue-900">
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-sm">
+              <p className="text-blue-900 dark:text-blue-300">
                 <strong>Current Balance:</strong> {formatCurrency(selectedForPayment.remaining_balance, 2)}
               </p>
             </div>
 
             <div className="space-y-4 mb-5">
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">Payment Amount*</label>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Amount*</label>
                 <input
                   type="number"
                   value={paymentFormData.payment_amount}
                   onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                   placeholder="Enter payment amount"
                   step="0.01"
                   min="0"
@@ -561,11 +566,11 @@ export default function CustomerLedgerPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">Payment Method*</label>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Method*</label>
                 <select
                   value={paymentFormData.payment_method}
                   onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="Cash">Cash</option>
                   <option value="Credit Card">Credit Card</option>
@@ -576,11 +581,11 @@ export default function CustomerLedgerPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">Notes</label>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Notes</label>
                 <textarea
                   value={paymentFormData.notes}
                   onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                   rows={3}
                   placeholder="Add payment notes..."
                 />
@@ -595,7 +600,7 @@ export default function CustomerLedgerPage() {
                   setPaymentFormData({ payment_amount: '', payment_method: 'Cash', notes: '' })
                   setError('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >
                 Cancel
               </button>

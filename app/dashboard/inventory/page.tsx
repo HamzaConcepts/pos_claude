@@ -429,7 +429,7 @@ export default function InventoryPage() {
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
                     No products found
                   </td>
                 </tr>
@@ -444,19 +444,19 @@ export default function InventoryPage() {
                       {/* Main Row */}
                       <tr
                         className={`
-                          transition-all duration-200 border-b border-gray-100
-                          ${isExpanded ? 'border-l-4 border-l-cyan-600 bg-cyan-50' : ''}
-                          ${!isExpanded && 'hover:bg-gray-50'}
+                          transition-all duration-200 border-b border-gray-100 dark:border-gray-700
+                          ${isExpanded ? 'border-l-4 border-l-cyan-600 bg-cyan-50 dark:bg-cyan-900/20' : ''}
+                          ${!isExpanded && 'hover:bg-gray-50 dark:hover:bg-gray-800'}
                         `}
                       >
-                        <td className="px-3 py-3 font-mono text-xs text-gray-700">{product.sku}</td>
-                        <td className="px-3 py-3 font-medium text-sm text-gray-900">{product.name}</td>
+                        <td className="px-3 py-3 font-mono text-xs text-gray-700 dark:text-gray-400">{product.sku}</td>
+                        <td className="px-3 py-3 font-medium text-sm text-gray-900 dark:text-white">{product.name}</td>
                         <td className="px-3 py-3 hidden md:table-cell">
                           {(product as any).category_name ? (
                             <div>
-                              <div className="font-medium text-xs text-gray-900">{(product as any).category_name}</div>
+                              <div className="font-medium text-xs text-gray-900 dark:text-white">{(product as any).category_name}</div>
                               {(product as any).subcategory_name && (
-                                <div className="text-xs text-gray-600">{(product as any).subcategory_name}</div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400">{(product as any).subcategory_name}</div>
                               )}
                             </div>
                           ) : (
@@ -464,7 +464,7 @@ export default function InventoryPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-right hidden lg:table-cell">
-                          <span className="font-medium text-sm text-gray-900">
+                          <span className="font-medium text-sm text-gray-900 dark:text-white">
                             {formatCurrency(product.aggregated_stock?.aggregated_lowest_negotiable || 0, 2)}
                           </span>
                         </td>
@@ -478,7 +478,7 @@ export default function InventoryPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-right">
-                          <span className={`font-medium text-sm ${isLowStock(product) ? 'text-red-600' : 'text-gray-900'}`}>
+                          <span className={`font-medium text-sm ${isLowStock(product) ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                             {product.stock_quantity}
                           </span>
                         </td>
@@ -496,7 +496,7 @@ export default function InventoryPage() {
                           <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => toggleExpanded(product.id)}
-                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                               title={isExpanded ? 'Collapse' : 'Expand'}
                             >
                               {isExpanded ? <CaretUpIcon size={16} /> : <CaretDownIcon size={16} />}
@@ -517,7 +517,7 @@ export default function InventoryPage() {
                                 e.stopPropagation()
                                 handleEdit(product)
                               }}
-                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                               title="Edit"
                             >
                               <PencilSimpleIcon size={16} />
@@ -538,28 +538,28 @@ export default function InventoryPage() {
 
                       {/* Expanded Row */}
                       {isExpanded && (
-                        <tr className="bg-cyan-50 border-l-4 border-l-cyan-600 border-b border-gray-100">
+                        <tr className="bg-cyan-50 dark:bg-cyan-900/20 border-l-4 border-l-cyan-600 border-b border-gray-100 dark:border-gray-700">
                           <td colSpan={8} className="px-4 py-4">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                               {/* Left Column - Details */}
                               <div>
-                                <h4 className="font-bold text-base text-gray-900 mb-3">Product Details</h4>
+                                <h4 className="font-bold text-base text-gray-900 dark:text-white mb-3">Product Details</h4>
                                 
                                 <div className="space-y-2 text-sm">
                                   <div>
-                                    <span className="text-gray-600 text-xs">Description:</span>
-                                    <p className="mt-1 text-gray-900">{product.description || 'No description available'}</p>
+                                    <span className="text-gray-600 dark:text-gray-400 text-xs">Description:</span>
+                                    <p className="mt-1 text-gray-900 dark:text-white">{product.description || 'No description available'}</p>
                                   </div>
                                   
                                   <div className="grid grid-cols-2 gap-3 mt-4">
                                     <div>
-                                      <span className="text-gray-600 text-xs">Cost Price:</span>
-                                      <p className="font-medium text-sm text-gray-900">{formatCurrency(product.aggregated_stock?.aggregated_cost_price || 0, 2)}</p>
+                                      <span className="text-gray-600 dark:text-gray-400 text-xs">Cost Price:</span>
+                                      <p className="font-medium text-sm text-gray-900 dark:text-white">{formatCurrency(product.aggregated_stock?.aggregated_cost_price || 0, 2)}</p>
                                     </div>
                                     
                                     {profitMargin && (
                                       <div>
-                                        <span className="text-gray-600 text-xs">Profit Margin:</span>
+                                        <span className="text-gray-600 dark:text-gray-400 text-xs">Profit Margin:</span>
                                         <p className="font-medium text-green-600 text-sm">
                                           {formatCurrency(profitMargin.profit, 2)} ({profitMargin.margin.toFixed(1)}%)
                                         </p>
@@ -567,23 +567,23 @@ export default function InventoryPage() {
                                     )}
                                     
                                     <div>
-                                      <span className="text-gray-600 text-xs">Stock Value:</span>
-                                      <p className="font-medium text-sm text-gray-900">{formatCurrency(stockValue, 2)}</p>
+                                      <span className="text-gray-600 dark:text-gray-400 text-xs">Stock Value:</span>
+                                      <p className="font-medium text-sm text-gray-900 dark:text-white">{formatCurrency(stockValue, 2)}</p>
                                     </div>
                                     
                                     <div>
-                                      <span className="text-gray-600 text-xs">Low Stock Alert:</span>
-                                      <p className="font-medium text-sm text-gray-900">{product.low_stock_threshold} units</p>
+                                      <span className="text-gray-600 dark:text-gray-400 text-xs">Low Stock Alert:</span>
+                                      <p className="font-medium text-sm text-gray-900 dark:text-white">{product.low_stock_threshold} units</p>
                                     </div>
                                     
                                     <div>
-                                      <span className="text-gray-600 text-xs">Created:</span>
-                                      <p className="text-sm text-gray-900">{new Date(product.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
+                                      <span className="text-gray-600 dark:text-gray-400 text-xs">Created:</span>
+                                      <p className="text-sm text-gray-900 dark:text-white">{new Date(product.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
                                     </div>
                                     
                                     <div>
-                                      <span className="text-gray-600 text-xs">Updated:</span>
-                                      <p className="text-sm text-gray-900">{new Date(product.updated_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
+                                      <span className="text-gray-600 dark:text-gray-400 text-xs">Updated:</span>
+                                      <p className="text-sm text-gray-900 dark:text-white">{new Date(product.updated_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</p>
                                     </div>
                                   </div>
                                 </div>
@@ -594,7 +594,7 @@ export default function InventoryPage() {
                                 {/* Restock History */}
                                 {(product as any).batches && (product as any).batches.length > 0 && (
                                   <div className="mb-4">
-                                    <h5 className="font-bold text-sm text-gray-900 mb-2">Restock History ({(product as any).batches.length})</h5>
+                                    <h5 className="font-bold text-sm text-gray-900 dark:text-white mb-2">Restock History ({(product as any).batches.length})</h5>
                                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                                       {(product as any).batches
                                         .sort((a: any, b: any) => new Date(a.purchase_date).getTime() - new Date(b.purchase_date).getTime())
@@ -602,10 +602,10 @@ export default function InventoryPage() {
                                           <div key={batch.id} className="p-3 rounded border text-sm bg-white border-gray-200 dark:bg-gray-800/30 dark:border-gray-700">
                                             <div className="flex justify-between items-start mb-2">
                                               <div>
-                                                <div className="font-medium text-sm text-gray-900">
+                                                <div className="font-medium text-sm text-gray-900 dark:text-white">
                                                   {index === 0 ? 'Initial Stock' : `Restock #${index}`}
                                                 </div>
-                                                <div className="text-xs text-gray-500 font-mono">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                                                   {batch.batch_number || 'N/A'}
                                                 </div>
                                               </div>
@@ -614,7 +614,7 @@ export default function InventoryPage() {
                                                   setEditingBatch(batch)
                                                   setIsBatchEditModalOpen(true)
                                                 }}
-                                                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                                                 title="Edit prices"
                                               >
                                                 <PencilSimpleIcon size={14} />
@@ -622,32 +622,32 @@ export default function InventoryPage() {
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                               <div>
-                                                <span className="text-gray-600">Date:</span>
-                                                <div className="font-medium text-gray-900">
+                                                <span className="text-gray-600 dark:text-gray-400">Date:</span>
+                                                <div className="font-medium text-gray-900 dark:text-white">
                                                   {new Date(batch.purchase_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                                                 </div>
                                               </div>
                                               <div>
-                                                <span className="text-gray-600">Quantity:</span>
-                                                <div className="font-medium text-gray-900">
+                                                <span className="text-gray-600 dark:text-gray-400">Quantity:</span>
+                                                <div className="font-medium text-gray-900 dark:text-white">
                                                   {batch.quantity_remaining} / {batch.quantity_purchased}
                                                 </div>
                                               </div>
                                               <div>
-                                                <span className="text-gray-600">Cost Price:</span>
-                                                <div className="font-medium text-gray-900">
+                                                <span className="text-gray-600 dark:text-gray-400">Cost Price:</span>
+                                                <div className="font-medium text-gray-900 dark:text-white">
                                                   {formatCurrency(batch.cost_price, 2)}
                                                 </div>
                                               </div>
                                               <div>
-                                                <span className="text-gray-600">Target Price:</span>
-                                                <div className="font-medium text-gray-900">
+                                                <span className="text-gray-600 dark:text-gray-400">Target Price:</span>
+                                                <div className="font-medium text-gray-900 dark:text-white">
                                                   {formatCurrency(batch.selling_price || 0, 2)}
                                                 </div>
                                               </div>
                                             </div>
                                             {batch.is_depleted && (
-                                              <div className="mt-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded border border-gray-200">
+                                              <div className="mt-2 px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded border border-gray-200 dark:border-gray-600">
                                                 Depleted
                                               </div>
                                             )}

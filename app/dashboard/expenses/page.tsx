@@ -527,7 +527,7 @@ export default function ExpensesPage() {
         </div>
         
         {expenses.filter(e => e.category !== 'new_product' && e.category !== 'inventory_restock').length === 0 ? (
-          <div className="p-6 text-center text-gray-500 text-sm">
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400 text-sm">
             No operating expenses recorded yet. Click "Add Expense" to get started.
           </div>
         ) : (
@@ -548,9 +548,9 @@ export default function ExpensesPage() {
                 {expenses.filter(e => e.category !== 'new_product' && e.category !== 'inventory_restock').map((expense, index) => (
                   <tr
                     key={expense.id}
-                    className="border-b border-gray-100 bg-white hover:bg-gray-50"
+                    className="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
-                    <td className="px-3 py-2.5 text-sm text-gray-900">
+                    <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-white">
                       {new Date(expense.expense_date).toLocaleDateString('en-PK', {
                         timeZone: 'Asia/Karachi',
                         month: 'short',
@@ -559,9 +559,9 @@ export default function ExpensesPage() {
                       })}
                     </td>
                     <td className="px-3 py-2.5 text-sm">
-                      <div className="text-gray-900">{expense.description}</div>
+                      <div className="text-gray-900 dark:text-white">{expense.description}</div>
                       {expense.product_display && (
-                        <div className="text-xs text-gray-500 mt-0.5">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                           Product: {expense.product_display}
                         </div>
                       )}
@@ -571,7 +571,7 @@ export default function ExpensesPage() {
                         {formatCategory(expense.category)}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-900">
+                    <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-white">
                       {expense.recorded_by_name || expense.managers?.full_name || 'Cashier'}
                     </td>
                     <td className="px-3 py-2.5 text-sm text-right font-semibold text-red-600">
@@ -579,9 +579,9 @@ export default function ExpensesPage() {
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        expense.payment_method === 'Cash' ? 'bg-green-100 text-green-700 border border-green-300' : 
-                        expense.payment_method === 'Digital' ? 'bg-blue-100 text-blue-700 border border-blue-300' : 
-                        'bg-gray-100 text-gray-600 border border-gray-300'
+                        expense.payment_method === 'Cash' ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-800' : 
+                        expense.payment_method === 'Digital' ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-800' : 
+                        'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600'
                       }`}>
                         {expense.payment_method || 'N/A'}
                       </span>
@@ -651,16 +651,16 @@ export default function ExpensesPage() {
       {/* Add Expense Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">Add New Expense</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Add New Expense</h2>
               <button
                 onClick={() => {
                   setShowAddModal(false)
                   setSelectedPredefined(null)
                   setError('')
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <XIcon size={20} />
               </button>
@@ -676,7 +676,7 @@ export default function ExpensesPage() {
               {/* Predefined Expenses Selection */}
               {predefinedExpenses.length > 0 && (
                 <div>
-                  <label className="block mb-1 font-medium text-xs text-gray-700">
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                     Quick Select (Optional)
                   </label>
                   <select
@@ -694,7 +694,7 @@ export default function ExpensesPage() {
                         }
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600 bg-gray-50"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-gray-50 dark:bg-gray-800 dark:text-white"
                   >
                     <option value="">-- Select a predefined expense --</option>
                     {predefinedExpenses.map((pe) => (
@@ -703,34 +703,34 @@ export default function ExpensesPage() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Select a predefined expense to auto-fill the fields below
                   </p>
                 </div>
               )}
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Description <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                   placeholder="Enter expense description"
                   maxLength={255}
                 />
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Category <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -741,7 +741,7 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Amount <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -750,19 +750,19 @@ export default function ExpensesPage() {
                   min="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                   placeholder="0.00"
                 />
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Payment Method <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'Digital')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="Cash">Cash</option>
                   <option value="Digital">Digital</option>
@@ -770,7 +770,7 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Expense Date <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -778,7 +778,7 @@ export default function ExpensesPage() {
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
                   max={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 />
               </div>
 
@@ -789,7 +789,7 @@ export default function ExpensesPage() {
                     setShowAddModal(false)
                     setError('')
                   }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   disabled={submitting}
                 >
                   Cancel
@@ -810,16 +810,16 @@ export default function ExpensesPage() {
       {/* Edit Expense Modal */}
       {showEditModal && editingExpense && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">Edit Expense</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Expense</h2>
               <button
                 onClick={() => {
                   setShowEditModal(false)
                   setEditingExpense(null)
                   setError('')
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <XIcon size={20} />
               </button>
@@ -833,27 +833,27 @@ export default function ExpensesPage() {
 
             <form onSubmit={handleUpdate} className="space-y-4">
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Description <span className="text-red-600">*</span>
                 </label>
                 <input
                   type="text"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                   placeholder="Enter expense description"
                   maxLength={255}
                 />
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Category <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -864,7 +864,7 @@ export default function ExpensesPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Amount <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -873,13 +873,13 @@ export default function ExpensesPage() {
                   min="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                   placeholder="0.00"
                 />
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Expense Date <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -887,7 +887,7 @@ export default function ExpensesPage() {
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
                   max={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 />
               </div>
 
@@ -899,7 +899,7 @@ export default function ExpensesPage() {
                     setEditingExpense(null)
                     setError('')
                   }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   disabled={submitting}
                 >
                   Cancel
@@ -920,8 +920,8 @@ export default function ExpensesPage() {
       {/* Delete Expense Modal */}
       {showDeleteModal && deletingExpense && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <TrashIcon size={20} className="text-red-600" />
               Delete Expense
             </h2>
@@ -932,28 +932,28 @@ export default function ExpensesPage() {
               </div>
             )}
 
-            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded">
-              <p className="text-sm text-red-900 mb-3">
+            <div className="mb-5 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+              <p className="text-sm text-red-900 dark:text-red-300 mb-3">
                 Are you sure you want to delete this expense? This action cannot be undone.
               </p>
             </div>
 
-            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded text-sm">
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Description:</span>{' '}
-                <span className="text-gray-900">{deletingExpense.description}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Description:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{deletingExpense.description}</span>
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Amount:</span>{' '}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Amount:</span>{' '}
                 <span className="text-red-600 font-semibold">${deletingExpense.amount.toFixed(2)}</span>
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Category:</span>{' '}
-                <span className="text-gray-900">{formatCategory(deletingExpense.category)}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Category:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{formatCategory(deletingExpense.category)}</span>
               </div>
               <div>
-                <span className="font-semibold text-gray-700">Date:</span>{' '}
-                <span className="text-gray-900">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
+                <span className="text-gray-900 dark:text-white">
                   {new Date(deletingExpense.expense_date).toLocaleDateString('en-PK', {
                     timeZone: 'Asia/Karachi',
                     month: 'short',
@@ -971,7 +971,7 @@ export default function ExpensesPage() {
                   setDeletingExpense(null)
                   setError('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >
                 Cancel
               </button>
@@ -989,8 +989,8 @@ export default function ExpensesPage() {
       {/* Mark for Review Modal */}
       {showReviewModal && reviewingExpense && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <WarningCircleIcon size={20} className="text-yellow-600" />
               Mark Expense for Review
             </h2>
@@ -1001,28 +1001,28 @@ export default function ExpensesPage() {
               </div>
             )}
 
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm">
-              <p className="text-yellow-900">
+            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-sm">
+              <p className="text-yellow-900 dark:text-yellow-300">
                 This will flag the expense for manager review. Add a note explaining why this expense needs attention.
               </p>
             </div>
 
-            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded text-sm">
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Description:</span>{' '}
-                <span className="text-gray-900">{reviewingExpense.description}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Description:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{reviewingExpense.description}</span>
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Amount:</span>{' '}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Amount:</span>{' '}
                 <span className="text-red-600 font-semibold">${reviewingExpense.amount.toFixed(2)}</span>
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Category:</span>{' '}
-                <span className="text-gray-900">{formatCategory(reviewingExpense.category)}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Category:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{formatCategory(reviewingExpense.category)}</span>
               </div>
               <div>
-                <span className="font-semibold text-gray-700">Date:</span>{' '}
-                <span className="text-gray-900">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
+                <span className="text-gray-900 dark:text-white">
                   {new Date(reviewingExpense.expense_date).toLocaleDateString('en-PK', {
                     timeZone: 'Asia/Karachi',
                     month: 'short',
@@ -1034,11 +1034,11 @@ export default function ExpensesPage() {
             </div>
 
             <div className="mb-5">
-              <label className="block mb-1 font-medium text-xs text-gray-700">Review Note*</label>
+              <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Review Note*</label>
               <textarea
                 value={reviewNote}
                 onChange={(e) => setReviewNote(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 rows={4}
                 placeholder="Explain why this expense needs review..."
               />
@@ -1052,7 +1052,7 @@ export default function ExpensesPage() {
                   setReviewNote('')
                   setError('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >
                 Cancel
               </button>
@@ -1071,8 +1071,8 @@ export default function ExpensesPage() {
       {/* View Marked Expense Modal */}
       {showMarkedModal && viewingMarkedExpense && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <WarningCircleIcon size={20} className="text-yellow-600" />
               Marked for Review
             </h2>
@@ -1083,22 +1083,22 @@ export default function ExpensesPage() {
               </div>
             )}
 
-            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded text-sm">
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Description:</span>{' '}
-                <span className="text-gray-900">{viewingMarkedExpense.description}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Description:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{viewingMarkedExpense.description}</span>
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Amount:</span>{' '}
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Amount:</span>{' '}
                 <span className="text-red-600 font-semibold">${viewingMarkedExpense.amount.toFixed(2)}</span>
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Category:</span>{' '}
-                <span className="text-gray-900">{formatCategory(viewingMarkedExpense.category)}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Category:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{formatCategory(viewingMarkedExpense.category)}</span>
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Date:</span>{' '}
-                <span className="text-gray-900">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
+                <span className="text-gray-900 dark:text-white">
                   {new Date(viewingMarkedExpense.expense_date).toLocaleDateString('en-PK', {
                     timeZone: 'Asia/Karachi',
                     month: 'short',
@@ -1108,15 +1108,15 @@ export default function ExpensesPage() {
                 </span>
               </div>
               <div>
-                <span className="font-semibold text-gray-700">Recorded by:</span>{' '}
-                <span className="text-gray-900">{viewingMarkedExpense.recorded_by_name || 'Unknown'}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Recorded by:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{viewingMarkedExpense.recorded_by_name || 'Unknown'}</span>
               </div>
             </div>
 
             {viewingMarkedExpense.review_note && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <p className="text-xs font-semibold text-yellow-800 mb-1">Cashier Note:</p>
-                <p className="text-sm text-yellow-900">{viewingMarkedExpense.review_note}</p>
+              <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-400 mb-1">Cashier Note:</p>
+                <p className="text-sm text-yellow-900 dark:text-yellow-300">{viewingMarkedExpense.review_note}</p>
               </div>
             )}
 
@@ -1127,7 +1127,7 @@ export default function ExpensesPage() {
                   setViewingMarkedExpense(null)
                   setError('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >
                 Close
               </button>

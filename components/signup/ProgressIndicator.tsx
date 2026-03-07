@@ -23,7 +23,7 @@ export default function ProgressIndicator({
                     ? 'bg-green-600 text-white'
                     : step === currentStep
                     ? 'bg-cyan-600 text-white'
-                    : 'bg-gray-200 text-gray-500'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                 }`}
               >
                 {step < currentStep ? (
@@ -40,7 +40,7 @@ export default function ProgressIndicator({
               </div>
               <span
                 className={`text-xs mt-1 hidden sm:block ${
-                  step <= currentStep ? 'text-gray-900 font-medium' : 'text-gray-400'
+                  step <= currentStep ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-400'
                 }`}
               >
                 {steps[step - 1]}
@@ -51,7 +51,7 @@ export default function ProgressIndicator({
             {step < 3 && (
               <div
                 className={`w-16 sm:w-24 h-1 mx-2 transition-colors ${
-                  step < currentStep ? 'bg-green-600' : 'bg-gray-200'
+                  step < currentStep ? 'bg-green-600' : 'bg-gray-200 dark:bg-gray-700'
                 }`}
               />
             )}

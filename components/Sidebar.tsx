@@ -13,7 +13,6 @@ import {
   TruckIcon, 
   UserGearIcon, 
   GearIcon,
-  ListIcon,
   XIcon,
   UserIcon,
   CaretDownIcon,
@@ -26,6 +25,7 @@ import {
 } from '@phosphor-icons/react'
 import { useState, useEffect } from 'react'
 import { supabase, hasPermission, type UserRole, getStoreId } from '@/lib/supabase'
+import Logo from '@/components/Logo'
 
 interface SidebarProps {
   userRole: UserRole
@@ -198,16 +198,16 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
         `}
       >
         {/* Logo */}
-        <div className={`p-4 border-b border-gray-200 dark:border-gray-700 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-          {!isCollapsed && (
-            <h1 className="text-lg font-bold truncate text-gray-900 dark:text-white">{storeName}</h1>
-          )}
+        <div className={`p-4 border-b border-gray-200 dark:border-gray-700 flex items-center ${isCollapsed ? 'justify-center' : ''}`}>
           <button
             onClick={toggleSidebar}
-            className="p-1.5 rounded transition-colors flex-shrink-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className={`flex items-center gap-2 min-w-0 ${isCollapsed ? '' : 'flex-1'} hover:opacity-80 transition-opacity`}
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <ListIcon size={20} className="flex-shrink-0 text-gray-600 dark:text-gray-400" />
+            <Logo size={24} className="text-gray-900 dark:text-white flex-shrink-0" />
+            {!isCollapsed && (
+              <span className="text-sm font-bold truncate text-gray-900 dark:text-white">{storeName}</span>
+            )}
           </button>
         </div>
 

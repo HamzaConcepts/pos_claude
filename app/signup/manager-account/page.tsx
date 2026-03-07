@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ProgressIndicator from '@/components/signup/ProgressIndicator'
 import { Eye, EyeSlash, User } from '@phosphor-icons/react'
+import Logo from '@/components/Logo'
 
 export default function SignupStep2() {
   const router = useRouter()
@@ -181,27 +182,27 @@ export default function SignupStep2() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
+        <div className="text-gray-600 dark:text-gray-400">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full">
         <ProgressIndicator currentStep={2} />
         
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-cyan-100 rounded-full mb-4">
-            <User size={32} className="text-cyan-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
+            <Logo size={52} className="text-gray-900 dark:text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Manager Account</h1>
-          <p className="text-gray-600 mt-1">Step 2 of 3 - Account Credentials</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Manager Account</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Step 2 of 3 - Account Credentials</p>
           {step1Data && (
-            <p className="text-sm text-gray-500 mt-2">
-              Creating account for: <span className="font-medium text-gray-700">{step1Data.ownerName}</span>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              Creating account for: <span className="font-medium text-gray-700 dark:text-gray-300">{step1Data.ownerName}</span>
             </p>
           )}
         </div>
@@ -209,7 +210,7 @@ export default function SignupStep2() {
         <form onSubmit={handleSubmit}>
           {/* Email */}
           <div className="mb-4">
-            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Email Address <span className="text-red-600">*</span>
             </label>
             <input
@@ -218,14 +219,14 @@ export default function SignupStep2() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className={`w-full border rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
-                errors.email ? 'border-red-500 bg-red-50' : emailStatus === 'taken' ? 'border-red-500' : emailStatus === 'available' ? 'border-green-500' : 'border-gray-300'
+              className={`w-full border rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
+                errors.email ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : emailStatus === 'taken' ? 'border-red-500' : emailStatus === 'available' ? 'border-green-500' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="manager@example.com"
               autoFocus
             />
             {emailStatus === 'checking' && (
-              <p className="text-gray-500 text-sm mt-1">Checking availability...</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Checking availability...</p>
             )}
             {emailStatus === 'available' && (
               <p className="text-green-600 text-sm mt-1">✓ Email is available</p>
@@ -240,7 +241,7 @@ export default function SignupStep2() {
 
           {/* Phone Number */}
           <div className="mb-4">
-            <label htmlFor="phoneNumber" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="phoneNumber" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Phone Number <span className="text-red-600">*</span>
             </label>
             <input
@@ -249,13 +250,13 @@ export default function SignupStep2() {
               name="phoneNumber"
               value={formData.phoneNumber}
               onChange={handleChange}
-              className={`w-full border rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
-                errors.phoneNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              className={`w-full border rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
+                errors.phoneNumber ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="03001234567"
               maxLength={11}
             />
-            <p className="text-gray-500 text-xs mt-1">{formData.phoneNumber.length}/11 digits</p>
+            <p className="text-gray-500 dark:text-gray-400 text-xs mt-1">{formData.phoneNumber.length}/11 digits</p>
             {errors.phoneNumber && (
               <p className="text-red-600 text-sm mt-1">{errors.phoneNumber}</p>
             )}
@@ -263,7 +264,7 @@ export default function SignupStep2() {
 
           {/* Password */}
           <div className="mb-4">
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Password <span className="text-red-600">*</span>
             </label>
             <div className="relative">
@@ -273,15 +274,15 @@ export default function SignupStep2() {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`w-full border rounded-lg px-4 py-3 pr-12 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
-                  errors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                className={`w-full border rounded-lg px-4 py-3 pr-12 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
+                  errors.password ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="Min 8 characters"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               >
                 {showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
               </button>
@@ -289,7 +290,7 @@ export default function SignupStep2() {
             {/* Password Strength Meter */}
             {formData.password && (
               <div className="mt-2">
-                <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div 
                     className={`h-full transition-all duration-300 ${passwordStrength.color}`}
                     style={{ width: passwordStrength.width }}
@@ -311,7 +312,7 @@ export default function SignupStep2() {
 
           {/* Confirm Password */}
           <div className="mb-6">
-            <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Confirm Password <span className="text-red-600">*</span>
             </label>
             <div className="relative">
@@ -321,15 +322,15 @@ export default function SignupStep2() {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`w-full border rounded-lg px-4 py-3 pr-12 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
-                  errors.confirmPassword ? 'border-red-500 bg-red-50' : passwordsMatch ? 'border-green-500' : 'border-gray-300'
+                className={`w-full border rounded-lg px-4 py-3 pr-12 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
+                  errors.confirmPassword ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : passwordsMatch ? 'border-green-500' : 'border-gray-300 dark:border-gray-600'
                 }`}
                 placeholder="Confirm your password"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               >
                 {showConfirmPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
               </button>
@@ -347,7 +348,7 @@ export default function SignupStep2() {
             <button
               type="button"
               onClick={handleBack}
-              className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="flex-1 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold py-3 px-4 rounded-lg transition-colors"
             >
               ← Back
             </button>
@@ -362,7 +363,7 @@ export default function SignupStep2() {
 
         {/* Login Link */}
         <div className="mt-6 text-center">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
             <Link href="/login" className="text-cyan-600 hover:text-cyan-700 font-semibold">
               Sign in

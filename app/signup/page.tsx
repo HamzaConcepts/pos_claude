@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import ProgressIndicator from '@/components/signup/ProgressIndicator'
 import { Storefront } from '@phosphor-icons/react'
+import Logo from '@/components/Logo'
 
 export default function SignupStep1() {
   const router = useRouter()
@@ -109,30 +110,30 @@ export default function SignupStep1() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Checking session...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
+        <div className="text-gray-600 dark:text-gray-400">Checking session...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full">
         <ProgressIndicator currentStep={1} />
         
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-cyan-100 rounded-full mb-4">
-            <Storefront size={32} className="text-cyan-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4">
+            <Logo size={52} className="text-gray-900 dark:text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Create Your Store</h1>
-          <p className="text-gray-600 mt-1">Step 1 of 3 - Store Information</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create Your Store</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Step 1 of 3 - Store Information</p>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Store Name */}
           <div className="mb-4">
-            <label htmlFor="storeName" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="storeName" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Store Name <span className="text-red-600">*</span>
             </label>
             <input
@@ -141,8 +142,8 @@ export default function SignupStep1() {
               name="storeName"
               value={formData.storeName}
               onChange={handleChange}
-              className={`w-full border rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
-                errors.storeName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              className={`w-full border rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
+                errors.storeName ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="e.g., Ahmad Electronics"
               maxLength={100}
@@ -155,7 +156,7 @@ export default function SignupStep1() {
 
           {/* Owner Name */}
           <div className="mb-6">
-            <label htmlFor="ownerName" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="ownerName" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Owner/Manager Name <span className="text-red-600">*</span>
             </label>
             <input
@@ -164,8 +165,8 @@ export default function SignupStep1() {
               name="ownerName"
               value={formData.ownerName}
               onChange={handleChange}
-              className={`w-full border rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
-                errors.ownerName ? 'border-red-500 bg-red-50' : 'border-gray-300'
+              className={`w-full border rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-colors ${
+                errors.ownerName ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600'
               }`}
               placeholder="e.g., Ahmad Khan"
               maxLength={100}
@@ -186,7 +187,7 @@ export default function SignupStep1() {
 
         {/* Login Link */}
         <div className="mt-6 text-center">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
             <Link href="/login" className="text-cyan-600 hover:text-cyan-700 font-semibold">
               Sign in
@@ -195,8 +196,8 @@ export default function SignupStep1() {
         </div>
 
         {/* Join Store Link */}
-        <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-          <p className="text-sm text-gray-500">
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Want to join an existing store?{' '}
             <Link href="/signup/join" className="text-cyan-600 hover:text-cyan-700 font-medium">
               Join with store code

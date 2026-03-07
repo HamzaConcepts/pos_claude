@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import { EyeIcon, EyeSlashIcon } from '@phosphor-icons/react'
+import Logo from '@/components/Logo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -249,27 +250,30 @@ export default function LoginPage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
-        <div className="text-lg text-gray-600">Checking session...</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] dark:bg-[#0f0f0f]">
+        <div className="text-lg text-gray-600 dark:text-gray-400">Checking session...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
-      <div className="bg-white p-8 rounded border border-gray-200 w-full max-w-md shadow-sm">
-        <h1 className="text-2xl font-bold mb-2 text-center text-gray-900">POS System</h1>
-        <p className="mb-6 text-center text-sm text-gray-600">Sign in to your account</p>
+    <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] dark:bg-[#0f0f0f]">
+      <div className="bg-white dark:bg-[#1a1a1a] p-8 rounded border border-gray-200 dark:border-gray-700 w-full max-w-md shadow-sm">
+        <div className="flex justify-center mb-3">
+          <Logo size={44} className="text-gray-900 dark:text-white" />
+        </div>
+        <h1 className="text-2xl font-bold mb-2 text-center text-gray-900 dark:text-white">POS System</h1>
+        <p className="mb-6 text-center text-sm text-gray-600 dark:text-gray-400">Sign in to your account</p>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-200 rounded text-sm">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded text-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin}>
           <div className="mb-4">
-            <label htmlFor="name" className="block mb-1 font-medium text-sm text-gray-700">
+            <label htmlFor="name" className="block mb-1 font-medium text-sm text-gray-700 dark:text-gray-300">
               Name or Phone Number
             </label>
             <input
@@ -277,7 +281,7 @@ export default function LoginPage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-cyan-600"
               placeholder="Enter your name or phone number"
               required
               disabled={loading}
@@ -285,7 +289,7 @@ export default function LoginPage() {
           </div>
 
           <div className="mb-6">
-            <label htmlFor="password" className="block mb-1 font-medium text-sm text-gray-700">
+            <label htmlFor="password" className="block mb-1 font-medium text-sm text-gray-700 dark:text-gray-300">
               Password
             </label>
             <div className="relative">
@@ -294,14 +298,14 @@ export default function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600 pr-10"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-cyan-600 pr-10"
                 required
                 disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 {showPassword ? <EyeSlashIcon size={18} /> : <EyeIcon size={18} />}
               </button>
@@ -317,13 +321,13 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-sm text-gray-600">
+        <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
           Don't have an account?{' '}
           <Link href="/signup" className="text-cyan-600 hover:text-cyan-700 underline font-medium">
             Sign up
           </Link>
         </p>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
           Forgot password?{' '}
           <Link href="/reset-password" className="text-cyan-600 hover:text-cyan-700 underline font-medium">
             Reset Password

@@ -302,8 +302,8 @@ export default function SupplierKhaataPage() {
     <>
       {/* Header */}
       <div className="mb-6">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Supplier Khaata (Accounts)</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-1">Supplier Khaata (Accounts)</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Track pending payments to suppliers
           </p>
         </div>
@@ -317,7 +317,7 @@ export default function SupplierKhaataPage() {
               placeholder="Search by supplier name or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
             />
           </div>
         </div>
@@ -332,20 +332,25 @@ export default function SupplierKhaataPage() {
         {/* Loading State */}
         {loading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-cyan-500 mx-auto"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading supplier accounts...</p>
+            <div className="mx-auto mb-3 animate-pulse">
+              <svg width={40} height={Math.round(40 * (1196 / 1061))} viewBox="0 0 1061 1196" fill="none" xmlns="http://www.w3.org/2000/svg" className="fill-current text-cyan-500 mx-auto"><path d="M538.795 609.092L871.505 276.381C976.486 372.749 1042.32 511.172 1042.38 664.993C1041.64 664.973 1040.9 664.949 1040.16 664.926C1046.75 665.171 1053.37 665.296 1060.02 665.298C777.219 665.385 546.193 886.933 530.915 1165.94L530.096 1180.67C530.596 1189.81 530.158 1186.07 530.102 1193.71L530.096 1195.39C530.096 1190.47 529.746 1185.56 529.88 1180.67C522.081 894.715 287.839 665.299 0 665.299C6.05981 665.299 12.0958 665.194 18.1064 664.992C18.1652 506.975 88.0333 365.252 198.592 268.889L538.795 609.092ZM674.459 135.664L538.795 271.328L403.132 135.664L538.795 0L674.459 135.664Z" /></svg>
+            </div>
+            <div className="w-40 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mx-auto mb-3">
+              <div className="h-full bg-cyan-500 rounded-full" style={{ animation: 'progressBar 1.5s ease-in-out infinite' }} />
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Loading supplier accounts...</p>
           </div>
         ) : filteredSuppliers.length === 0 ? (
-          <div className="text-center py-12 border border-dashed border-gray-300 rounded">
+          <div className="text-center py-12 border border-dashed border-gray-300 dark:border-gray-600 rounded">
             <PackageIcon className="mx-auto mb-4 text-gray-400" size={48} />
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               {searchTerm ? 'No suppliers found matching your search' : 'No pending payments to suppliers'}
             </p>
           </div>
         ) : (
-          <div className="bg-white border border-gray-200 rounded overflow-hidden">
+          <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
             <table className="w-full">
-              <thead className="bg-gray-50 text-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-sm">Supplier</th>
                   <th className="px-4 py-3 text-left font-semibold text-sm">Contact</th>
@@ -365,12 +370,12 @@ export default function SupplierKhaataPage() {
                       {/* Aggregated Row */}
                       <tr 
                         key={`supplier-${supplier.supplier_id}`}
-                        className="border-b border-gray-100 bg-white hover:bg-gray-50 cursor-pointer"
+                        className="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                         onClick={() => toggleSupplierExpansion(supplier.supplier_id)}
                       >
-                        <td className="px-4 py-3 font-medium text-sm text-gray-900">{supplier.supplier_name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{supplier.supplier_phone}</td>
-                        <td className="px-4 py-3 text-right text-sm text-gray-900">{formatCurrency(supplier.total_amount, 0)}</td>
+                        <td className="px-4 py-3 font-medium text-sm text-gray-900 dark:text-white">{supplier.supplier_name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{supplier.supplier_phone}</td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">{formatCurrency(supplier.total_amount, 0)}</td>
                         <td className="px-4 py-3 text-right text-sm text-green-600">{formatCurrency(supplier.amount_paid, 0)}</td>
                         <td className="px-4 py-3 text-right text-sm font-semibold text-red-600">
                           {formatCurrency(supplier.amount_remaining, 0)}
@@ -407,20 +412,20 @@ export default function SupplierKhaataPage() {
                       {isExpanded && supplier.transactions.map((record) => (
                         <tr 
                           key={`transaction-${record.id}`}
-                          className="border-b border-gray-100 bg-cyan-50"
+                          className="border-b border-gray-100 dark:border-gray-700 bg-cyan-50 dark:bg-cyan-900/20"
                         >
                           <td className="px-4 py-2 pl-10 text-sm">
-                            <div className="font-medium text-gray-900">
+                            <div className="font-medium text-gray-900 dark:text-white">
                               {record.stock_batches?.products?.name || 'Unknown Product'}
                             </div>
-                            <div className="text-xs text-gray-600">
+                            <div className="text-xs text-gray-600 dark:text-gray-400">
                               Batch: {record.stock_batches?.batch_number || 'N/A'}
                             </div>
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">
+                          <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                             {new Date(record.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                           </td>
-                          <td className="px-4 py-2 text-right text-sm text-gray-900">
+                          <td className="px-4 py-2 text-right text-sm text-gray-900 dark:text-white">
                             {formatCurrency(record.total_amount, 0)}
                           </td>
                           <td className="px-4 py-2 text-right text-sm text-green-600">
@@ -429,7 +434,7 @@ export default function SupplierKhaataPage() {
                           <td className="px-4 py-2 text-right text-sm font-medium text-red-600">
                             {formatCurrency(record.amount_remaining, 0)}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">
+                          <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                             {record.notes && (
                               <div className="text-xs italic">{record.notes}</div>
                             )}
@@ -441,10 +446,10 @@ export default function SupplierKhaataPage() {
                                   e.stopPropagation()
                                   handleEdit(record)
                                 }}
-                                className="p-1.5 border border-gray-300 rounded hover:bg-cyan-100 transition-colors"
+                                className="p-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors"
                                 title="Edit Payment"
                               >
-                                <PencilSimpleIcon className="text-gray-700" size={14} />
+                                <PencilSimpleIcon className="text-gray-700 dark:text-gray-300" size={14} />
                               </button>
                               <button
                                 onClick={(e) => {
@@ -532,8 +537,8 @@ export default function SupplierKhaataPage() {
       {/* Edit Payment Modal */}
       {showEditModal && selectedRecord && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded border border-gray-200 p-5 max-w-md w-full">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Update Payment</h2>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 p-5 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Update Payment</h2>
 
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -541,15 +546,15 @@ export default function SupplierKhaataPage() {
               </div>
             )}
 
-            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
-              <p className="text-sm text-gray-900"><strong>Supplier:</strong> {selectedRecord.supplier_name}</p>
-              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> {formatCurrency(selectedRecord.total_amount, 0)}</p>
-              <p className="text-sm text-gray-900"><strong>Current Remaining:</strong> {formatCurrency(selectedRecord.amount_remaining, 0)}</p>
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded">
+              <p className="text-sm text-gray-900 dark:text-white"><strong>Supplier:</strong> {selectedRecord.supplier_name}</p>
+              <p className="text-sm text-gray-900 dark:text-white"><strong>Total Amount:</strong> {formatCurrency(selectedRecord.total_amount, 0)}</p>
+              <p className="text-sm text-gray-900 dark:text-white"><strong>Current Remaining:</strong> {formatCurrency(selectedRecord.amount_remaining, 0)}</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">Amount Paid <span className="text-red-600">*</span></label>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Amount Paid <span className="text-red-600">*</span></label>
                 <input
                   type="number"
                   step="0.01"
@@ -557,21 +562,21 @@ export default function SupplierKhaataPage() {
                   max={selectedRecord.total_amount}
                   value={formData.amount_paid}
                   onChange={(e) => setFormData({ ...formData, amount_paid: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 />
                 {formData.amount_paid && (
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     New Remaining: {formatCurrency(selectedRecord.total_amount - parseFloat(formData.amount_paid || '0'), 0)}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">Notes</label>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Notes</label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                   rows={3}
                   placeholder="Add any notes..."
                 />
@@ -584,7 +589,7 @@ export default function SupplierKhaataPage() {
                   setShowEditModal(false)
                   setError('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >
                 Cancel
               </button>
@@ -602,8 +607,8 @@ export default function SupplierKhaataPage() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedRecord && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded border border-gray-200 p-5 max-w-md w-full">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Delete Record</h2>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 p-5 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Record</h2>
 
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -611,7 +616,7 @@ export default function SupplierKhaataPage() {
               </div>
             )}
 
-            <p className="mb-5 text-sm text-gray-900">
+            <p className="mb-5 text-sm text-gray-900 dark:text-white">
               Are you sure you want to delete this payment record for <strong>{selectedRecord.supplier_name}</strong>?
             </p>
 
@@ -621,7 +626,7 @@ export default function SupplierKhaataPage() {
                   setShowDeleteModal(false)
                   setError('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >
                 Cancel
               </button>
@@ -639,8 +644,8 @@ export default function SupplierKhaataPage() {
       {/* Pay Dues Modal */}
       {showPayDuesModal && selectedForPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded border border-gray-200 p-5 max-w-md w-full">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Pay Supplier Dues</h2>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 p-5 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pay Supplier Dues</h2>
 
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
@@ -648,17 +653,17 @@ export default function SupplierKhaataPage() {
               </div>
             )}
 
-            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
-              <p className="text-sm text-gray-900"><strong>Supplier:</strong> {selectedForPayment.supplier_name}</p>
-              <p className="text-sm text-gray-900"><strong>Phone:</strong> {selectedForPayment.supplier_phone}</p>
-              <p className="text-sm text-gray-900"><strong>Total Amount:</strong> {formatCurrency(selectedForPayment.total_amount, 0)}</p>
-              <p className="text-sm text-gray-900"><strong>Amount Paid:</strong> {formatCurrency(selectedForPayment.amount_paid, 0)}</p>
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded">
+              <p className="text-sm text-gray-900 dark:text-white"><strong>Supplier:</strong> {selectedForPayment.supplier_name}</p>
+              <p className="text-sm text-gray-900 dark:text-white"><strong>Phone:</strong> {selectedForPayment.supplier_phone}</p>
+              <p className="text-sm text-gray-900 dark:text-white"><strong>Total Amount:</strong> {formatCurrency(selectedForPayment.total_amount, 0)}</p>
+              <p className="text-sm text-gray-900 dark:text-white"><strong>Amount Paid:</strong> {formatCurrency(selectedForPayment.amount_paid, 0)}</p>
               <p className="text-sm text-red-600 font-semibold"><strong>Remaining Balance:</strong> {formatCurrency(selectedForPayment.amount_remaining, 0)}</p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">Payment Amount <span className="text-red-600">*</span></label>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Amount <span className="text-red-600">*</span></label>
                 <input
                   type="number"
                   step="0.01"
@@ -666,22 +671,22 @@ export default function SupplierKhaataPage() {
                   max={selectedForPayment.amount_remaining}
                   value={paymentFormData.payment_amount}
                   onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                   placeholder="Enter payment amount"
                 />
                 {paymentFormData.payment_amount && (
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     New Remaining: {formatCurrency(selectedForPayment.amount_remaining - parseFloat(paymentFormData.payment_amount || '0'), 0)}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">Payment Method <span className="text-red-600">*</span></label>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Method <span className="text-red-600">*</span></label>
                 <select
                   value={paymentFormData.payment_method}
                   onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="Cash">Cash</option>
                   <option value="Bank Transfer">Bank Transfer</option>
@@ -691,11 +696,11 @@ export default function SupplierKhaataPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">Notes</label>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Notes</label>
                 <textarea
                   value={paymentFormData.notes}
                   onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                   rows={3}
                   placeholder="Add any notes..."
                 />
@@ -708,7 +713,7 @@ export default function SupplierKhaataPage() {
                   setShowPayDuesModal(false)
                   setError('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >
                 Cancel
               </button>

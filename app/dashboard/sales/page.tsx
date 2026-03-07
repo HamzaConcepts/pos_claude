@@ -566,7 +566,7 @@ export default function SalesPage() {
                           {formatCurrency(sale.total_amount, 2)}
                         </td>
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300">
                             {sale.payment_method === 'Cash' ? (
                               <CurrencyDollarIcon size={14} />
                             ) : (
@@ -662,15 +662,15 @@ export default function SalesPage() {
                       {isExpanded && (
                         <tr key={`${sale.id}-details`} className="animate-fadeIn">
                           <td colSpan={7} className={
-                            sale.payment_status === 'Partial' ? 'bg-red-50' : 'bg-cyan-50'
+                            sale.payment_status === 'Partial' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-cyan-50 dark:bg-cyan-900/20'
                           }>
-                            <div className="px-4 py-4 border-t border-gray-200">
+                            <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
                               {/* Mobile-only info */}
-                              <div className="md:hidden mb-4 pb-4 border-b border-gray-200">
+                              <div className="md:hidden mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                                 <div className="grid grid-cols-2 gap-3 text-sm">
                                   <div>
-                                    <span className="text-gray-600">Date:</span>
-                                    <span className="ml-2 font-medium text-gray-900">
+                                    <span className="text-gray-600 dark:text-gray-400">Date:</span>
+                                    <span className="ml-2 font-medium text-gray-900 dark:text-white">
                                       {new Date(sale.sale_date).toLocaleDateString('en-PK', {
                                         timeZone: 'Asia/Karachi',
                                         month: 'short',
@@ -682,8 +682,8 @@ export default function SalesPage() {
                                     </span>
                                   </div>
                                   <div>
-                                    <span className="text-gray-600">Payment:</span>
-                                    <span className="ml-2 inline-flex items-center gap-1 text-gray-900">
+                                    <span className="text-gray-600 dark:text-gray-400">Payment:</span>
+                                    <span className="ml-2 inline-flex items-center gap-1 text-gray-900 dark:text-white">
                                       {sale.payment_method === 'Cash' ? (
                                         <CurrencyDollarIcon size={12} />
                                       ) : (
@@ -693,7 +693,7 @@ export default function SalesPage() {
                                     </span>
                                   </div>
                                   <div>
-                                    <span className="text-gray-600">Status:</span>
+                                    <span className="text-gray-600 dark:text-gray-400">Status:</span>
                                     <span className="ml-2">
                                       <span
                                         className={`inline-block px-2 py-1 rounded text-xs font-medium border ${
@@ -746,9 +746,9 @@ export default function SalesPage() {
 
                               {/* Sale Summary */}
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                                <div className="p-3 border border-gray-200 rounded bg-white">
-                                  <div className="text-xs text-gray-600 mb-1">Sale Date</div>
-                                  <div className="font-semibold text-sm text-gray-900">
+                                <div className="p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-[#1a1a1a]">
+                                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Sale Date</div>
+                                  <div className="font-semibold text-sm text-gray-900 dark:text-white">
                                     {new Date(sale.sale_date).toLocaleString('en-PK', {
                                       timeZone: 'Asia/Karachi',
                                       month: 'long',
@@ -759,16 +759,16 @@ export default function SalesPage() {
                                     })}
                                   </div>
                                 </div>
-                                <div className="p-3 border border-gray-200 rounded bg-white">
-                                  <div className="text-xs text-gray-600 mb-1">Cashier</div>
-                                  <div className="font-semibold text-sm text-gray-900">{sale.cashier_name || 'Unknown'}</div>
+                                <div className="p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-[#1a1a1a]">
+                                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Cashier</div>
+                                  <div className="font-semibold text-sm text-gray-900 dark:text-white">{sale.cashier_name || 'Unknown'}</div>
                                 </div>
-                                <div className="p-3 border border-gray-200 rounded bg-white">
-                                  <div className="text-xs text-gray-600 mb-1">Amount Paid</div>
-                                  <div className="font-semibold text-sm text-gray-900">{formatCurrency(sale.amount_paid || 0, 2)}</div>
+                                <div className="p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-[#1a1a1a]">
+                                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Amount Paid</div>
+                                  <div className="font-semibold text-sm text-gray-900 dark:text-white">{formatCurrency(sale.amount_paid || 0, 2)}</div>
                                 </div>
-                                <div className="p-3 border border-gray-200 rounded bg-white">
-                                  <div className="text-xs text-gray-600 mb-1">Profit</div>
+                                <div className="p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-[#1a1a1a]">
+                                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Profit</div>
                                   <div className={`font-semibold text-sm ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     {formatCurrency(profit, 2)}
                                   </div>
@@ -777,13 +777,13 @@ export default function SalesPage() {
 
                               {/* Sale Items */}
                               <div className="mb-3">
-                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-2">
-                                  <PackageIcon size={16} className="text-gray-600" />
+                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                                  <PackageIcon size={16} className="text-gray-600 dark:text-gray-400" />
                                   Sale Items ({sale.sale_items?.length || 0})
                                 </div>
-                                <div className="border border-gray-200 rounded overflow-hidden">
+                                <div className="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
                                   <table className="w-full text-sm">
-                                    <thead className="bg-gray-50 text-gray-700">
+                                    <thead className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                                       <tr>
                                         <th className="px-3 py-2 text-left font-semibold">SKU</th>
                                         <th className="px-3 py-2 text-left font-semibold">Product</th>
@@ -794,12 +794,12 @@ export default function SalesPage() {
                                     </thead>
                                     <tbody>
                                       {sale.sale_items?.map((item: any, idx: number) => (
-                                        <tr key={item.id} className="border-b border-gray-100 bg-white hover:bg-gray-50">
-                                          <td className="px-3 py-2 font-mono text-xs text-gray-600">{item.product_sku || 'N/A'}</td>
-                                          <td className="px-3 py-2 text-gray-900">{item.product_name || 'Unknown Product'}</td>
-                                          <td className="px-3 py-2 text-center text-gray-900">{item.quantity}</td>
-                                          <td className="px-3 py-2 text-right text-gray-900">{formatCurrency(item.unit_price, 2)}</td>
-                                          <td className="px-3 py-2 text-right font-semibold text-gray-900">{formatCurrency(item.subtotal, 2)}</td>
+                                        <tr key={item.id} className="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-gray-800">
+                                          <td className="px-3 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">{item.product_sku || 'N/A'}</td>
+                                          <td className="px-3 py-2 text-gray-900 dark:text-white">{item.product_name || 'Unknown Product'}</td>
+                                          <td className="px-3 py-2 text-center text-gray-900 dark:text-white">{item.quantity}</td>
+                                          <td className="px-3 py-2 text-right text-gray-900 dark:text-white">{formatCurrency(item.unit_price, 2)}</td>
+                                          <td className="px-3 py-2 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(item.subtotal, 2)}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -816,13 +816,13 @@ export default function SalesPage() {
                               {/* Payment History */}
                               {(sale as any).payments && (sale as any).payments.length > 0 && (
                                 <div className="mb-3">
-                                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 mb-2">
-                                    <CurrencyDollarIcon size={16} className="text-gray-600" />
+                                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                                    <CurrencyDollarIcon size={16} className="text-gray-600 dark:text-gray-400" />
                                     Payment History ({(sale as any).payments.length})
                                   </div>
-                                  <div className="border border-gray-200 rounded overflow-hidden">
+                                  <div className="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
                                     <table className="w-full text-sm">
-                                      <thead className="bg-gray-50 text-gray-700">
+                                      <thead className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
                                         <tr>
                                           <th className="px-3 py-2 text-left font-semibold">Date</th>
                                           <th className="px-3 py-2 text-left font-semibold">Method</th>
@@ -832,8 +832,8 @@ export default function SalesPage() {
                                       </thead>
                                       <tbody>
                                         {(sale as any).payments.map((payment: any, idx: number) => (
-                                          <tr key={payment.id} className="border-b border-gray-100 bg-white hover:bg-gray-50">
-                                            <td className="px-3 py-2 text-gray-900">
+                                          <tr key={payment.id} className="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-gray-800">
+                                            <td className="px-3 py-2 text-gray-900 dark:text-white">
                                               {new Date(payment.payment_date).toLocaleString('en-PK', {
                                                 timeZone: 'Asia/Karachi',
                                                 month: 'short',
@@ -843,7 +843,7 @@ export default function SalesPage() {
                                                 minute: '2-digit'
                                               })}
                                             </td>
-                                            <td className="px-3 py-2 text-gray-900">
+                                            <td className="px-3 py-2 text-gray-900 dark:text-white">
                                               <span className="inline-flex items-center gap-1">
                                                 {payment.payment_method === 'Cash' ? (
                                                   <CurrencyDollarIcon size={12} />
@@ -853,8 +853,8 @@ export default function SalesPage() {
                                                 {payment.payment_method}
                                               </span>
                                             </td>
-                                            <td className="px-3 py-2 text-gray-900">{payment.recorded_by_name || 'Unknown'}</td>
-                                            <td className="px-3 py-2 text-right font-semibold text-gray-900">{formatCurrency(payment.amount, 2)}</td>
+                                            <td className="px-3 py-2 text-gray-900 dark:text-white">{payment.recorded_by_name || 'Unknown'}</td>
+                                            <td className="px-3 py-2 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(payment.amount, 2)}</td>
                                           </tr>
                                         ))}
                                       </tbody>
@@ -866,8 +866,8 @@ export default function SalesPage() {
                               {/* Notes */}
                               {sale.notes && (
                                 <div className="text-sm">
-                                  <div className="font-semibold text-gray-900 mb-1">Notes:</div>
-                                  <div className="text-gray-600 italic">{sale.notes}</div>
+                                  <div className="font-semibold text-gray-900 dark:text-white mb-1">Notes:</div>
+                                  <div className="text-gray-600 dark:text-gray-400 italic">{sale.notes}</div>
                                 </div>
                               )}
                             </div>
@@ -886,16 +886,16 @@ export default function SalesPage() {
       {/* Edit Sale Modal */}
       {showEditModal && editingSale && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-lg font-semibold text-gray-900">Edit Sale</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Edit Sale</h2>
               <button
                 onClick={() => {
                   setShowEditModal(false)
                   setEditingSale(null)
                   setEditError('')
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <XIcon size={20} />
               </button>
@@ -908,16 +908,16 @@ export default function SalesPage() {
             )}
 
             <form onSubmit={handleUpdate} className="space-y-4">
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+              <div className="p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded text-sm">
                 <div className="mb-2">
-                  <span className="font-semibold text-gray-700">Sale #:</span> <span className="text-gray-900">{editingSale.sale_number}</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">Sale #:</span> <span className="text-gray-900 dark:text-white">{editingSale.sale_number}</span>
                 </div>
                 <div className="mb-2">
-                  <span className="font-semibold text-gray-700">Total:</span> <span className="text-gray-900">${editingSale.total_amount.toFixed(2)}</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">Total:</span> <span className="text-gray-900 dark:text-white">${editingSale.total_amount.toFixed(2)}</span>
                 </div>
                 <div>
-                  <span className="font-semibold text-gray-700">Date:</span>{' '}
-                  <span className="text-gray-900">
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
+                  <span className="text-gray-900 dark:text-white">
                   {new Date(editingSale.sale_date).toLocaleString('en-PK', {
                     timeZone: 'Asia/Karachi',
                     month: 'short',
@@ -931,13 +931,13 @@ export default function SalesPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Payment Method <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={editPaymentMethod}
                   onChange={(e) => setEditPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
                   <option value="Cash">Cash</option>
                   <option value="Digital">Digital</option>
@@ -945,13 +945,13 @@ export default function SalesPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Payment Status <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={editPaymentStatus}
                   onChange={(e) => setEditPaymentStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
                   <option value="Paid">Paid</option>
                   <option value="Partial">Partial</option>
@@ -960,13 +960,13 @@ export default function SalesPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Notes (Optional)
                 </label>
                 <textarea
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600 resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   rows={3}
                   placeholder="Add any notes about this sale..."
                   maxLength={500}
@@ -987,7 +987,7 @@ export default function SalesPage() {
                     setEditingSale(null)
                     setEditError('')
                   }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                   disabled={updating}
                 >
                   Cancel
@@ -995,7 +995,7 @@ export default function SalesPage() {
                 <button
                   type="submit"
                   disabled={updating}
-                  className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
                 >
                   {updating ? 'Updating...' : 'Update Sale'}
                 </button>
@@ -1008,21 +1008,21 @@ export default function SalesPage() {
       {/* PDF Generation Modal */}
       {showPdfModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5 max-h-[90vh] overflow-y-auto">
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">Generate Sales Record</h2>
-              <p className="text-xs text-gray-600">Select filters for the sales report</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Generate Sales Record</h2>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Select filters for the sales report</p>
             </div>
 
             <div className="space-y-4 mb-5">
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   Period Type <span className="text-red-600">*</span>
                 </label>
                 <select
                   value={pdfPeriod}
                   onChange={(e) => setPdfPeriod(e.target.value as 'day' | 'month' | 'year')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600">
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                   <option value="day">Daily Report</option>
                   <option value="month">Monthly Report</option>
                   <option value="year">Yearly Report</option>
@@ -1030,7 +1030,7 @@ export default function SalesPage() {
               </div>
 
               <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700">
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                   {pdfPeriod === 'day' ? 'Select Date' : pdfPeriod === 'month' ? 'Select Month' : 'Select Year'} <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -1045,22 +1045,22 @@ export default function SalesPage() {
                   }}
                   min={pdfPeriod === 'year' ? '2020' : undefined}
                   max={pdfPeriod === 'year' ? new Date().getFullYear().toString() : undefined}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
               </div>
 
-              <div className="border-t-2 border-gray-300 pt-4">
-                <div className="mb-3 text-sm font-bold">Optional Filters</div>
+              <div className="border-t-2 border-gray-300 dark:border-gray-600 pt-4">
+                <div className="mb-3 text-sm font-bold dark:text-white">Optional Filters</div>
                 
                 {/* Cashier Filter */}
                 <div className="mb-4">
-                  <label className="block mb-1 font-medium text-xs text-gray-700">
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                     Cashier Name
                   </label>
                   <select
                     value={pdfCashierId}
                     onChange={(e) => setPdfCashierId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600">
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                     <option value="">All Cashiers</option>
                     {cashiers.map((cashier) => (
                       <option key={cashier.id} value={cashier.id}>
@@ -1069,24 +1069,22 @@ export default function SalesPage() {
                     ))}
                   </select>
                   {pdfCashierId && cashiers.find(c => c.id === pdfCashierId) && (
-                    <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded text-sm">
-                      <span className="text-text-secondary">Phone: </span>
-                      <span className="font-medium">
-                        {cashiers.find(c => c.id === pdfCashierId)?.phone_number || 'N/A'}
-                      </span>
+                    <div className="mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm dark:text-gray-300">
+                      <span className="text-gray-500 dark:text-gray-400">Cashier: </span>
+                      <span className="font-medium">{cashiers.find(c => c.id === pdfCashierId)?.full_name}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Customer Filter */}
                 <div>
-                  <label className="block mb-1 font-medium text-xs text-gray-700">
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
                     Customer Name
                   </label>
                   <select
                     value={pdfCustomerId}
                     onChange={(e) => setPdfCustomerId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600">
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                     <option value="">All Customers (No Filter)</option>
                     {customers.map((customer) => (
                       <option key={customer.id} value={customer.id}>
@@ -1095,7 +1093,7 @@ export default function SalesPage() {
                     ))}
                   </select>
                   {pdfCustomerId && customers.find(c => c.id === parseInt(pdfCustomerId)) && (
-                    <div className="mt-1 px-3 py-2 bg-gray-100 border border-gray-300 rounded text-sm">
+                    <div className="mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm dark:text-gray-300">
                       <span className="text-text-secondary">Phone: </span>
                       <span className="font-medium">
                         {customers.find(c => c.id === parseInt(pdfCustomerId))?.customer_phone || 'N/A'}
@@ -1105,8 +1103,8 @@ export default function SalesPage() {
                 </div>
               </div>
 
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded text-xs">
-                <p className="text-gray-600">
+              <div className="p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded text-xs">
+                <p className="text-gray-600 dark:text-gray-400">
                   The report will include sales for the selected {pdfPeriod}
                   {pdfCashierId && ' filtered by cashier'}
                   {pdfCustomerId && ' filtered by customer'}
@@ -1122,7 +1120,7 @@ export default function SalesPage() {
                   setPdfCashierId('')
                   setPdfCustomerId('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
                 disabled={generatingPdf}
               >
                 Cancel
@@ -1130,7 +1128,7 @@ export default function SalesPage() {
               <button
                 onClick={generatePDF}
                 disabled={generatingPdf}
-                className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
               >
                 {generatingPdf ? 'Generating...' : 'Generate PDF'}
               </button>
@@ -1142,16 +1140,16 @@ export default function SalesPage() {
       {/* Receipt Modal */}
       {showReceiptModal && receiptSale && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4 print:bg-white">
-          <div className="bg-white rounded border border-gray-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header (print:hidden) */}
-            <div className="flex justify-between items-center p-4 border-b border-gray-200 print:hidden">
-              <h2 className="text-lg font-semibold text-gray-900">Sale Receipt</h2>
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700 print:hidden">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sale Receipt</h2>
               <button
                 onClick={() => {
                   setShowReceiptModal(false)
                   setReceiptSale(null)
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <XIcon size={20} />
               </button>
@@ -1160,11 +1158,11 @@ export default function SalesPage() {
             {/* Receipt Content */}
             <div className="p-6">
               <div className="text-center mb-5">
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">{receiptSettings?.business_name || 'POS System'}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{receiptSettings?.business_name || 'POS System'}</h1>
                 {receiptSettings?.business_address && (
-                  <p className="text-sm text-gray-600 mt-1">{receiptSettings.business_address}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{receiptSettings.business_address}</p>
                 )}
-                <div className="text-xs text-gray-600 mt-2">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-2">
                   {receiptSettings?.business_phone && (
                     <p>Tel: {receiptSettings.business_phone}</p>
                   )}
@@ -1177,28 +1175,28 @@ export default function SalesPage() {
                 </div>
               </div>
 
-              <div className="mb-5 border-t border-b border-gray-200 py-4">
+              <div className="mb-5 border-t border-b border-gray-200 dark:border-gray-700 py-4">
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <p className="text-xs text-gray-600">Sale Number</p>
-                    <p className="font-mono font-semibold text-gray-900">{receiptSale.sale_number}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Sale Number</p>
+                    <p className="font-mono font-semibold text-gray-900 dark:text-white">{receiptSale.sale_number}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600">Date</p>
-                    <p className="font-medium text-gray-900">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Date</p>
+                    <p className="font-medium text-gray-900 dark:text-white">
                       {new Date(receiptSale.sale_date).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', hour12: true })}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600">Cashier</p>
-                    <p className="font-medium text-gray-900">{receiptSale.cashier_name || 'Unknown'}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Cashier</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{receiptSale.cashier_name || 'Unknown'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600">Payment Method</p>
-                    <p className="font-medium text-gray-900">{receiptSale.payment_method}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Payment Method</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{receiptSale.payment_method}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600">Payment Status</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Payment Status</p>
                     <p className={`font-medium ${receiptSale.payment_status === 'Partial' ? 'text-red-600' : 'text-gray-900'}`}>
                       {receiptSale.payment_status}
                       {receiptSale.payment_status === 'Partial' && ' ⚠️'}
@@ -1233,21 +1231,21 @@ export default function SalesPage() {
               </div>
 
               <table className="w-full mb-5">
-                <thead className="border-b border-gray-300">
+                <thead className="border-b border-gray-300 dark:border-gray-600">
                   <tr className="text-sm">
-                    <th className="text-left py-2 text-gray-700">Item</th>
-                    <th className="text-right py-2 text-gray-700">Qty</th>
-                    <th className="text-right py-2 text-gray-700">Price</th>
-                    <th className="text-right py-2 text-gray-700">Total</th>
+                    <th className="text-left py-2 text-gray-700 dark:text-gray-300">Item</th>
+                    <th className="text-right py-2 text-gray-700 dark:text-gray-300">Qty</th>
+                    <th className="text-right py-2 text-gray-700 dark:text-gray-300">Price</th>
+                    <th className="text-right py-2 text-gray-700 dark:text-gray-300">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {receiptSale.sale_items?.map((item: any) => (
-                    <tr key={item.id} className="border-b border-gray-200">
-                      <td className="py-2 text-sm text-gray-900">{item.product_name || item.products?.name || 'Unknown Product'}</td>
-                      <td className="text-right text-sm text-gray-900">{item.quantity}</td>
-                      <td className="text-right text-sm text-gray-900">{currency} {item.unit_price.toFixed(2)}</td>
-                      <td className="text-right font-medium text-sm text-gray-900">
+                    <tr key={item.id} className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="py-2 text-sm text-gray-900 dark:text-white">{item.product_name || item.products?.name || 'Unknown Product'}</td>
+                      <td className="text-right text-sm text-gray-900 dark:text-white">{item.quantity}</td>
+                      <td className="text-right text-sm text-gray-900 dark:text-white">{currency} {item.unit_price.toFixed(2)}</td>
+                      <td className="text-right font-medium text-sm text-gray-900 dark:text-white">
                         {currency} {item.subtotal.toFixed(2)}
                       </td>
                     </tr>
@@ -1255,12 +1253,12 @@ export default function SalesPage() {
                 </tbody>
               </table>
 
-              <div className="border-t border-gray-300 pt-4">
-                {receiptSale.discount_value > 0 && receiptSale.discount_type !== 'none' && (
+              <div className="border-t border-gray-300 dark:border-gray-600 pt-4">
+                {receiptSale.discount_value > 0 && (
                   <>
                     <div className="flex justify-between mb-2 text-sm">
-                      <span className="text-gray-600">Subtotal:</span>
-                      <span className="text-gray-900">
+                      <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
+                      <span className="text-gray-900 dark:text-white">
                         {currency} {(
                           receiptSale.discount_type === 'percentage'
                             ? receiptSale.total_amount / (1 - receiptSale.discount_value / 100)
@@ -1282,13 +1280,13 @@ export default function SalesPage() {
                     </div>
                   </>
                 )}
-                <div className="flex justify-between text-lg font-bold mb-2 text-gray-900">
+                <div className="flex justify-between text-lg font-bold mb-2 text-gray-900 dark:text-white">
                   <span>Total:</span>
                   <span>{currency} {receiptSale.total_amount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between mb-2 text-sm">
-                  <span className="text-gray-600">Amount Paid:</span>
-                  <span className="text-gray-900">{currency} {receiptSale.amount_paid.toFixed(2)}</span>
+                  <span className="text-gray-600 dark:text-gray-400">Amount Paid:</span>
+                  <span className="text-gray-900 dark:text-white">{currency} {receiptSale.amount_paid.toFixed(2)}</span>
                 </div>
                 {receiptSale.payment_status === 'Partial' ? (
                   <div className="flex justify-between text-base font-medium text-red-600">
@@ -1296,7 +1294,7 @@ export default function SalesPage() {
                     <span>{currency} {receiptSale.amount_due.toFixed(2)}</span>
                   </div>
                 ) : (
-                  <div className="flex justify-between text-base font-medium text-gray-900">
+                  <div className="flex justify-between text-base font-medium text-gray-900 dark:text-white">
                     <span>Change:</span>
                     <span>{currency} {(receiptSale.amount_paid - receiptSale.total_amount).toFixed(2)}</span>
                   </div>
@@ -1310,7 +1308,7 @@ export default function SalesPage() {
                 )}
               </div>
 
-              <div className="mt-5 text-center text-sm text-gray-600">
+              <div className="mt-5 text-center text-sm text-gray-600 dark:text-gray-400">
                 <p>{receiptSettings?.thank_you_message || 'Thank you for your business!'}</p>
                 {receiptSettings?.return_policy && (
                   <p className="text-xs mt-2">{receiptSettings.return_policy}</p>
@@ -1319,7 +1317,7 @@ export default function SalesPage() {
             </div>
 
             {/* Modal Actions (print:hidden) */}
-            <div className="flex gap-3 p-4 border-t border-gray-200 print:hidden">
+            <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-700 print:hidden">
               <PrintReceiptButton
                 sale={receiptSale}
                 className="flex-1"
@@ -1329,7 +1327,7 @@ export default function SalesPage() {
                   setShowReceiptModal(false)
                   setReceiptSale(null)
                 }}
-                className="flex-1 bg-white border border-gray-300 px-4 py-2.5 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-4 py-2.5 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:text-gray-300"
               >
                 Close
               </button>
@@ -1341,8 +1339,8 @@ export default function SalesPage() {
       {/* Delete Sale Modal */}
       {showDeleteModal && deletingSale && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <TrashIcon size={20} className="text-red-600" />
               Delete Sale
             </h2>
@@ -1365,18 +1363,18 @@ export default function SalesPage() {
               </ul>
             </div>
 
-            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded text-sm">
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Sale #:</span>{' '}
-                <span className="text-gray-900">{deletingSale.sale_description || deletingSale.sale_number}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Sale #:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{deletingSale.sale_description || deletingSale.sale_number}</span>
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Total:</span>{' '}
-                <span className="text-gray-900">{currency} {deletingSale.total_amount.toFixed(2)}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Total:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{currency} {deletingSale.total_amount.toFixed(2)}</span>
               </div>
               <div>
-                <span className="font-semibold text-gray-700">Date:</span>{' '}
-                <span className="text-gray-900">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
+                <span className="text-gray-900 dark:text-white">
                   {new Date(deletingSale.sale_date).toLocaleString('en-PK', {
                     timeZone: 'Asia/Karachi',
                     month: 'short',
@@ -1396,7 +1394,7 @@ export default function SalesPage() {
                   setDeletingSale(null)
                   setError('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >
                 Cancel
               </button>
@@ -1414,10 +1412,9 @@ export default function SalesPage() {
       {/* Mark for Review Modal */}
       {showReviewModal && reviewingSale && (
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded border border-gray-200 max-w-md w-full p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <WarningCircleIcon size={20} className="text-yellow-600" />
-              Mark Sale for Review
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              Mark for Review
             </h2>
 
             {error && (
@@ -1432,18 +1429,18 @@ export default function SalesPage() {
               </p>
             </div>
 
-            <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm">
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded text-sm">
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Sale #:</span>{' '}
-                <span className="text-gray-900">{reviewingSale.sale_description || reviewingSale.sale_number}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Sale #:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{reviewingSale.sale_description || reviewingSale.sale_number}</span>
               </div>
               <div className="mb-2">
-                <span className="font-semibold text-gray-700">Total:</span>{' '}
-                <span className="text-gray-900">${reviewingSale.total_amount.toFixed(2)}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Total:</span>{' '}
+                <span className="text-gray-900 dark:text-white">${reviewingSale.total_amount.toFixed(2)}</span>
               </div>
               <div>
-                <span className="font-semibold text-gray-700">Date:</span>{' '}
-                <span className="text-gray-900">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
+                <span className="text-gray-900 dark:text-white">
                   {new Date(reviewingSale.sale_date).toLocaleString('en-PK', {
                     timeZone: 'Asia/Karachi',
                     month: 'short',
@@ -1457,11 +1454,11 @@ export default function SalesPage() {
             </div>
 
             <div className="mb-5">
-              <label className="block mb-1 font-medium text-xs text-gray-700">Review Note*</label>
+              <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Review Note*</label>
               <textarea
                 value={reviewNote}
                 onChange={(e) => setReviewNote(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 rows={4}
                 placeholder="Explain why this sale needs review..."
               />
@@ -1475,7 +1472,7 @@ export default function SalesPage() {
                   setReviewNote('')
                   setError('')
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >
                 Cancel
               </button>

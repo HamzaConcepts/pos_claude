@@ -162,22 +162,22 @@ export default function JoinStorePage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Checking session...</div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center">
+        <div className="text-gray-600 dark:text-gray-400">Checking session...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f0f0f] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded-lg shadow-lg p-6 sm:p-8 max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-cyan-100 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-cyan-100 dark:bg-cyan-900/30 rounded-full mb-4">
             <UserPlus size={32} className="text-cyan-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Join Existing Store</h1>
-          <p className="text-gray-600 mt-1">Use a store code to join an existing store</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Join Existing Store</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Use a store code to join an existing store</p>
         </div>
 
         {/* Account Type Toggle */}
@@ -188,7 +188,7 @@ export default function JoinStorePage() {
             className={`flex-1 py-2.5 rounded-lg font-medium transition-colors ${
               accountType === 'Cashier'
                 ? 'bg-cyan-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
           >
             Join as Cashier
@@ -199,7 +199,7 @@ export default function JoinStorePage() {
             className={`flex-1 py-2.5 rounded-lg font-medium transition-colors ${
               accountType === 'Manager'
                 ? 'bg-cyan-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}
           >
             Join as Manager
@@ -207,7 +207,7 @@ export default function JoinStorePage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg text-sm">
             {error}
           </div>
         )}
@@ -215,7 +215,7 @@ export default function JoinStorePage() {
         <form onSubmit={handleSubmit}>
           {/* Store Code */}
           <div className="mb-4">
-            <label htmlFor="storeCode" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="storeCode" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Store Code <span className="text-red-600">*</span>
             </label>
             <input
@@ -224,20 +224,20 @@ export default function JoinStorePage() {
               type="text"
               value={formData.storeCode}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 uppercase text-center text-xl tracking-widest font-bold focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-800 uppercase text-center text-xl tracking-widest font-bold focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               placeholder="ABC"
               maxLength={3}
               required
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 mt-1 text-center">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
               Ask your store manager for the 3-character store code
             </p>
           </div>
 
           {/* Full Name */}
           <div className="mb-4">
-            <label htmlFor="fullName" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="fullName" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Full Name <span className="text-red-600">*</span>
             </label>
             <input
@@ -246,7 +246,7 @@ export default function JoinStorePage() {
               type="text"
               value={formData.fullName}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               placeholder="Your full name"
               required
               disabled={loading}
@@ -255,7 +255,7 @@ export default function JoinStorePage() {
 
           {/* Phone Number */}
           <div className="mb-4">
-            <label htmlFor="phoneNumber" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="phoneNumber" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Phone Number <span className="text-red-600">*</span>
             </label>
             <input
@@ -264,19 +264,19 @@ export default function JoinStorePage() {
               type="text"
               value={formData.phoneNumber}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               placeholder="03001234567"
               maxLength={11}
               required
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 mt-1">{formData.phoneNumber.length}/11 digits</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formData.phoneNumber.length}/11 digits</p>
           </div>
 
           {/* Email (Manager only) */}
           {accountType === 'Manager' && (
             <div className="mb-4">
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Email <span className="text-red-600">*</span>
               </label>
               <input
@@ -285,7 +285,7 @@ export default function JoinStorePage() {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 placeholder="manager@example.com"
                 required
                 disabled={loading}
@@ -295,7 +295,7 @@ export default function JoinStorePage() {
 
           {/* Password */}
           <div className="mb-4">
-            <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Password <span className="text-red-600">*</span>
             </label>
             <div className="relative">
@@ -305,7 +305,7 @@ export default function JoinStorePage() {
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 pr-12 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 placeholder="Min 8 characters"
                 required
                 disabled={loading}
@@ -313,7 +313,7 @@ export default function JoinStorePage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               >
                 {showPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
               </button>
@@ -322,7 +322,7 @@ export default function JoinStorePage() {
 
           {/* Confirm Password */}
           <div className="mb-6">
-            <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">
+            <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
               Confirm Password <span className="text-red-600">*</span>
             </label>
             <div className="relative">
@@ -332,7 +332,7 @@ export default function JoinStorePage() {
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 text-gray-900 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 pr-12 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 placeholder="Confirm your password"
                 required
                 disabled={loading}
@@ -340,7 +340,7 @@ export default function JoinStorePage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               >
                 {showConfirmPassword ? <EyeSlash size={20} /> : <Eye size={20} />}
               </button>
@@ -358,8 +358,8 @@ export default function JoinStorePage() {
         </form>
 
         {/* Info Box */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
+        <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <p className="text-sm text-blue-800 dark:text-blue-400">
             <strong>Note:</strong> After submitting your request, the store manager will need to approve your access. 
             You'll be able to login once approved.
           </p>
@@ -367,13 +367,13 @@ export default function JoinStorePage() {
 
         {/* Links */}
         <div className="mt-6 text-center space-y-2">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
             <Link href="/login" className="text-cyan-600 hover:text-cyan-700 font-semibold">
               Sign in
             </Link>
           </p>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Want to create a new store?{' '}
             <Link href="/signup" className="text-cyan-600 hover:text-cyan-700 font-semibold">
               Create Store

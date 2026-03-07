@@ -19,14 +19,14 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const status = url.searchParams.get('status') || 'pending'
 
-    const query = supabaseAdmin
+    let query = supabaseAdmin
       .from('join_requests')
       .select('id, store_id, user_id, user_name, user_phone, user_email, status, requested_at, reviewed_at, notes')
       .eq('user_type', 'Manager')
       .order('requested_at', { ascending: false })
 
     if (status !== 'all') {
-      query.eq('status', status)
+      query = query.eq('status', status)
     }
 
     const { data: requests, error } = await query

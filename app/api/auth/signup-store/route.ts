@@ -33,7 +33,6 @@ interface SignupStoreRequest {
   // Page 3
   cashierAccount: {
     accountName: string
-    accountPhone: string
     accountPassword: string
   }
   staffCashiers: StaffCashier[]
@@ -80,14 +79,6 @@ export async function POST(request: Request) {
     }
 
     // Cashier account validation
-    if (!cashierAccount?.accountPhone || !/^[0-9]{11}$/.test(cashierAccount.accountPhone)) {
-      errors.cashierAccountPhone = 'Cashier account phone must be 11 digits'
-    }
-
-    if (cashierAccount?.accountPhone === phoneNumber) {
-      errors.cashierAccountPhone = 'Cashier account phone must be different from manager phone'
-    }
-
     if (!cashierAccount?.accountPassword || cashierAccount.accountPassword.length < 6) {
       errors.cashierAccountPassword = 'Cashier password must be at least 6 characters'
     }
@@ -96,10 +87,8 @@ export async function POST(request: Request) {
       errors.cashierAccountName = 'Cashier account name is required'
     }
 
-    // Staff cashiers validation
-    if (!staffCashiers || staffCashiers.length === 0) {
-      errors.staffCashiers = 'At least one staff cashier is required'
-    } else {
+    // Staff cashiers validation (optional — only validate populated entries)
+    if (staffCashiers && staffCashiers.length > 0) {
       staffCashiers.forEach((cashier, idx) => {
         if (!cashier.name || cashier.name.trim().length === 0) {
           errors[`cashier_${idx}_name`] = 'Cashier name is required'
@@ -147,20 +136,8 @@ export async function POST(request: Request) {
     }
 
     // ═══════════════════════════════════════════════════════
-    // STEP 3: Check Uniqueness (Cashier Account Phone)
-    // ═══════════════════════════════════════════════════════
-    const { data: existingCashierAccount } = await supabaseAdmin
-      .from('cashier_accounts')
-      .select('id')
-      .eq('phone_number', cashierAccount.accountPhone)
-      .maybeSingle()
-
-    if (existingCashierAccount) {
-      return NextResponse.json(
-        { error: 'Cashier account phone already registered', field: 'cashierAccountPhone' },
-        { status: 409 }
-      )
-    }
+      // STEP 3: Check Uniqueness (skipped — no cashier phone required)
+      // ═══════════════════════════════════════════════════════
 
     // ═══════════════════════════════════════════════════════
     // STEP 4: Create Supabase Auth User (Manager)
@@ -243,12 +220,11 @@ export async function POST(request: Request) {
       // ═══════════════════════════════════════════════════════
       // STEP 8: Insert Cashier Account (Shared Login)
       // ═══════════════════════════════════════════════════════
-      // Note: password_hash will be auto-hashed by database trigger
+      // Note: no password_hash column — stored as plain, hashed by DB trigger
       const { data: cashierAcct, error: cashierAcctError } = await supabaseAdmin
         .from('cashier_accounts')
         .insert([{
           full_name: cashierAccount.accountName.trim(),
-          phone_number: cashierAccount.accountPhone,
           password_hash: cashierAccount.accountPassword, // Auto-hashed by trigger
           store_id: store.id,
           is_active: false,
@@ -262,33 +238,32 @@ export async function POST(request: Request) {
       }
 
       // ═══════════════════════════════════════════════════════
-      // STEP 9: Insert Staff Cashiers (Bulk)
+      // STEP 9: Insert Staff Cashiers (Bulk, optional)
       // ═══════════════════════════════════════════════════════
-      const staffRecords = staffCashiers.map((cashier) => ({
-        store_id: store.id,
-        full_name: cashier.name.trim(),
-        phone_number: cashier.phone,
-        commission_rate: cashier.commissionRate || 0,
-        salary: 0,
-        is_active: false,
-      }))
+      if (staffCashiers && staffCashiers.length > 0) {
+        const staffRecords = staffCashiers.map((cashier) => ({
+          store_id: store.id,
+          full_name: cashier.name.trim(),
+          phone_number: cashier.phone,
+          commission_rate: cashier.commissionRate || 0,
+          salary: 0,
+          is_active: false,
+        }))
 
-      const { data: staffData, error: staffError } = await supabaseAdmin
-        .from('cashiers')
-        .insert(staffRecords)
-        .select()
+        const { error: staffError } = await supabaseAdmin
+          .from('cashiers')
+          .insert(staffRecords)
 
-      if (staffError) {
-        console.error('Error creating staff cashiers:', staffError)
-        throw new Error(`Staff cashier creation failed: ${staffError.message}`)
+        if (staffError) {
+          console.error('Error creating staff cashiers:', staffError)
+          throw new Error(`Staff cashier creation failed: ${staffError.message}`)
+        }
       }
 
       // ═══════════════════════════════════════════════════════
       // STEP 10: Create Signup Request for Super-Admin Approval
       // ═══════════════════════════════════════════════════════
-      // Reuses join_requests table (user_type='Manager') so super-admin can
-      // approve or deny without any schema changes.
-      await supabaseAdmin
+      const { error: joinReqError } = await supabaseAdmin
         .from('join_requests')
         .insert([{
           store_id: store.id,
@@ -299,6 +274,11 @@ export async function POST(request: Request) {
           user_email: email.toLowerCase().trim(),
           status: 'pending',
         }])
+
+      if (joinReqError) {
+        console.error('Error creating join request:', joinReqError)
+        throw new Error(`Join request creation failed: ${joinReqError.message}`)
+      }
 
       // ═══════════════════════════════════════════════════════
       // STEP 11: Return Pending Response

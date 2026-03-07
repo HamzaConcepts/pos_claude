@@ -74,7 +74,7 @@ export async function POST(
       ])
 
       // 3. Mark request as approved
-      await supabaseAdmin
+      const { error: approveUpdateError } = await supabaseAdmin
         .from('join_requests')
         .update({
           status: 'approved',
@@ -82,6 +82,7 @@ export async function POST(
           notes: notes || null,
         })
         .eq('id', requestId)
+      if (approveUpdateError) console.error('Failed to update join_request status to approved:', approveUpdateError)
 
       return NextResponse.json({ success: true, action: 'approved' })
     }
@@ -90,7 +91,7 @@ export async function POST(
     if (action === 'deny') {
       // 1. Mark request as rejected first (so FK constraints don't break
       //    if the store/manager get cleaned up later)
-      await supabaseAdmin
+      const { error: denyUpdateError } = await supabaseAdmin
         .from('join_requests')
         .update({
           status: 'rejected',
@@ -98,6 +99,7 @@ export async function POST(
           notes: notes || null,
         })
         .eq('id', requestId)
+      if (denyUpdateError) console.error('Failed to update join_request status to rejected:', denyUpdateError)
 
       // 2. Ban the Supabase auth user (~100 year ban)
       await supabaseAdmin.auth.admin.updateUserById(managerId, {

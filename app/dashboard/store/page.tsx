@@ -476,7 +476,7 @@ export default function StorePage() {
       case 'Cashier':
         return 'bg-gray-500 text-white'
       default:
-        return 'bg-gray-200 text-gray-900'
+        return 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
     }
   }
 
@@ -663,11 +663,11 @@ export default function StorePage() {
         <div>
           {/* Pending Join Requests */}
           {joinRequests.length > 0 && (
-            <div className="mb-5 bg-white rounded border border-gray-200 overflow-hidden">
+            <div className="mb-5 bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
               <div className="p-3 bg-yellow-50 border-b border-yellow-200">
                 <div className="flex items-center gap-2">
                   <ClockIcon className="text-yellow-600" size={16} />
-                  <h2 className="text-base font-semibold text-gray-900">Pending Join Requests ({joinRequests.length})</h2>
+                  <h2 className="text-base font-semibold text-gray-900 dark:text-white">Pending Join Requests ({joinRequests.length})</h2>
                 </div>
               </div>
 
@@ -675,7 +675,7 @@ export default function StorePage() {
                 {joinRequests.map((request: JoinRequest) => (
                   <div
                     key={request.id}
-                    className="flex items-center justify-between p-3 mb-2.5 bg-gray-50 rounded border border-gray-200 last:mb-0"
+                    className="flex items-center justify-between p-3 mb-2.5 bg-gray-50 dark:bg-[#111] rounded border border-gray-200 dark:border-gray-700 last:mb-0"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2.5">
@@ -683,8 +683,8 @@ export default function StorePage() {
                           {request.user_name?.charAt(0).toUpperCase() || '?'}
                         </div>
                         <div>
-                          <p className="font-semibold text-sm text-gray-900">{request.user_name}</p>
-                          <p className="text-xs text-gray-600">
+                          <p className="font-semibold text-sm text-gray-900 dark:text-white">{request.user_name}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
                             {request.user_email || request.user_phone}
                           </p>
                           <div className="flex items-center gap-2.5 mt-0.5">
@@ -694,7 +694,7 @@ export default function StorePage() {
                               {request.user_type === 'Manager' ? <ShieldIcon size={10} /> : <UserIcon size={10} />}
                               {request.user_type}
                             </span>
-                            <span className="text-xs text-gray-600">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
                               {new Date(request.requested_at).toLocaleDateString('en-PK', {
                                 timeZone: 'Asia/Karachi',
                                 month: 'short',
@@ -734,70 +734,70 @@ export default function StorePage() {
 
           {/* User Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
-            <div className="bg-white p-4 rounded border border-gray-200">
+            <div className="bg-white dark:bg-[#1a1a1a] p-4 rounded border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2 mb-1.5">
                 <ShieldIcon className="text-cyan-600" size={18} />
-                <span className="text-sm font-medium text-gray-700">Managers</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Managers</span>
               </div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {users.filter(u => u.role === 'Manager').length}
               </p>
             </div>
 
-            <div className="bg-white p-4 rounded border border-gray-200">
+            <div className="bg-white dark:bg-[#1a1a1a] p-4 rounded border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2 mb-1.5">
                 <UserIcon className="text-cyan-600" size={18} />
-                <span className="text-sm font-medium text-gray-700">Cashiers</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Cashiers</span>
               </div>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
                 {cashiersForUserTab.length}
               </p>
             </div>
           </div>
 
           {/* Users Table */}
-          <div className="bg-white rounded border border-gray-200 overflow-hidden">
-            <div className="p-3 bg-gray-50 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-gray-900">All Users ({users.filter(u => u.role === 'Manager').length + cashiersForUserTab.length})</h2>
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">All Users ({users.filter(u => u.role === 'Manager').length + cashiersForUserTab.length})</h2>
             </div>
 
             {users.filter(u => u.role === 'Manager').length === 0 && cashiersForUserTab.length === 0 ? (
-              <div className="p-6 text-center text-gray-600 text-sm">
+              <div className="p-6 text-center text-gray-600 dark:text-gray-400 text-sm">
                 No users found
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700">Name</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700">Contact</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700">Role</th>
-                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700">Details</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Name</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Contact</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Role</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-700 dark:text-gray-300">Details</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.filter(u => u.role === 'Manager').map((user, index) => (
                       <tr
                         key={`manager-${user.id}`}
-                        className="border-b border-gray-100 hover:bg-gray-50"
+                        className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 bg-cyan-600 text-white rounded-full flex items-center justify-center font-semibold text-xs">
                               {user.full_name.charAt(0).toUpperCase()}
                             </div>
-                            <span className="font-medium text-sm text-gray-900">{user.full_name}</span>
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">{user.full_name}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-xs text-gray-600">{user.email}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{user.email}</td>
                         <td className="px-3 py-2.5">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium ${getRoleColor('Manager')}`}>
                             {getRoleIcon('Manager')}
                             Manager
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 text-xs text-gray-600">
+                        <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">
                           {new Date(user.created_at).toLocaleDateString('en-PK', {
                             timeZone: 'Asia/Karachi',
                             month: 'short',
@@ -810,24 +810,24 @@ export default function StorePage() {
                     {cashiersForUserTab.map((cashier, index) => (
                       <tr
                         key={`cashier-${cashier.id}`}
-                        className="border-b border-gray-100 hover:bg-gray-50"
+                        className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 bg-gray-500 text-white rounded-full flex items-center justify-center font-semibold text-xs">
                               {cashier.full_name.charAt(0).toUpperCase()}
                             </div>
-                            <span className="font-medium text-sm text-gray-900">{cashier.full_name}</span>
+                            <span className="font-medium text-sm text-gray-900 dark:text-white">{cashier.full_name}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-xs text-gray-600">{cashier.phone_number}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">{cashier.phone_number}</td>
                         <td className="px-3 py-2.5">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-medium ${getRoleColor('Cashier')}`}>
                             {getRoleIcon('Cashier')}
                             Cashier
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 text-xs text-gray-600">
+                        <td className="px-3 py-2.5 text-xs text-gray-600 dark:text-gray-400">
                           Commission: {cashier.commission_rate}%
                         </td>
                       </tr>
@@ -839,8 +839,8 @@ export default function StorePage() {
           </div>
 
           {/* Role Permissions Info */}
-          <div className="mt-5 bg-gray-50 p-4 rounded border border-gray-200">
-            <h3 className="font-semibold mb-2.5 text-sm text-gray-900">Role Permissions</h3>
+          <div className="mt-5 bg-gray-50 dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+            <h3 className="font-semibold mb-2.5 text-sm text-gray-900 dark:text-white">Role Permissions</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
@@ -1284,7 +1284,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
       </div>
 
       {categories.length === 0 ? (
-        <div className="bg-white rounded border border-gray-200 p-8 text-center">
+        <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 p-8 text-center">
           <TagIcon size={40} className="mx-auto mb-3 text-gray-400" />
           <p className="text-text-secondary text-sm mb-3">No categories yet</p>
           <button
@@ -1297,8 +1297,8 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
       ) : (
         <div className="space-y-3">
           {categories.map((category: Category) => (
-            <div key={category.id} className="bg-white rounded border border-gray-200 overflow-hidden">
-              <div className="p-3 bg-gray-100 flex justify-between items-center">
+            <div key={category.id} className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="p-3 bg-gray-100 dark:bg-[#111] flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <TagIcon size={17} />
                   <h3 className="font-bold text-sm">{category.name}</h3>
@@ -1314,14 +1314,14 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => onAddSubcategory(category.id)}
-                    className="flex items-center gap-1 px-2.5 py-1 bg-white border border-black rounded hover:bg-gray-50 transition-colors text-xs"
+                    className="flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-gray-800 border border-black dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-xs dark:text-gray-200"
                   >
                     <PlusIcon size={12} />
                     Add Subcategory
                   </button>
                   <button
                     onClick={() => onEditCategory(category)}
-                    className="p-1.5 hover:bg-gray-200 rounded transition-colors"
+                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
                     title="Edit category"
                   >
                     <PencilSimpleIcon size={14} />
@@ -1343,7 +1343,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
                     {category.subcategories.map((sub: Subcategory) => (
                       <div
                         key={sub.id}
-                        className="flex items-center justify-between p-2 bg-bg-secondary rounded border border-gray-300"
+                        className="flex items-center justify-between p-2 bg-bg-secondary dark:bg-[#111] rounded border border-gray-300 dark:border-gray-600"
                       >
                         <div className="flex-1">
                           <p className="font-medium text-sm">{sub.name}</p>
@@ -1354,7 +1354,7 @@ function CategoriesTab({ categories, onAddCategory, onEditCategory, onAddSubcate
                         <div className="flex items-center gap-1 ml-2">
                           <button
                             onClick={() => onEditSubcategory(sub)}
-                            className="p-1 hover:bg-gray-300 rounded transition-colors"
+                            className="p-1 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition-colors"
                             title="Edit subcategory"
                           >
                             <PencilSimpleIcon size={12} />
@@ -1533,37 +1533,37 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
       {/* Grid Layout for Store Information and Receipt Settings */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Store Information Card */}
-        <div className="bg-white rounded border border-gray-200 p-4">
-          <h2 className="text-base font-bold mb-3 flex items-center gap-2">
+        <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 p-4">
+          <h2 className="text-base font-bold mb-3 flex items-center gap-2 dark:text-white">
             <StorefrontIcon size={18} />
             Store Information
           </h2>
 
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-medium mb-1 text-gray-600">Store Name</label>
-              <div className="p-2 bg-gray-100 rounded border border-gray-300 text-sm">
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Store Name</label>
+              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 text-sm dark:text-white">
                 {storeInfo?.store_name || 'Not set'}
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 text-gray-600">Auto-Generated Store Code (3-Digit)</label>
-              <div className="p-2 bg-gray-100 rounded border border-gray-300">
-                <span className="font-mono font-bold">{storeInfo?.store_code || 'Not set'}</span>
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Auto-Generated Store Code (3-Digit)</label>
+              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                <span className="font-mono font-bold dark:text-white">{storeInfo?.store_code || 'Not set'}</span>
               </div>
               <p className="text-xs text-text-secondary mt-1">Automatically generated</p>
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 text-gray-600">Custom Store Code</label>
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Custom Store Code</label>
               {editing ? (
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={storeCode}
                     onChange={(e) => setStoreCode(e.target.value)}
-                    className="flex-1 px-2 py-1.5 border border-gray-200 rounded text-sm"
+                    className="flex-1 px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded text-sm dark:bg-gray-800 dark:text-white"
                     placeholder="Enter custom store code"
                     maxLength={20}
                   />
@@ -1580,17 +1580,17 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                       setStoreCode(storeInfo?.store_code || '')
                       setCurrency(storeInfo?.currency || 'PKR')
                     }}
-                    className="px-3 py-1.5 border border-gray-200 rounded hover:bg-gray-100 text-xs"
+                    className="px-3 py-1.5 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-xs dark:text-gray-300"
                   >
                     Cancel
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between p-2 bg-gray-100 rounded border border-gray-300">
-                  <span className="text-sm font-mono">{storeInfo?.store_code || 'Not set'}</span>
+                <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                  <span className="text-sm font-mono dark:text-white">{storeInfo?.store_code || 'Not set'}</span>
                   <button
                     onClick={() => setEditing(true)}
-                    className="flex items-center gap-1 px-2 py-1 bg-white border border-black rounded hover:bg-gray-50 text-xs"
+                    className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-700 border border-black dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 text-xs dark:text-gray-200"
                   >
                     <PencilSimpleIcon size={12} />
                     Edit
@@ -1600,12 +1600,12 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
             </div>
 
             <div>
-              <label className="block text-xs font-medium mb-1 text-gray-600">Store Currency</label>
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Store Currency</label>
               {editing ? (
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full px-2 py-1.5 border border-gray-200 rounded text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded text-sm dark:bg-gray-800 dark:text-white"
                 >
                   <option value="PKR">PKR - Pakistani Rupee</option>
                   <option value="USD">USD - US Dollar</option>
@@ -1618,11 +1618,11 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                   <option value="AUD">AUD - Australian Dollar</option>
                 </select>
               ) : (
-                <div className="flex items-center justify-between p-2 bg-gray-100 rounded border border-gray-300">
-                  <span className="text-sm font-mono">{storeInfo?.currency || 'PKR'}</span>
+                <div className="flex items-center justify-between p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                  <span className="text-sm font-mono dark:text-white">{storeInfo?.currency || 'PKR'}</span>
                   <button
                     onClick={() => setEditing(true)}
-                    className="flex items-center gap-1 px-2 py-1 bg-white border border-black rounded hover:bg-gray-50 text-xs"
+                    className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-700 border border-black dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 text-xs dark:text-gray-200"
                   >
                     <PencilSimpleIcon size={12} />
                     Edit
@@ -1634,11 +1634,11 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
 
             {/* Store Logo */}
             <div>
-              <label className="block text-xs font-medium mb-1 text-gray-600">Store Logo</label>
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Store Logo</label>
               <p className="text-xs text-gray-400 mb-2">Used in receipts and quotation PDFs. Max 5 MB (PNG, JPEG, WebP, SVG)</p>
               {logoUrl ? (
                 <div className="flex items-start gap-3">
-                  <div className="w-20 h-20 rounded border border-gray-300 bg-gray-50 flex items-center justify-center overflow-hidden">
+                  <div className="w-20 h-20 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
                     <img
                       src={logoUrl}
                       alt="Store logo"
@@ -1647,7 +1647,7 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <label className="cursor-pointer">
-                      <span className="flex items-center gap-1 px-2 py-1 bg-white border border-black rounded hover:bg-gray-50 text-xs">
+                      <span className="flex items-center gap-1 px-2 py-1 bg-white dark:bg-gray-700 border border-black dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 text-xs dark:text-gray-200">
                         <PencilSimpleIcon size={12} />
                         Change
                       </span>
@@ -1671,7 +1671,7 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                 </div>
               ) : (
                 <label className="cursor-pointer">
-                  <div className={`w-full p-4 rounded border-2 border-dashed border-gray-300 hover:border-gray-400 bg-gray-50 text-center transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div className={`w-full p-4 rounded border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 bg-gray-50 dark:bg-gray-800 text-center transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
                     <StorefrontIcon size={28} className="mx-auto mb-1 text-gray-400" />
                     <p className="text-xs text-gray-500">
                       {logoUploading ? 'Uploading...' : 'Click to upload logo'}
@@ -1694,19 +1694,19 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
       </div>
 
       {/* Cashiers Information Card - Full Width */}
-      <div className="bg-white rounded border border-gray-200 p-4">
-        <h2 className="text-base font-bold mb-3 flex items-center gap-2">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 p-4">
+        <h2 className="text-base font-bold mb-3 flex items-center gap-2 dark:text-white">
           <UserIcon size={18} />
           Cashiers Information
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Summary Card */}
-          <div className="p-3 bg-gray-50 rounded border border-gray-300">
+          <div className="p-3 bg-gray-50 dark:bg-[#111] rounded border border-gray-300 dark:border-gray-600">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-600">Total Cashiers</p>
-                <p className="text-xl font-bold">{cashiers.length}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Total Cashiers</p>
+                <p className="text-xl font-bold dark:text-white">{cashiers.length}</p>
               </div>
               <div className="w-10 h-10 bg-cyan-600 text-white rounded-full flex items-center justify-center">
                 <UserIcon size={20} />
@@ -1721,14 +1721,14 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
             ) : cashiers.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {cashiers.map((cashier: any) => (
-                  <div key={cashier.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
+                  <div key={cashier.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#111] rounded border border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 bg-gray-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
                         {cashier.full_name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{cashier.full_name}</p>
-                        <p className="text-xs text-gray-500">{cashier.phone_number}</p>
+                        <p className="font-medium text-sm dark:text-white">{cashier.full_name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{cashier.phone_number}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -1797,10 +1797,10 @@ function CategoryModal({ category, onClose }: any) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border border-gray-200 w-full max-w-md">
-        <div className="p-3 bg-gray-50 border-b border-gray-200 text-gray-900 flex justify-between items-center">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 w-full max-w-md">
+        <div className="p-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white flex justify-between items-center">
           <h2 className="text-lg font-bold">{category ? 'Edit Category' : 'Add Category'}</h2>
-          <button onClick={() => onClose(false)} className="hover:bg-gray-800 p-1 rounded">
+          <button onClick={() => onClose(false)} className="hover:bg-gray-800 dark:hover:bg-gray-600 p-1 rounded dark:text-gray-400 dark:hover:text-gray-200">
             <XIcon size={20} />
           </button>
         </div>
@@ -1813,23 +1813,23 @@ function CategoryModal({ category, onClose }: any) {
           )}
 
           <div className="mb-3">
-            <label className="block text-sm font-medium mb-1.5">Category Name *</label>
+            <label className="block text-sm font-medium mb-1.5 dark:text-gray-200">Category Name *</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded text-sm dark:bg-gray-800 dark:text-white"
               placeholder="e.g., Electronics, Clothing"
               required
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1.5">Description</label>
+            <label className="block text-sm font-medium mb-1.5 dark:text-gray-200">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded text-sm dark:bg-gray-800 dark:text-white"
               rows={3}
               placeholder="Optional description"
             />
@@ -1847,7 +1847,7 @@ function CategoryModal({ category, onClose }: any) {
                 📱 Requires IMEI Tracking
               </span>
             </label>
-            <p className="text-xs text-gray-500 mt-1 ml-6">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
               Products in this category will require IMEI numbers (for phones, tablets, etc.)
             </p>
             {category && requiresImei !== category.requires_imei && (
@@ -1861,7 +1861,7 @@ function CategoryModal({ category, onClose }: any) {
             <button
               type="button"
               onClick={() => onClose(false)}
-              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+              className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-sm dark:text-gray-300"
             >
               Cancel
             </button>
@@ -1923,10 +1923,10 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border border-gray-200 w-full max-w-md">
-        <div className="p-3 bg-gray-50 border-b border-gray-200 text-gray-900 flex justify-between items-center">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 w-full max-w-md">
+        <div className="p-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white flex justify-between items-center">
           <h2 className="text-lg font-bold">{subcategory ? 'Edit Subcategory' : 'Add Subcategory'}</h2>
-          <button onClick={() => onClose(false)} className="hover:bg-gray-800 p-1 rounded">
+          <button onClick={() => onClose(false)} className="hover:bg-gray-800 dark:hover:bg-gray-600 p-1 rounded dark:text-gray-400 dark:hover:text-gray-200">
             <XIcon size={20} />
           </button>
         </div>
@@ -1939,23 +1939,23 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
           )}
 
           <div className="mb-3">
-            <label className="block text-sm font-medium mb-1.5">Subcategory Name *</label>
+            <label className="block text-sm font-medium mb-1.5 dark:text-gray-200">Subcategory Name *</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded text-sm dark:bg-gray-800 dark:text-white"
               placeholder="e.g., Smartphones, T-Shirts"
               required
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1.5">Description</label>
+            <label className="block text-sm font-medium mb-1.5 dark:text-gray-200">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded text-sm"
+              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded text-sm dark:bg-gray-800 dark:text-white"
               rows={3}
               placeholder="Optional description"
             />
@@ -1965,7 +1965,7 @@ function SubcategoryModal({ subcategory, categoryId, onClose }: any) {
             <button
               type="button"
               onClick={() => onClose(false)}
-              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+              className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-sm dark:text-gray-300"
             >
               Cancel
             </button>
@@ -2014,12 +2014,12 @@ function InitialStockTab() {
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded p-6">
+      <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded p-6">
         <div className="text-center">
           <div className="mb-4">
             <PlusIcon size={48} className="mx-auto text-gray-400 mb-2" />
-            <h3 className="text-lg font-bold mb-2">Add Initial Stock</h3>
-            <p className="text-sm text-gray-600 mb-4">
+            <h3 className="text-lg font-bold mb-2 dark:text-white">Add Initial Stock</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Click below to add products and their initial quantities to your inventory
             </p>
           </div>
@@ -2085,11 +2085,11 @@ function CashiersTab({ cashiers, onAddCashier, onEditCashier, onRefresh }: any) 
   }
 
   return (
-    <div className="bg-white rounded border border-gray-200 overflow-hidden">
-      <div className="p-4 bg-gray-50 border-b-2 border-black flex justify-between items-center">
+    <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="p-4 bg-gray-50 dark:bg-gray-800 border-b-2 border-black dark:border-gray-600 flex justify-between items-center">
         <div>
-          <h2 className="text-lg font-bold">Cashiers</h2>
-          <p className="text-sm text-gray-600">Manage store cashiers and their commission rates</p>
+          <h2 className="text-lg font-bold dark:text-white">Cashiers</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Manage store cashiers and their commission rates</p>
         </div>
         <button
           onClick={onAddCashier}
@@ -2112,7 +2112,7 @@ function CashiersTab({ cashiers, onAddCashier, onEditCashier, onRefresh }: any) 
             {cashiers.map((cashier: Cashier) => (
               <div
                 key={cashier.id}
-                className="p-4 border-2 border-gray-300 rounded flex justify-between items-center hover:border-black transition-colors"
+                className="p-4 border-2 border-gray-300 dark:border-gray-600 rounded flex justify-between items-center hover:border-black dark:hover:border-gray-400 transition-colors"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
@@ -2120,11 +2120,11 @@ function CashiersTab({ cashiers, onAddCashier, onEditCashier, onRefresh }: any) 
                       {cashier.full_name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-bold">{cashier.full_name}</p>
-                      <p className="text-sm text-gray-600">{cashier.phone_number}</p>
+                      <p className="font-bold dark:text-white">{cashier.full_name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{cashier.phone_number}</p>
                       <div className="flex gap-3 mt-1">
-                        <p className="text-xs text-gray-500">Salary: ${cashier.salary?.toLocaleString() || 0}</p>
-                        <p className="text-xs text-gray-500">Commission: {cashier.commission_rate}%</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Salary: ${cashier.salary?.toLocaleString() || 0}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Commission: {cashier.commission_rate}%</p>
                       </div>
                     </div>
                   </div>
@@ -2132,7 +2132,7 @@ function CashiersTab({ cashiers, onAddCashier, onEditCashier, onRefresh }: any) 
                 <div className="flex gap-2">
                   <button
                     onClick={() => onEditCashier(cashier)}
-                    className="p-2 text-gray-600 hover:text-black hover:bg-gray-100 rounded transition-colors"
+                    className="p-2 text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                     title="Edit Cashier"
                   >
                     <PencilSimpleIcon size={16} />
@@ -2209,10 +2209,10 @@ function CashierModal({ cashier, onClose }: { cashier: Cashier | null, onClose: 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded border border-gray-200 w-full max-w-md">
-        <div className="p-4 border-b-2 border-black flex justify-between items-center">
-          <h2 className="text-lg font-bold">{cashier ? 'Edit Cashier' : 'Add Cashier'}</h2>
-          <button onClick={() => onClose()} className="text-gray-500 hover:text-black">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 w-full max-w-md">
+        <div className="p-4 border-b-2 border-black dark:border-gray-600 flex justify-between items-center">
+          <h2 className="text-lg font-bold dark:text-white">{cashier ? 'Edit Cashier' : 'Add Cashier'}</h2>
+          <button onClick={() => onClose()} className="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-gray-200">
             <XIcon size={20} />
           </button>
         </div>
@@ -2225,33 +2225,33 @@ function CashierModal({ cashier, onClose }: { cashier: Cashier | null, onClose: 
           )}
 
           <div className="mb-4">
-            <label className="block text-sm font-bold mb-2">
+            <label className="block text-sm font-bold mb-2 dark:text-gray-200">
               Full Name <span className="text-red-600">*</span>
             </label>
             <input
               type="text"
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="Enter cashier name"
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-bold mb-2">
+            <label className="block text-sm font-bold mb-2 dark:text-gray-200">
               Phone Number <span className="text-red-600">*</span>
             </label>
             <input
               type="tel"
               value={formData.phone_number}
               onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="Enter phone number"
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-bold mb-2">
+            <label className="block text-sm font-bold mb-2 dark:text-gray-200">
               Monthly Salary
             </label>
             <input
@@ -2260,13 +2260,13 @@ function CashierModal({ cashier, onClose }: { cashier: Cashier | null, onClose: 
               min="0"
               value={formData.salary}
               onChange={(e) => setFormData({ ...formData, salary: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="Enter monthly salary (e.g., 25000)"
             />
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-bold mb-2">
+            <label className="block text-sm font-bold mb-2 dark:text-gray-200">
               Commission Rate (%)
             </label>
             <input
@@ -2276,7 +2276,7 @@ function CashierModal({ cashier, onClose }: { cashier: Cashier | null, onClose: 
               max="100"
               value={formData.commission_rate}
               onChange={(e) => setFormData({ ...formData, commission_rate: parseFloat(e.target.value) || 0 })}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="Enter commission rate (e.g., 5.5 for 5.5%)"
             />
           </div>
@@ -2285,7 +2285,7 @@ function CashierModal({ cashier, onClose }: { cashier: Cashier | null, onClose: 
             <button
               type="button"
               onClick={() => onClose()}
-              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+              className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-sm dark:text-gray-300"
             >
               Cancel
             </button>
@@ -2314,11 +2314,11 @@ function SuppliersTab({ suppliers, onAddSupplier, onEditSupplier, onRecordPaymen
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
-      <div className="p-5 border-b border-gray-200">
+    <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="p-5 border-b border-gray-200 dark:border-gray-700">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-lg font-semibold">Suppliers</h2>
+            <h2 className="text-lg font-semibold dark:text-white">Suppliers</h2>
             <p className="text-sm text-text-secondary mt-0.5">Manage your suppliers and track payments</p>
           </div>
           <button
@@ -2333,18 +2333,18 @@ function SuppliersTab({ suppliers, onAddSupplier, onEditSupplier, onRecordPaymen
 
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <tr>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Name</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Initial Balance</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Balance Owed</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Total Paid</th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Last Payment</th>
-              <th className="px-5 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Name</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Phone</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Initial Balance</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Balance Owed</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Total Paid</th>
+              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Last Payment</th>
+              <th className="px-5 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {suppliers.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-sm text-gray-500">
@@ -2353,17 +2353,17 @@ function SuppliersTab({ suppliers, onAddSupplier, onEditSupplier, onRecordPaymen
               </tr>
             ) : (
               suppliers.map((supplier: any) => (
-                <tr key={supplier.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 text-sm font-medium">{supplier.supplier_name}</td>
-                  <td className="px-5 py-3 text-sm">{supplier.phone_number}</td>
-                  <td className="px-5 py-3 text-sm">{formatCurrency(supplier.initial_balance || 0)}</td>
+                <tr key={supplier.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-5 py-3 text-sm font-medium dark:text-white">{supplier.supplier_name}</td>
+                  <td className="px-5 py-3 text-sm dark:text-gray-400">{supplier.phone_number}</td>
+                  <td className="px-5 py-3 text-sm dark:text-gray-400">{formatCurrency(supplier.initial_balance || 0)}</td>
                   <td className="px-5 py-3 text-sm">
                     <span className={supplier.balance_owed > 0 ? 'text-red-600 font-semibold' : 'text-green-600'}>
                       {formatCurrency(supplier.balance_owed || 0)}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-sm">{formatCurrency(supplier.total_paid || 0)}</td>
-                  <td className="px-5 py-3 text-sm">
+                  <td className="px-5 py-3 text-sm dark:text-gray-400">{formatCurrency(supplier.total_paid || 0)}</td>
+                  <td className="px-5 py-3 text-sm dark:text-gray-400">
                     {supplier.last_payment_date ? new Date(supplier.last_payment_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' }) : 'Never'}
                   </td>
                   <td className="px-5 py-3 text-sm">
@@ -2446,10 +2446,10 @@ function SupplierModal({ supplier, onClose }: { supplier: any, onClose: (refresh
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-5 border-b border-gray-200">
-          <h3 className="text-lg font-semibold">{supplier ? 'Edit Supplier' : 'Add New Supplier'}</h3>
-          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold dark:text-white">{supplier ? 'Edit Supplier' : 'Add New Supplier'}</h3>
+          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <XIcon size={20} />
           </button>
         </div>
@@ -2462,7 +2462,7 @@ function SupplierModal({ supplier, onClose }: { supplier: any, onClose: (refresh
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
               Supplier Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -2470,13 +2470,13 @@ function SupplierModal({ supplier, onClose }: { supplier: any, onClose: (refresh
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               required
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="Enter supplier name"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
               Phone Number <span className="text-red-500">*</span>
             </label>
             <input
@@ -2484,14 +2484,14 @@ function SupplierModal({ supplier, onClose }: { supplier: any, onClose: (refresh
               value={formData.phone_number}
               onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
               required
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="Enter phone number"
             />
           </div>
 
           {!supplier && (
             <div>
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 dark:text-gray-200">
                 Initial Balance (if migrating existing supplier)
               </label>
               <input
@@ -2499,10 +2499,10 @@ function SupplierModal({ supplier, onClose }: { supplier: any, onClose: (refresh
                 step="0.01"
                 value={formData.initial_balance}
                 onChange={(e) => setFormData({ ...formData, initial_balance: e.target.value })}
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+                className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
                 placeholder="0.00"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Enter any existing balance owed to this supplier (for migration purposes)
               </p>
             </div>
@@ -2512,7 +2512,7 @@ function SupplierModal({ supplier, onClose }: { supplier: any, onClose: (refresh
             <button
               type="button"
               onClick={() => onClose()}
-              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+              className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-sm dark:text-gray-300"
             >
               Cancel
             </button>
@@ -2595,10 +2595,10 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md">
-        <div className="flex justify-between items-center p-5 border-b border-gray-200">
-          <h3 className="text-lg font-semibold">Record Payment</h3>
-          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded-lg w-full max-w-md">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold dark:text-white">Record Payment</h3>
+          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <XIcon size={20} />
           </button>
         </div>
@@ -2610,19 +2610,19 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
             </div>
           )}
 
-          <div className="bg-gray-50 p-4 rounded border border-gray-200">
+          <div className="bg-gray-50 dark:bg-[#111] p-4 rounded border border-gray-200 dark:border-gray-700">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600">Supplier:</span>
-              <span className="font-semibold">{supplier.supplier_name}</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Supplier:</span>
+              <span className="font-semibold dark:text-white">{supplier.supplier_name}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Current Balance Owed:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Current Balance Owed:</span>
               <span className="font-bold text-red-600">{formatCurrency(supplier.balance_owed)}</span>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
               Payment Amount <span className="text-red-500">*</span>
             </label>
             <input
@@ -2631,20 +2631,20 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               required
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="0.00"
               max={supplier.balance_owed}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
               Payment Method <span className="text-red-500">*</span>
             </label>
             <select
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'Digital')}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
             >
               <option value="Cash">Cash</option>
               <option value="Digital">Digital</option>
@@ -2652,12 +2652,12 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Notes (Optional)</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">Notes (Optional)</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="Add any notes about this payment..."
             />
           </div>
@@ -2666,7 +2666,7 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
             <button
               type="button"
               onClick={() => onClose()}
-              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+              className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-sm dark:text-gray-300"
             >
               Cancel
             </button>
@@ -2724,11 +2724,11 @@ function InitialCustomersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
         </ul>
       </div>
 
-      <div className="bg-white rounded border border-gray-200 overflow-hidden">
-        <div className="p-4 bg-gray-50 border-b-2 border-black flex justify-between items-center">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 border-b-2 border-black dark:border-gray-600 flex justify-between items-center">
           <div>
-            <h2 className="text-lg font-bold">Initial Customer Balances</h2>
-            <p className="text-sm text-gray-600">Total Owed: PKR {totalOwed.toFixed(2)}</p>
+            <h2 className="text-lg font-bold dark:text-white">Initial Customer Balances</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Owed: PKR {totalOwed.toFixed(2)}</p>
           </div>
           <button
             onClick={onAddEntry}
@@ -2751,37 +2751,37 @@ function InitialCustomersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
               {entries.map((entry: any) => (
                 <div
                   key={entry.id}
-                  className="p-4 border-2 border-gray-300 rounded hover:border-black transition-colors"
+                  className="p-4 border-2 border-gray-300 dark:border-gray-600 rounded hover:border-black dark:hover:border-gray-400 transition-colors"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h3 className="font-bold text-gray-900">{entry.customer_name}</h3>
+                      <h3 className="font-bold text-gray-900 dark:text-white">{entry.customer_name}</h3>
                       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                         {entry.customer_phone && (
                           <div>
-                            <span className="text-gray-600">Phone:</span>
-                            <span className="ml-2 text-gray-900">{entry.customer_phone}</span>
+                            <span className="text-gray-600 dark:text-gray-400">Phone:</span>
+                            <span className="ml-2 text-gray-900 dark:text-gray-200">{entry.customer_phone}</span>
                           </div>
                         )}
                         {entry.customer_cnic && (
                           <div>
-                            <span className="text-gray-600">CNIC:</span>
-                            <span className="ml-2 text-gray-900">{entry.customer_cnic}</span>
+                            <span className="text-gray-600 dark:text-gray-400">CNIC:</span>
+                            <span className="ml-2 text-gray-900 dark:text-gray-200">{entry.customer_cnic}</span>
                           </div>
                         )}
                         <div>
-                          <span className="text-gray-600">Amount Owed:</span>
+                          <span className="text-gray-600 dark:text-gray-400">Amount Owed:</span>
                           <span className="ml-2 font-bold text-red-600">PKR {entry.amount_owed.toFixed(2)}</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Added:</span>
-                          <span className="ml-2 text-gray-900">
+                          <span className="text-gray-600 dark:text-gray-400">Added:</span>
+                          <span className="ml-2 text-gray-900 dark:text-gray-200">
                             {new Date(entry.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                           </span>
                         </div>
                       </div>
                       {entry.notes && (
-                        <p className="mt-2 text-sm text-gray-600 italic">{entry.notes}</p>
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">{entry.notes}</p>
                       )}
                     </div>
                     <div className="flex gap-2 ml-4">
@@ -2850,11 +2850,11 @@ function InitialSuppliersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
         </ul>
       </div>
 
-      <div className="bg-white rounded border border-gray-200 overflow-hidden">
-        <div className="p-4 bg-gray-50 border-b-2 border-black flex justify-between items-center">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 border-b-2 border-black dark:border-gray-600 flex justify-between items-center">
           <div>
-            <h2 className="text-lg font-bold">Initial Supplier Balances</h2>
-            <p className="text-sm text-gray-600">Total Owed: PKR {totalOwed.toFixed(2)}</p>
+            <h2 className="text-lg font-bold dark:text-white">Initial Supplier Balances</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Total Owed: PKR {totalOwed.toFixed(2)}</p>
           </div>
           <button
             onClick={onAddEntry}
@@ -2877,49 +2877,49 @@ function InitialSuppliersTab({ entries, onAddEntry, onEditEntry, onRefresh }: an
               {entries.map((entry: any) => (
                 <div
                   key={entry.id}
-                  className="p-4 border-2 border-gray-300 rounded hover:border-black transition-colors"
+                  className="p-4 border-2 border-gray-300 dark:border-gray-600 rounded hover:border-black dark:hover:border-gray-400 transition-colors"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h3 className="font-bold text-gray-900">{entry.supplier_name}</h3>
+                      <h3 className="font-bold text-gray-900 dark:text-white">{entry.supplier_name}</h3>
                       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
                         {entry.contact_person && (
                           <div>
-                            <span className="text-gray-600">Contact:</span>
-                            <span className="ml-2 text-gray-900">{entry.contact_person}</span>
+                            <span className="text-gray-600 dark:text-gray-400">Contact:</span>
+                            <span className="ml-2 text-gray-900 dark:text-gray-200">{entry.contact_person}</span>
                           </div>
                         )}
                         {entry.supplier_phone && (
                           <div>
-                            <span className="text-gray-600">Phone:</span>
-                            <span className="ml-2 text-gray-900">{entry.supplier_phone}</span>
+                            <span className="text-gray-600 dark:text-gray-400">Phone:</span>
+                            <span className="ml-2 text-gray-900 dark:text-gray-200">{entry.supplier_phone}</span>
                           </div>
                         )}
                         {entry.supplier_email && (
                           <div>
-                            <span className="text-gray-600">Email:</span>
-                            <span className="ml-2 text-gray-900">{entry.supplier_email}</span>
+                            <span className="text-gray-600 dark:text-gray-400">Email:</span>
+                            <span className="ml-2 text-gray-900 dark:text-gray-200">{entry.supplier_email}</span>
                           </div>
                         )}
                         <div>
-                          <span className="text-gray-600">Amount Owed:</span>
+                          <span className="text-gray-600 dark:text-gray-400">Amount Owed:</span>
                           <span className="ml-2 font-bold text-red-600">PKR {entry.amount_owed.toFixed(2)}</span>
                         </div>
                         <div>
-                          <span className="text-gray-600">Added:</span>
-                          <span className="ml-2 text-gray-900">
+                          <span className="text-gray-600 dark:text-gray-400">Added:</span>
+                          <span className="ml-2 text-gray-900 dark:text-gray-200">
                             {new Date(entry.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                           </span>
                         </div>
                       </div>
                       {entry.address && (
                         <div className="mt-2 text-sm">
-                          <span className="text-gray-600">Address:</span>
-                          <span className="ml-2 text-gray-900">{entry.address}</span>
+                          <span className="text-gray-600 dark:text-gray-400">Address:</span>
+                          <span className="ml-2 text-gray-900 dark:text-gray-200">{entry.address}</span>
                         </div>
                       )}
                       {entry.notes && (
-                        <p className="mt-2 text-sm text-gray-600 italic">{entry.notes}</p>
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 italic">{entry.notes}</p>
                       )}
                     </div>
                     <div className="flex gap-2 ml-4">
@@ -3011,10 +3011,10 @@ function InitialCustomerModal({ entry, onClose }: { entry: any, onClose: (refres
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md">
-        <div className="flex justify-between items-center p-5 border-b border-gray-200">
-          <h3 className="text-lg font-semibold">{entry ? 'Edit' : 'Add'} Initial Customer Entry</h3>
-          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded-lg w-full max-w-md">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold dark:text-white">{entry ? 'Edit' : 'Add'} Initial Customer Entry</h3>
+          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <XIcon size={20} />
           </button>
         </div>
@@ -3027,7 +3027,7 @@ function InitialCustomerModal({ entry, onClose }: { entry: any, onClose: (refres
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
               Customer Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -3035,33 +3035,33 @@ function InitialCustomerModal({ entry, onClose }: { entry: any, onClose: (refres
               value={formData.customer_name}
               onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
               required
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Customer Phone</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">Customer Phone</label>
             <input
               type="text"
               value={formData.customer_phone}
               onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Customer CNIC</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">Customer CNIC</label>
             <input
               type="text"
               value={formData.customer_cnic}
               onChange={(e) => setFormData({ ...formData, customer_cnic: e.target.value })}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="XXXXX-XXXXXXX-X"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
               Amount Owed <span className="text-red-500">*</span>
             </label>
             <input
@@ -3070,18 +3070,18 @@ function InitialCustomerModal({ entry, onClose }: { entry: any, onClose: (refres
               value={formData.amount_owed}
               onChange={(e) => setFormData({ ...formData, amount_owed: e.target.value })}
               required
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="0.00"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Notes</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">Notes</label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="Any additional notes..."
             />
           </div>
@@ -3090,7 +3090,7 @@ function InitialCustomerModal({ entry, onClose }: { entry: any, onClose: (refres
             <button
               type="button"
               onClick={() => onClose()}
-              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+              className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-sm dark:text-gray-300"
             >
               Cancel
             </button>
@@ -3173,10 +3173,10 @@ function InitialSupplierModal({ entry, onClose }: { entry: any, onClose: (refres
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-5 border-b border-gray-200 sticky top-0 bg-white">
-          <h3 className="text-lg font-semibold">{entry ? 'Edit' : 'Add'} Initial Supplier Entry</h3>
-          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600">
+      <div className="bg-white dark:bg-[#1a1a1a] rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-[#1a1a1a]">
+          <h3 className="text-lg font-semibold dark:text-white">{entry ? 'Edit' : 'Add'} Initial Supplier Entry</h3>
+          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <XIcon size={20} />
           </button>
         </div>
@@ -3189,7 +3189,7 @@ function InitialSupplierModal({ entry, onClose }: { entry: any, onClose: (refres
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
               Supplier Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -3197,52 +3197,52 @@ function InitialSupplierModal({ entry, onClose }: { entry: any, onClose: (refres
               value={formData.supplier_name}
               onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
               required
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Contact Person</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">Contact Person</label>
             <input
               type="text"
               value={formData.contact_person}
               onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Phone Number</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">Phone Number</label>
             <input
               type="text"
               value={formData.supplier_phone}
               onChange={(e) => setFormData({ ...formData, supplier_phone: e.target.value })}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">Email</label>
             <input
               type="email"
               value={formData.supplier_email}
               onChange={(e) => setFormData({ ...formData, supplier_email: e.target.value })}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Address</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">Address</label>
             <textarea
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
               Amount Owed <span className="text-red-500">*</span>
             </label>
             <input
@@ -3251,27 +3251,27 @@ function InitialSupplierModal({ entry, onClose }: { entry: any, onClose: (refres
               value={formData.amount_owed}
               onChange={(e) => setFormData({ ...formData, amount_owed: e.target.value })}
               required
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="0.00"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Notes</label>
+            <label className="block text-sm font-medium mb-1 dark:text-gray-200">Notes</label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border-2 border-gray-300 rounded focus:border-black outline-none"
+              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
               placeholder="Any additional notes..."
             />
           </div>
 
-          <div className="flex gap-3 justify-end pt-4 border-t sticky bottom-0 bg-white">
+          <div className="flex gap-3 justify-end pt-4 border-t sticky bottom-0 bg-white dark:bg-[#1a1a1a]">
             <button
               type="button"
               onClick={() => onClose()}
-              className="px-4 py-2 border border-gray-200 rounded hover:bg-gray-100 text-sm"
+              className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-sm dark:text-gray-300"
             >
               Cancel
             </button>
