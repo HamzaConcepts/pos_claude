@@ -262,7 +262,7 @@ export default function LoginPage() {
         <div className="flex justify-center mb-3">
           <Logo size={44} className="text-gray-900 dark:text-white" />
         </div>
-        <h1 className="text-2xl font-bold mb-2 text-center text-gray-900 dark:text-white">POS System</h1>
+        <h1 className="text-2xl font-bold mb-2 text-center text-gray-900 dark:text-white font-[family-name:var(--font-poppins)]">Atom</h1>
         <p className="mb-6 text-center text-sm text-gray-600 dark:text-gray-400">Sign in to your account</p>
 
         {error && (

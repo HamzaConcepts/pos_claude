@@ -237,7 +237,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5] py-8">
       <div className="bg-white p-8 rounded border border-gray-200 w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-3 text-center">POS System</h1>
+        <h1 className="text-2xl font-bold mb-3 text-center font-[family-name:var(--font-poppins)]">Atom</h1>
         <p className="text-center text-gray-600 mb-6">Create a new account</p>
 
         {/* Account Type Toggle */}

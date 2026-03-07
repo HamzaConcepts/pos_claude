@@ -1994,7 +1994,7 @@ function InitialStockTab() {
       <div className="bg-blue-50 border-2 border-blue-600 rounded p-4 mb-6">
         <h3 className="font-bold text-blue-900 mb-2">📦 Initial Stock Setup</h3>
         <p className="text-sm text-blue-800 mb-2">
-          Use this section to add your existing inventory when first migrating to this POS system.
+          Use this section to add your existing inventory when first migrating to Atom.
         </p>
         <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
           <li><strong>Initial stock added here will NOT be counted as expenses</strong></li>

@@ -186,7 +186,7 @@ export default function DashboardLayout({
             <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-600" style={{ animation: 'progressBar 1.5s ease-in-out infinite' }} />
           </div>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Loading POS System
+            Loading Atom
           </p>
         </div>
       </div>

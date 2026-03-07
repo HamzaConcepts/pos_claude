@@ -185,7 +185,7 @@ export default function ReceiptPreview({ settings }: ReceiptPreviewProps) {
                 </p>
               )}
               <p className={`${fontSize} text-gray-400 mt-2`}>
-                Powered by POS System
+                Powered by Atom
               </p>
             </div>
           </div>

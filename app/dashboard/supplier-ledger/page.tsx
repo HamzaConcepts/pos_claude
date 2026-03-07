@@ -478,7 +478,7 @@ export default function SupplierKhaataPage() {
         <div className="mt-8">
           <div className="mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Initial Suppliers (Migration)</h2>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Suppliers imported when you started using this POS system</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Suppliers imported when you started using Atom</p>
           </div>
           
           <div className="border rounded overflow-hidden border-gray-200 dark:border-gray-700">

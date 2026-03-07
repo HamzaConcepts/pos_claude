@@ -808,7 +808,7 @@ export default function POSPage() {
                 />
               </div>
             )}
-            <p className="font-bold text-base tracking-wide">{receiptSettings?.business_name || 'POS SYSTEM'}</p>
+            <p className="font-bold text-base tracking-wide">{receiptSettings?.business_name || 'ATOM'}</p>
             {receiptSettings?.business_address && (
               <p className="text-xs mt-1">{receiptSettings.business_address}</p>
             )}
@@ -994,7 +994,7 @@ export default function POSPage() {
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                 />
               )}
-              <h1 className="text-xl font-bold">{receiptSettings?.business_name || 'POS System'}</h1>
+              <h1 className="text-xl font-bold">{receiptSettings?.business_name || 'Atom'}</h1>
             </div>
             <div className="text-right text-xs text-gray-600">
               {receiptSettings?.business_address && (

@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Poppins } from 'next/font/google'
 import './globals.css'
 import NavigationHandler from '@/components/NavigationHandler'
 
 const inter = Inter({ subsets: ['latin'] })
+const poppins = Poppins({ weight: ['600', '700'], subsets: ['latin'], variable: '--font-poppins' })
 
 export const metadata: Metadata = {
-  title: 'POS System',
+  title: 'Atom',
   description: 'Point of Sale Management System',
 }
 
@@ -30,7 +31,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} ${poppins.variable}`}>
         <NavigationHandler />
         {children}
       </body>

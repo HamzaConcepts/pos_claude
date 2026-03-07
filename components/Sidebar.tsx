@@ -47,7 +47,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
   const [showCashierDropdown, setShowCashierDropdown] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
-  const [storeName, setStoreName] = useState('POS System')
+  const [storeName, setStoreName] = useState('Atom')
 
   // Notify layout when sidebar is toggled
   const toggleSidebar = () => {

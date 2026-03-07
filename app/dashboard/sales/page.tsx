@@ -1158,7 +1158,7 @@ export default function SalesPage() {
             {/* Receipt Content */}
             <div className="p-6">
               <div className="text-center mb-5">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{receiptSettings?.business_name || 'POS System'}</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{receiptSettings?.business_name || 'Atom'}</h1>
                 {receiptSettings?.business_address && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{receiptSettings.business_address}</p>
                 )}
