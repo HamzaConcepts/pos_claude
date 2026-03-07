@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import { DEFAULT_RECEIPT_SETTINGS, saleToReceiptData } from '@/lib/receipt-generator'
 import type { ReceiptSettings } from '@/lib/types'
 
+export const dynamic = 'force-dynamic'
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
