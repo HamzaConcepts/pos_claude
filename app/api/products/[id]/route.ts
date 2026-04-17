@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Disable caching for this route
@@ -18,8 +18,8 @@ const supabaseAdmin = createClient(
 )
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { data: product, error } = await supabaseAdmin
@@ -36,7 +36,7 @@ export async function GET(
           low_stock_threshold
         )
       `)
-      .eq('id', params.id)
+      .eq('id', (await params).id)
       .single()
 
     if (error) throw error
@@ -81,8 +81,8 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -118,7 +118,7 @@ export async function PUT(
         name: name.trim(),
         description: description || null,
       })
-      .eq('id', params.id)
+      .eq('id', (await params).id)
 
     if (productError) throw productError
 
@@ -127,7 +127,7 @@ export async function PUT(
       const { error: aggStockError } = await supabaseAdmin
         .from('aggregated_stock')
         .update({ low_stock_threshold })
-        .eq('product_id', params.id)
+        .eq('product_id', (await params).id)
 
       if (aggStockError) throw aggStockError
     }
@@ -155,7 +155,7 @@ export async function PUT(
           is_depleted
         )
       `)
-      .eq('id', params.id)
+      .eq('id', (await params).id)
       .single()
 
     if (error) throw error
@@ -178,15 +178,15 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Soft delete - set is_active to false
     const { error } = await supabaseAdmin
       .from('products')
       .update({ is_active: false })
-      .eq('id', params.id)
+      .eq('id', (await params).id)
 
     if (error) throw error
 

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -15,13 +15,13 @@ const supabaseAdmin = createClient(
 )
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
     const { customer_name, customer_phone, total_amount, amount_paid, notes } = body
-    const customerId = parseInt(params.id)
+    const customerId = parseInt((await params).id)
 
     if (!customer_name || !customer_phone) {
       return NextResponse.json(
@@ -78,11 +78,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const customerId = parseInt(params.id)
+    const customerId = parseInt((await params).id)
 
     const { error } = await supabaseAdmin
       .from('partial_payment_customers')

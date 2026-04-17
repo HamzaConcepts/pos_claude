@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -17,13 +17,13 @@ const supabaseAdmin = createClient(
 
 // GET /api/quotations/[id]/audit-log - Get audit trail for a quotation
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
     const storeId = searchParams.get('store_id')
-    const quotationId = parseInt(params.id)
+    const quotationId = parseInt((await params).id)
 
     if (!storeId) {
       return NextResponse.json(

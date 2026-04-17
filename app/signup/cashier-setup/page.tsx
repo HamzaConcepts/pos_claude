@@ -213,8 +213,22 @@ export default function SignupStep3() {
       sessionStorage.removeItem('signup_step1')
       sessionStorage.removeItem('signup_step2')
 
-      // Redirect to success page with store code
-      router.push(`/signup/success?pending=true&name=${encodeURIComponent(result.data.storeName)}`)
+      // Redirect based on approval status returned by API
+      const query = new URLSearchParams()
+
+      if (result.pending === true) {
+        query.set('pending', 'true')
+      }
+
+      if (result?.data?.storeName) {
+        query.set('name', result.data.storeName)
+      }
+
+      if (result?.data?.storeCode) {
+        query.set('code', result.data.storeCode)
+      }
+
+      router.push(`/signup/success?${query.toString()}`)
     } catch (error) {
       console.error('Signup error:', error)
       setGeneralError('Network error. Please check your connection and try again.')

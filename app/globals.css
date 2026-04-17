@@ -189,7 +189,7 @@ a {
   }
   
   /* Hide print-hidden elements */
-  .print\\:hidden {
+  .print\:hidden {
     display: none !important;
   }
   

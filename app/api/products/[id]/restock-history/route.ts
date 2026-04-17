@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Disable caching for this route
@@ -18,11 +18,11 @@ const supabaseAdmin = createClient(
 )
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const productId = parseInt(params.id)
+    const productId = parseInt((await params).id)
 
     // Fetch all stock batches for this product, ordered by purchase date descending
     const { data: batches, error } = await supabaseAdmin

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -48,11 +48,11 @@ async function generateQuotationNumber(storeId: number): Promise<string> {
 
 // POST /api/quotations/[id]/duplicate - Create a copy of an existing quotation
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const quotationId = parseInt(params.id)
+    const quotationId = parseInt((await params).id)
     const body = await request.json()
     const { store_id, created_by, created_by_cashier_id } = body
 

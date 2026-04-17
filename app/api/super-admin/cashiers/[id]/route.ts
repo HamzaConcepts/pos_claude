@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifySuperAdminRequest } from '@/lib/super-admin'
 
@@ -10,13 +10,13 @@ const supabaseAdmin = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await verifySuperAdminRequest(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const cashierId = parseInt(params.id)
+    const cashierId = parseInt((await params).id)
     if (isNaN(cashierId)) return NextResponse.json({ error: 'Invalid cashier ID' }, { status: 400 })
 
     const body = await request.json()
@@ -66,13 +66,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await verifySuperAdminRequest(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const cashierId = parseInt(params.id)
+    const cashierId = parseInt((await params).id)
     if (isNaN(cashierId)) return NextResponse.json({ error: 'Invalid cashier ID' }, { status: 400 })
 
     // Soft delete

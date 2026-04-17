@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifySuperAdminRequest } from '@/lib/super-admin'
 
@@ -28,13 +28,13 @@ async function syncManagersAuthBanStatus(managerIds: string[], shouldBan: boolea
   )
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await verifySuperAdminRequest(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const storeId = parseInt(params.id)
+    const storeId = parseInt((await params).id)
     if (isNaN(storeId)) return NextResponse.json({ error: 'Invalid store ID' }, { status: 400 })
 
     const [storeRes, managersRes, cashierAccountsRes, cashiersRes, joinRequestsRes] = await Promise.all([
@@ -59,13 +59,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await verifySuperAdminRequest(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const storeId = parseInt(params.id)
+    const storeId = parseInt((await params).id)
     if (isNaN(storeId)) return NextResponse.json({ error: 'Invalid store ID' }, { status: 400 })
 
     const body = await request.json()
@@ -121,13 +121,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await verifySuperAdminRequest(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    const storeId = parseInt(params.id)
+    const storeId = parseInt((await params).id)
     if (isNaN(storeId)) return NextResponse.json({ error: 'Invalid store ID' }, { status: 400 })
 
     // Soft delete: deactivate store and all associated users.

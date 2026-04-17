@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -15,8 +15,8 @@ const supabaseAdmin = createClient(
 )
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -76,7 +76,7 @@ export async function PUT(
     const { error: updateError } = await supabaseAdmin
       .from('stock_batches')
       .update(batchUpdateData)
-      .eq('id', params.id)
+      .eq('id', (await params).id)
 
     if (updateError) throw updateError
 
@@ -84,7 +84,7 @@ export async function PUT(
     const { data: updatedBatch, error: fetchError } = await supabaseAdmin
       .from('stock_batches')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', (await params).id)
       .single()
 
     if (fetchError) throw fetchError

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 
@@ -19,8 +19,8 @@ const supabaseAdmin = createClient(
 )
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { data: sale, error } = await supabase
@@ -33,7 +33,7 @@ export async function GET(
           products (name, sku)
         )
       `)
-      .eq('id', params.id)
+      .eq('id', (await params).id)
       .single()
 
     if (error) throw error
@@ -66,15 +66,15 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
     const { payment_method, payment_status, notes } = body
 
     // Validation
-    if (!params.id) {
+    if (!(await params).id) {
       return NextResponse.json(
         {
           success: false,
@@ -134,7 +134,7 @@ export async function PUT(
     const { data, error } = await supabaseAdmin
       .from('sales')
       .update(updateData)
-      .eq('id', params.id)
+      .eq('id', (await params).id)
       .select()
       .single()
 
@@ -162,8 +162,8 @@ export async function PUT(
 
 // DELETE - Delete a sale (Manager only) - triggers will handle stock reversion
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
@@ -185,7 +185,7 @@ export async function DELETE(
       )
     }
 
-    const saleId = parseInt(params.id)
+    const saleId = parseInt((await params).id)
     if (isNaN(saleId)) {
       return NextResponse.json(
         { success: false, error: 'Invalid sale ID' },
@@ -256,8 +256,8 @@ export async function DELETE(
 
 // PATCH - Mark a sale for review (Cashier feature)
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -271,7 +271,7 @@ export async function PATCH(
         )
       }
 
-      const saleId = parseInt(params.id)
+      const saleId = parseInt((await params).id)
       if (isNaN(saleId)) {
         return NextResponse.json(
           { success: false, error: 'Invalid sale ID' },
@@ -307,7 +307,7 @@ export async function PATCH(
       })
     } else if (action === 'unmark_review') {
       // Manager can unmark a sale after reviewing it
-      const saleId = parseInt(params.id)
+      const saleId = parseInt((await params).id)
       if (isNaN(saleId)) {
         return NextResponse.json(
           { success: false, error: 'Invalid sale ID' },

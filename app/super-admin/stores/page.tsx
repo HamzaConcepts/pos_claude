@@ -24,6 +24,14 @@ async function getApiErrorMessage(res: Response, fallback: string) {
   }
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return fallback
+}
+
 export default function StoresPage() {
   const router = useRouter()
   const [stores, setStores] = useState<Store[]>([])
@@ -52,9 +60,9 @@ export default function StoresPage() {
 
       const json = await res.json()
       setStores(json.data || [])
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to fetch stores:', err)
-      setError(err?.message || 'Failed to fetch stores')
+      setError(getErrorMessage(err, 'Failed to fetch stores'))
       setStores([])
     } finally {
       setLoading(false)
@@ -79,9 +87,9 @@ export default function StoresPage() {
       }
 
       await fetchStores()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to toggle store:', err)
-      setError(err?.message || 'Failed to update store status')
+      setError(getErrorMessage(err, 'Failed to update store status'))
     } finally {
       setActionLoading(null)
     }
@@ -102,9 +110,9 @@ export default function StoresPage() {
 
       setConfirmDelete(null)
       await fetchStores()
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to delete store:', err)
-      setError(err?.message || 'Failed to deactivate store')
+      setError(getErrorMessage(err, 'Failed to deactivate store'))
     } finally {
       setActionLoading(null)
     }

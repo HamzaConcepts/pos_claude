@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSuperAdminUser } from '@/lib/super-admin'
 
@@ -11,15 +11,16 @@ const supabaseAdmin = createClient(
 )
 
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const adminUser = await getSuperAdminUser(request)
   if (!adminUser) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const requestId = parseInt(params.id, 10)
+  const { id } = await params
+  const requestId = parseInt(id, 10)
   if (isNaN(requestId)) {
     return NextResponse.json({ error: 'Invalid ID' }, { status: 400 })
   }

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -17,8 +17,8 @@ const supabaseAdmin = createClient(
 
 // DELETE - Delete an expense (Manager only)
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
@@ -40,7 +40,8 @@ export async function DELETE(
       )
     }
 
-    const expenseId = parseInt(params.id)
+    const { id } = await params
+    const expenseId = parseInt(id, 10)
     if (isNaN(expenseId)) {
       return NextResponse.json(
         { success: false, error: 'Invalid expense ID' },
@@ -108,11 +109,12 @@ export async function DELETE(
 
 // PATCH /api/expenses/[id] - Mark for review (cashier)
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const expenseId = params.id
+    const { id } = await params
+    const expenseId = id
     const body = await request.json()
     const { marked_for_review, review_note } = body
 

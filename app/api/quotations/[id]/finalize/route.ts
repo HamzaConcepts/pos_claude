@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -17,11 +17,11 @@ const supabaseAdmin = createClient(
 
 // POST /api/quotations/[id]/finalize - Mark quotation as finalized
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const quotationId = parseInt(params.id)
+    const quotationId = parseInt((await params).id)
     const body = await request.json()
     const { store_id, finalized_by, finalized_by_cashier_id } = body
 

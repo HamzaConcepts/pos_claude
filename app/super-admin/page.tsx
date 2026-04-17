@@ -12,25 +12,50 @@ interface Stats {
   pendingJoinRequests: number
 }
 
+async function getApiErrorMessage(res: Response, fallback: string) {
+  try {
+    const payload = await res.json()
+    return payload?.error || fallback
+  } catch {
+    return fallback
+  }
+}
+
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const fetchStats = async () => {
+    try {
+      setError('')
+      const res = await fetch('/api/super-admin/stats', {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to fetch dashboard stats'))
+      }
+
+      const data = await res.json()
+      setStats(data)
+    } catch (err: any) {
+      console.error('Failed to fetch stats:', err)
+      setError(err?.message || 'Failed to fetch dashboard stats')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await fetch('/api/super-admin/stats')
-        if (res.ok) {
-          const data = await res.json()
-          setStats(data)
-        }
-      } catch (err) {
-        console.error('Failed to fetch stats:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchStats()
+
+    const refreshTimer = setInterval(() => {
+      fetchStats()
+    }, 30000)
+
+    return () => clearInterval(refreshTimer)
   }, [])
 
   if (loading) {
@@ -101,6 +126,28 @@ export default function SuperAdminDashboard() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
+      {!!stats?.pendingSignups && stats.pendingSignups > 0 && (
+        <div className="rounded border border-black bg-black px-4 py-3 text-sm text-white dark:border-white dark:bg-white dark:text-black">
+          <div className="flex items-center justify-between gap-4">
+            <span>
+              {stats.pendingSignups} manager signup{stats.pendingSignups > 1 ? 's are' : ' is'} awaiting approval.
+            </span>
+            <Link
+              href="/super-admin/approvals"
+              className="inline-flex items-center rounded border border-current px-3 py-1 text-xs font-medium hover:opacity-80"
+            >
+              Review now
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map((card) => (

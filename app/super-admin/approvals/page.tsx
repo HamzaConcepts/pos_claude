@@ -20,9 +20,19 @@ interface ApprovalRequest {
 
 type FilterStatus = 'pending' | 'approved' | 'rejected' | 'all'
 
+async function getApiErrorMessage(res: Response, fallback: string) {
+  try {
+    const payload = await res.json()
+    return payload?.error || fallback
+  } catch {
+    return fallback
+  }
+}
+
 export default function ApprovalsPage() {
   const [requests, setRequests] = useState<ApprovalRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [filter, setFilter] = useState<FilterStatus>('pending')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [confirmModal, setConfirmModal] = useState<{
@@ -37,13 +47,22 @@ export default function ApprovalsPage() {
   const fetchRequests = async (status: FilterStatus) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/super-admin/approvals?status=${status}`)
-      if (res.ok) {
-        const data = await res.json()
-        setRequests(data.requests || [])
+      setError('')
+      const res = await fetch(`/api/super-admin/approvals?status=${status}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to fetch approval requests'))
       }
-    } catch (err) {
+
+      const data = await res.json()
+      setRequests(data.requests || [])
+    } catch (err: any) {
       console.error('Failed to fetch approval requests:', err)
+      setError(err?.message || 'Failed to fetch approval requests')
+      setRequests([])
     } finally {
       setLoading(false)
     }
@@ -67,6 +86,7 @@ export default function ApprovalsPage() {
       const res = await fetch(`/api/super-admin/approvals/${confirmModal.requestId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ action: confirmModal.action, notes: notes.trim() || null }),
       })
       const data = await res.json()
@@ -122,6 +142,12 @@ export default function ApprovalsPage() {
           Review and approve or deny store registration requests
         </p>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">

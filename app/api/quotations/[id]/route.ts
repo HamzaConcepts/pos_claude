@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
@@ -17,13 +17,13 @@ const supabaseAdmin = createClient(
 
 // GET /api/quotations/[id] - Get a single quotation with items
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
     const storeId = searchParams.get('store_id')
-    const quotationId = parseInt(params.id)
+    const quotationId = parseInt((await params).id)
 
     if (!storeId) {
       return NextResponse.json(
@@ -66,11 +66,11 @@ export async function GET(
 
 // PUT /api/quotations/[id] - Update a draft quotation
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const quotationId = parseInt(params.id)
+    const quotationId = parseInt((await params).id)
     const body = await request.json()
     const {
       store_id,
@@ -306,15 +306,15 @@ export async function PUT(
 
 // DELETE /api/quotations/[id] - Soft delete a quotation
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
     const storeId = searchParams.get('store_id')
     const deletedBy = searchParams.get('deleted_by')
     const deletedByCashierId = searchParams.get('deleted_by_cashier_id')
-    const quotationId = parseInt(params.id)
+    const quotationId = parseInt((await params).id)
 
     if (!storeId) {
       return NextResponse.json(

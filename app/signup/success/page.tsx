@@ -10,6 +10,7 @@ function SuccessContent() {
   const searchParams = useSearchParams()
   const storeCode = searchParams.get('code')
   const storeName = searchParams.get('name')
+  const displayStoreName = storeName || ''
   const isPending = searchParams.get('pending') === 'true'
   const [countdown, setCountdown] = useState(10)
   const [copied, setCopied] = useState(false)
@@ -66,7 +67,7 @@ function SuccessContent() {
 
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Application Submitted!</h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Your store <span className="font-semibold text-gray-900 dark:text-white">{storeName ? decodeURIComponent(storeName) : ''}</span> is pending approval.
+            Your store <span className="font-semibold text-gray-900 dark:text-white">{displayStoreName}</span> is pending approval.
           </p>
 
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6 text-left">
@@ -106,7 +107,7 @@ function SuccessContent() {
 
         <h1 className="text-3xl font-bold text-green-600 mb-2">Success!</h1>
         <p className="text-gray-700 dark:text-gray-300 mb-6">
-          Your store <span className="font-semibold">{storeName ? decodeURIComponent(storeName) : ''}</span> has been created successfully.
+          Your store <span className="font-semibold">{displayStoreName}</span> has been created successfully.
         </p>
 
         <div className="bg-gray-50 dark:bg-[#111] border-2 border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
