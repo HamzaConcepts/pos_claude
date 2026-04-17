@@ -10,6 +10,24 @@ const supabaseAdmin = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
+const MANAGER_BAN_DURATION = '876000h' // ~100 years
+const MANAGER_UNBAN_DURATION = 'none'
+
+async function syncManagersAuthBanStatus(managerIds: string[], shouldBan: boolean) {
+  if (managerIds.length === 0) return
+
+  const banDuration = shouldBan ? MANAGER_BAN_DURATION : MANAGER_UNBAN_DURATION
+
+  await Promise.all(
+    managerIds.map(async (managerId) => {
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(managerId, { ban_duration: banDuration })
+      if (error) {
+        console.error(`Failed to update auth ban status for manager ${managerId}:`, error.message)
+      }
+    })
+  )
+}
+
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   if (!(await verifySuperAdminRequest(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -55,7 +73,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const updates: Record<string, any> = {}
 
     for (const field of allowedFields) {
-      if (body[field] !== undefined) updates[field] = body[field]
+      if (body[field] === undefined) continue
+
+      if ((field === 'store_name' || field === 'currency') && typeof body[field] === 'string') {
+        updates[field] = body[field].trim()
+        continue
+      }
+
+      updates[field] = body[field]
     }
 
     if (Object.keys(updates).length === 0) {
@@ -71,46 +96,23 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
     if (error) throw error
 
-    // Cascade deactivation: if store is being deactivated, deactivate all users
-    if (updates.is_active === false) {
-      await Promise.all([
-        supabaseAdmin.from('managers').update({ is_active: false }).eq('store_id', storeId),
-        supabaseAdmin.from('cashier_accounts').update({ is_active: false }).eq('store_id', storeId),
-        supabaseAdmin.from('cashiers').update({ is_active: false }).eq('store_id', storeId),
+    // When store status changes, mirror the state to all store users.
+    if (updates.is_active === false || updates.is_active === true) {
+      const shouldActivate = updates.is_active === true
+
+      const [managersUpdateRes, cashierAccountsUpdateRes, cashiersUpdateRes, managersRes] = await Promise.all([
+        supabaseAdmin.from('managers').update({ is_active: shouldActivate }).eq('store_id', storeId),
+        supabaseAdmin.from('cashier_accounts').update({ is_active: shouldActivate }).eq('store_id', storeId),
+        supabaseAdmin.from('cashiers').update({ is_active: shouldActivate }).eq('store_id', storeId),
+        supabaseAdmin.from('managers').select('id').eq('store_id', storeId),
       ])
 
-      // Ban all managers from Supabase Auth
-      const { data: managers } = await supabaseAdmin
-        .from('managers')
-        .select('id')
-        .eq('store_id', storeId)
+      if (managersUpdateRes.error) throw managersUpdateRes.error
+      if (cashierAccountsUpdateRes.error) throw cashierAccountsUpdateRes.error
+      if (cashiersUpdateRes.error) throw cashiersUpdateRes.error
+      if (managersRes.error) throw managersRes.error
 
-      if (managers) {
-        await Promise.all(
-          managers.map(m => supabaseAdmin.auth.admin.updateUserById(m.id, { ban_duration: 'none' }))
-        )
-      }
-    }
-
-    // Cascade reactivation: if store is being reactivated, reactivate all users
-    if (updates.is_active === true) {
-      await Promise.all([
-        supabaseAdmin.from('managers').update({ is_active: true }).eq('store_id', storeId),
-        supabaseAdmin.from('cashier_accounts').update({ is_active: true }).eq('store_id', storeId),
-        supabaseAdmin.from('cashiers').update({ is_active: true }).eq('store_id', storeId),
-      ])
-
-      // Unban all managers from Supabase Auth
-      const { data: managers } = await supabaseAdmin
-        .from('managers')
-        .select('id')
-        .eq('store_id', storeId)
-
-      if (managers) {
-        await Promise.all(
-          managers.map(m => supabaseAdmin.auth.admin.updateUserById(m.id, { ban_duration: 'none' }))
-        )
-      }
+      await syncManagersAuthBanStatus((managersRes.data || []).map((m) => m.id), !shouldActivate)
     }
 
     return NextResponse.json({ data })
@@ -128,25 +130,22 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const storeId = parseInt(params.id)
     if (isNaN(storeId)) return NextResponse.json({ error: 'Invalid store ID' }, { status: 400 })
 
-    // Soft delete: deactivate store and all associated users
-    await Promise.all([
+    // Soft delete: deactivate store and all associated users.
+    const [storeRes, managersRes, cashierAccountsRes, cashiersRes, managerIdsRes] = await Promise.all([
       supabaseAdmin.from('stores').update({ is_active: false }).eq('id', storeId),
       supabaseAdmin.from('managers').update({ is_active: false }).eq('store_id', storeId),
       supabaseAdmin.from('cashier_accounts').update({ is_active: false }).eq('store_id', storeId),
       supabaseAdmin.from('cashiers').update({ is_active: false }).eq('store_id', storeId),
+      supabaseAdmin.from('managers').select('id').eq('store_id', storeId),
     ])
 
-    // Ban all managers from Supabase Auth
-    const { data: managers } = await supabaseAdmin
-      .from('managers')
-      .select('id')
-      .eq('store_id', storeId)
+    if (storeRes.error) throw storeRes.error
+    if (managersRes.error) throw managersRes.error
+    if (cashierAccountsRes.error) throw cashierAccountsRes.error
+    if (cashiersRes.error) throw cashiersRes.error
+    if (managerIdsRes.error) throw managerIdsRes.error
 
-    if (managers) {
-      await Promise.all(
-        managers.map(m => supabaseAdmin.auth.admin.updateUserById(m.id, { ban_duration: 'none' }))
-      )
-    }
+    await syncManagersAuthBanStatus((managerIdsRes.data || []).map((m) => m.id), true)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

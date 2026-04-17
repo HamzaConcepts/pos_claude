@@ -24,7 +24,10 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
 
     const verify = async () => {
       try {
-        const res = await fetch('/api/super-admin/verify')
+        const res = await fetch('/api/super-admin/verify', {
+          credentials: 'include',
+          cache: 'no-store',
+        })
         if (!res.ok) {
           router.replace('/super-admin/login')
           return

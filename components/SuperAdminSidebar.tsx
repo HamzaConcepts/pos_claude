@@ -31,7 +31,10 @@ export default function SuperAdminSidebar() {
     }
 
     // Fetch pending signups count for badge
-    fetch('/api/super-admin/stats')
+    fetch('/api/super-admin/stats', {
+      credentials: 'include',
+      cache: 'no-store',
+    })
       .then((r) => r.json())
       .then((data) => setPendingCount(data.pendingSignups || 0))
       .catch(() => {})
@@ -45,7 +48,10 @@ export default function SuperAdminSidebar() {
   }
 
   const handleLogout = async () => {
-    await fetch('/api/super-admin/logout', { method: 'POST' })
+    await fetch('/api/super-admin/logout', {
+      method: 'POST',
+      credentials: 'include',
+    })
     router.push('/super-admin/login')
   }
 

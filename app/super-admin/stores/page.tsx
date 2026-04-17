@@ -15,10 +15,20 @@ interface Store {
   cashier_count: number
 }
 
+async function getApiErrorMessage(res: Response, fallback: string) {
+  try {
+    const payload = await res.json()
+    return payload?.error || fallback
+  } catch {
+    return fallback
+  }
+}
+
 export default function StoresPage() {
   const router = useRouter()
   const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
@@ -26,17 +36,26 @@ export default function StoresPage() {
 
   const fetchStores = async () => {
     try {
+      setError('')
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (statusFilter !== 'all') params.set('status', statusFilter)
 
-      const res = await fetch(`/api/super-admin/stores?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        setStores(json.data)
+      const res = await fetch(`/api/super-admin/stores?${params}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to fetch stores'))
       }
+
+      const json = await res.json()
+      setStores(json.data || [])
     } catch (err) {
       console.error('Failed to fetch stores:', err)
+      setError(err?.message || 'Failed to fetch stores')
+      setStores([])
     } finally {
       setLoading(false)
     }
@@ -47,14 +66,22 @@ export default function StoresPage() {
   const toggleActive = async (store: Store) => {
     setActionLoading(store.id)
     try {
+      setError('')
       const res = await fetch(`/api/super-admin/stores/${store.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ is_active: !store.is_active }),
       })
-      if (res.ok) await fetchStores()
-    } catch (err) {
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to update store status'))
+      }
+
+      await fetchStores()
+    } catch (err: any) {
       console.error('Failed to toggle store:', err)
+      setError(err?.message || 'Failed to update store status')
     } finally {
       setActionLoading(null)
     }
@@ -63,13 +90,21 @@ export default function StoresPage() {
   const deleteStore = async (id: number) => {
     setActionLoading(id)
     try {
-      const res = await fetch(`/api/super-admin/stores/${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        setConfirmDelete(null)
-        await fetchStores()
+      setError('')
+      const res = await fetch(`/api/super-admin/stores/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to deactivate store'))
       }
-    } catch (err) {
+
+      setConfirmDelete(null)
+      await fetchStores()
+    } catch (err: any) {
       console.error('Failed to delete store:', err)
+      setError(err?.message || 'Failed to deactivate store')
     } finally {
       setActionLoading(null)
     }
@@ -78,6 +113,12 @@ export default function StoresPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Stores</h1>
+
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -94,6 +135,7 @@ export default function StoresPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
+          title="Filter stores by status"
           className="px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
         >
           <option value="all">All Status</option>
@@ -159,6 +201,7 @@ export default function StoresPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
                         <button
+                          type="button"
                           onClick={() => router.push(`/super-admin/stores/${store.id}`)}
                           className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
                           title="View Details"
@@ -166,6 +209,7 @@ export default function StoresPage() {
                           <EyeIcon size={16} />
                         </button>
                         <button
+                          type="button"
                           onClick={() => toggleActive(store)}
                           disabled={actionLoading === store.id}
                           className={`p-1.5 rounded ${
@@ -178,6 +222,7 @@ export default function StoresPage() {
                           <PowerIcon size={16} />
                         </button>
                         <button
+                          type="button"
                           onClick={() => setConfirmDelete(store.id)}
                           className="p-1.5 rounded hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20 dark:text-red-400"
                           title="Delete (Deactivate)"
@@ -204,12 +249,14 @@ export default function StoresPage() {
             </p>
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setConfirmDelete(null)}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => deleteStore(confirmDelete)}
                 disabled={actionLoading === confirmDelete}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 disabled:opacity-50"

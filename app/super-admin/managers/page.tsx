@@ -14,9 +14,19 @@ interface Manager {
   created_at: string
 }
 
+async function getApiErrorMessage(res: Response, fallback: string) {
+  try {
+    const payload = await res.json()
+    return payload?.error || fallback
+  } catch {
+    return fallback
+  }
+}
+
 export default function ManagersPage() {
   const [managers, setManagers] = useState<Manager[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -26,17 +36,26 @@ export default function ManagersPage() {
 
   const fetchManagers = async () => {
     try {
+      setError('')
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (statusFilter !== 'all') params.set('status', statusFilter)
 
-      const res = await fetch(`/api/super-admin/managers?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        setManagers(json.data)
+      const res = await fetch(`/api/super-admin/managers?${params}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to fetch managers'))
       }
-    } catch (err) {
+
+      const json = await res.json()
+      setManagers(json.data || [])
+    } catch (err: any) {
       console.error('Failed to fetch managers:', err)
+      setError(err?.message || 'Failed to fetch managers')
+      setManagers([])
     } finally {
       setLoading(false)
     }
@@ -47,14 +66,22 @@ export default function ManagersPage() {
   const toggleActive = async (manager: Manager) => {
     setActionLoading(manager.id)
     try {
-      await fetch(`/api/super-admin/managers/${manager.id}`, {
+      setError('')
+      const res = await fetch(`/api/super-admin/managers/${manager.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ is_active: !manager.is_active }),
       })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to update manager status'))
+      }
+
       await fetchManagers()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to toggle manager:', err)
+      setError(err?.message || 'Failed to update manager status')
     } finally {
       setActionLoading(null)
     }
@@ -69,15 +96,23 @@ export default function ManagersPage() {
     if (!editManager) return
     setEditSaving(true)
     try {
-      await fetch(`/api/super-admin/managers/${editManager.id}`, {
+      setError('')
+      const res = await fetch(`/api/super-admin/managers/${editManager.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(editForm),
       })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to save manager'))
+      }
+
       setEditManager(null)
       await fetchManagers()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save manager:', err)
+      setError(err?.message || 'Failed to save manager')
     } finally {
       setEditSaving(false)
     }
@@ -86,6 +121,12 @@ export default function ManagersPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Managers</h1>
+
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -102,6 +143,7 @@ export default function ManagersPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
+          title="Filter managers by status"
           className="px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
         >
           <option value="all">All Status</option>
@@ -152,6 +194,7 @@ export default function ManagersPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
                         <button
+                          type="button"
                           onClick={() => openEdit(m)}
                           className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
                           title="Edit"
@@ -159,6 +202,7 @@ export default function ManagersPage() {
                           <PencilSimpleIcon size={16} />
                         </button>
                         <button
+                          type="button"
                           onClick={() => toggleActive(m)}
                           disabled={actionLoading === m.id}
                           className={`p-1.5 rounded ${
@@ -186,33 +230,33 @@ export default function ManagersPage() {
           <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Edit Manager</h3>
-              <button onClick={() => setEditManager(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button type="button" title="Close" onClick={() => setEditManager(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                 <XIcon size={18} className="text-gray-500" />
               </button>
             </div>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                <input type="text" value={editForm.full_name} onChange={(e) => setEditForm(f => ({ ...f, full_name: e.target.value }))}
+                <input type="text" title="Manager name" placeholder="Full name" value={editForm.full_name} onChange={(e) => setEditForm(f => ({ ...f, full_name: e.target.value }))}
                   className="w-full px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-                <input type="email" value={editForm.email} onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
+                <input type="email" title="Manager email" placeholder="name@example.com" value={editForm.email} onChange={(e) => setEditForm(f => ({ ...f, email: e.target.value }))}
                   className="w-full px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
-                <input type="text" value={editForm.phone_number} onChange={(e) => setEditForm(f => ({ ...f, phone_number: e.target.value }))}
+                <input type="text" title="Manager phone" placeholder="03XXXXXXXXX" value={editForm.phone_number} onChange={(e) => setEditForm(f => ({ ...f, phone_number: e.target.value }))}
                   className="w-full px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
               </div>
             </div>
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setEditManager(null)}
+              <button type="button" onClick={() => setEditManager(null)}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
                 Cancel
               </button>
-              <button onClick={saveEdit} disabled={editSaving}
+              <button type="button" onClick={saveEdit} disabled={editSaving}
                 className="flex-1 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded text-sm hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50">
                 {editSaving ? 'Saving...' : 'Save'}
               </button>

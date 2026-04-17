@@ -13,7 +13,13 @@ function getAdminClient() {
 function extractTokenFromRequest(request: Request): string | null {
   const cookieHeader = request.headers.get('cookie') || ''
   const match = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))
-  return match ? match[1] : null
+  if (!match) return null
+
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return match[1]
+  }
 }
 
 /**

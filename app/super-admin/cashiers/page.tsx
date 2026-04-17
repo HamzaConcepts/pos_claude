@@ -6,7 +6,7 @@ import { MagnifyingGlassIcon, PowerIcon, PencilSimpleIcon, XIcon } from '@phosph
 interface CashierAccount {
   id: number
   full_name: string
-  phone_number: string
+  phone_number: string | null
   role: string
   store_id: number | null
   store_name: string
@@ -14,9 +14,19 @@ interface CashierAccount {
   created_at: string
 }
 
+async function getApiErrorMessage(res: Response, fallback: string) {
+  try {
+    const payload = await res.json()
+    return payload?.error || fallback
+  } catch {
+    return fallback
+  }
+}
+
 export default function CashiersPage() {
   const [cashiers, setCashiers] = useState<CashierAccount[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
@@ -26,17 +36,26 @@ export default function CashiersPage() {
 
   const fetchCashiers = async () => {
     try {
+      setError('')
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (statusFilter !== 'all') params.set('status', statusFilter)
 
-      const res = await fetch(`/api/super-admin/cashiers?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        setCashiers(json.data)
+      const res = await fetch(`/api/super-admin/cashiers?${params}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to fetch cashier accounts'))
       }
-    } catch (err) {
+
+      const json = await res.json()
+      setCashiers(json.data || [])
+    } catch (err: any) {
       console.error('Failed to fetch cashiers:', err)
+      setError(err?.message || 'Failed to fetch cashier accounts')
+      setCashiers([])
     } finally {
       setLoading(false)
     }
@@ -47,14 +66,22 @@ export default function CashiersPage() {
   const toggleActive = async (cashier: CashierAccount) => {
     setActionLoading(cashier.id)
     try {
-      await fetch(`/api/super-admin/cashiers/${cashier.id}`, {
+      setError('')
+      const res = await fetch(`/api/super-admin/cashiers/${cashier.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ is_active: !cashier.is_active }),
       })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to update cashier status'))
+      }
+
       await fetchCashiers()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to toggle cashier:', err)
+      setError(err?.message || 'Failed to update cashier status')
     } finally {
       setActionLoading(null)
     }
@@ -62,22 +89,30 @@ export default function CashiersPage() {
 
   const openEdit = (cashier: CashierAccount) => {
     setEditCashier(cashier)
-    setEditForm({ full_name: cashier.full_name, phone_number: cashier.phone_number })
+    setEditForm({ full_name: cashier.full_name, phone_number: cashier.phone_number ?? '' })
   }
 
   const saveEdit = async () => {
     if (!editCashier) return
     setEditSaving(true)
     try {
-      await fetch(`/api/super-admin/cashiers/${editCashier.id}`, {
+      setError('')
+      const res = await fetch(`/api/super-admin/cashiers/${editCashier.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(editForm),
       })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to save cashier account'))
+      }
+
       setEditCashier(null)
       await fetchCashiers()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save cashier:', err)
+      setError(err?.message || 'Failed to save cashier account')
     } finally {
       setEditSaving(false)
     }
@@ -86,6 +121,12 @@ export default function CashiersPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cashier Accounts</h1>
+
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -102,6 +143,7 @@ export default function CashiersPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
+          title="Filter cashier accounts by status"
           className="px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
         >
           <option value="all">All Status</option>
@@ -140,7 +182,7 @@ export default function CashiersPage() {
                 cashiers.map((c) => (
                   <tr key={c.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30">
                     <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{c.full_name}</td>
-                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.phone_number}</td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.phone_number || 'N/A'}</td>
                     <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.store_name}</td>
                     <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{c.role}</td>
                     <td className="px-4 py-3 text-center">
@@ -152,6 +194,7 @@ export default function CashiersPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
                         <button
+                          type="button"
                           onClick={() => openEdit(c)}
                           className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
                           title="Edit"
@@ -159,6 +202,7 @@ export default function CashiersPage() {
                           <PencilSimpleIcon size={16} />
                         </button>
                         <button
+                          type="button"
                           onClick={() => toggleActive(c)}
                           disabled={actionLoading === c.id}
                           className={`p-1.5 rounded ${
@@ -186,28 +230,28 @@ export default function CashiersPage() {
           <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-lg p-6 max-w-md w-full mx-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Edit Cashier Account</h3>
-              <button onClick={() => setEditCashier(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+              <button type="button" title="Close" onClick={() => setEditCashier(null)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
                 <XIcon size={18} className="text-gray-500" />
               </button>
             </div>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                <input type="text" value={editForm.full_name} onChange={(e) => setEditForm(f => ({ ...f, full_name: e.target.value }))}
+                <input type="text" title="Cashier account name" placeholder="Cashier account name" value={editForm.full_name} onChange={(e) => setEditForm(f => ({ ...f, full_name: e.target.value }))}
                   className="w-full px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
-                <input type="text" value={editForm.phone_number} onChange={(e) => setEditForm(f => ({ ...f, phone_number: e.target.value }))}
+                <input type="text" title="Cashier account phone" placeholder="Optional phone number" value={editForm.phone_number} onChange={(e) => setEditForm(f => ({ ...f, phone_number: e.target.value }))}
                   className="w-full px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
               </div>
             </div>
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setEditCashier(null)}
+              <button type="button" onClick={() => setEditCashier(null)}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">
                 Cancel
               </button>
-              <button onClick={saveEdit} disabled={editSaving}
+              <button type="button" onClick={saveEdit} disabled={editSaving}
                 className="flex-1 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded text-sm hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50">
                 {editSaving ? 'Saving...' : 'Save'}
               </button>

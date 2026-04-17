@@ -37,7 +37,7 @@ interface SignupStoreRequest {
     accountName: string
     accountPassword: string
   }
-  staffCashiers: StaffCashier[]
+  staffCashiers?: StaffCashier[]
 }
 
 export async function POST(request: Request) {
@@ -46,6 +46,7 @@ export async function POST(request: Request) {
   try {
     const body: SignupStoreRequest = await request.json()
     const { storeName, ownerName, email, phoneNumber, password, cashierAccount, staffCashiers } = body
+    const normalizedStaffCashiers = Array.isArray(staffCashiers) ? staffCashiers : []
 
     // ═══════════════════════════════════════════════════════
     // STEP 1: Validate All Input
@@ -90,8 +91,8 @@ export async function POST(request: Request) {
     }
 
     // Staff cashiers validation (optional — only validate populated entries)
-    if (staffCashiers && staffCashiers.length > 0) {
-      staffCashiers.forEach((cashier, idx) => {
+    if (normalizedStaffCashiers.length > 0) {
+      normalizedStaffCashiers.forEach((cashier, idx) => {
         if (!cashier.name || cashier.name.trim().length === 0) {
           errors[`cashier_${idx}_name`] = 'Cashier name is required'
         }
@@ -227,6 +228,7 @@ export async function POST(request: Request) {
         .from('cashier_accounts')
         .insert([{
           full_name: cashierAccount.accountName.trim(),
+          phone_number: null,
           password_hash: cashierAccount.accountPassword, // Auto-hashed by trigger
           store_id: store.id,
           is_active: false,
@@ -242,8 +244,8 @@ export async function POST(request: Request) {
       // ═══════════════════════════════════════════════════════
       // STEP 9: Insert Staff Cashiers (Bulk, optional)
       // ═══════════════════════════════════════════════════════
-      if (staffCashiers && staffCashiers.length > 0) {
-        const staffRecords = staffCashiers.map((cashier) => ({
+      if (normalizedStaffCashiers.length > 0) {
+        const staffRecords = normalizedStaffCashiers.map((cashier) => ({
           store_id: store.id,
           full_name: cashier.name.trim(),
           phone_number: cashier.phone,

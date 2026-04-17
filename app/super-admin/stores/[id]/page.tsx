@@ -10,9 +10,18 @@ interface StoreDetail {
     is_active: boolean; created_at: string; logo_url: string | null
   }
   managers: { id: string; full_name: string; email: string; phone_number: string; is_active: boolean; created_at: string }[]
-  cashierAccounts: { id: number; full_name: string; phone_number: string; role: string; is_active: boolean; created_at: string }[]
+  cashierAccounts: { id: number; full_name: string; phone_number: string | null; role: string; is_active: boolean; created_at: string }[]
   cashiers: { id: number; full_name: string; phone_number: string; commission_rate: number; salary: number; is_active: boolean; created_at: string }[]
   joinRequests: { id: number; user_name: string; user_type: string; status: string; requested_at: string }[]
+}
+
+async function getApiErrorMessage(res: Response, fallback: string) {
+  try {
+    const payload = await res.json()
+    return payload?.error || fallback
+  } catch {
+    return fallback
+  }
 }
 
 export default function StoreDetailPage() {
@@ -22,6 +31,7 @@ export default function StoreDetailPage() {
 
   const [data, setData] = useState<StoreDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [editName, setEditName] = useState('')
   const [editCurrency, setEditCurrency] = useState('')
@@ -29,15 +39,24 @@ export default function StoreDetailPage() {
 
   const fetchStore = async () => {
     try {
-      const res = await fetch(`/api/super-admin/stores/${storeId}`)
-      if (res.ok) {
-        const json = await res.json()
-        setData(json)
-        setEditName(json.store.store_name)
-        setEditCurrency(json.store.currency)
+      setError('')
+      const res = await fetch(`/api/super-admin/stores/${storeId}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to fetch store details'))
       }
-    } catch (err) {
+
+      const json = await res.json()
+      setData(json)
+      setEditName(json.store.store_name)
+      setEditCurrency(json.store.currency)
+    } catch (err: any) {
       console.error('Failed to fetch store:', err)
+      setError(err?.message || 'Failed to fetch store details')
+      setData(null)
     } finally {
       setLoading(false)
     }
@@ -48,14 +67,22 @@ export default function StoreDetailPage() {
   const saveStore = async () => {
     setSaving(true)
     try {
-      await fetch(`/api/super-admin/stores/${storeId}`, {
+      setError('')
+      const res = await fetch(`/api/super-admin/stores/${storeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ store_name: editName, currency: editCurrency }),
       })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to save store details'))
+      }
+
       await fetchStore()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save:', err)
+      setError(err?.message || 'Failed to save store details')
     } finally {
       setSaving(false)
     }
@@ -65,14 +92,22 @@ export default function StoreDetailPage() {
     if (!data) return
     setActionLoading('store')
     try {
-      await fetch(`/api/super-admin/stores/${storeId}`, {
+      setError('')
+      const res = await fetch(`/api/super-admin/stores/${storeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ is_active: !data.store.is_active }),
       })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to update store status'))
+      }
+
       await fetchStore()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to toggle store:', err)
+      setError(err?.message || 'Failed to update store status')
     } finally {
       setActionLoading(null)
     }
@@ -81,14 +116,22 @@ export default function StoreDetailPage() {
   const toggleManagerActive = async (managerId: string, currentActive: boolean) => {
     setActionLoading(`manager-${managerId}`)
     try {
-      await fetch(`/api/super-admin/managers/${managerId}`, {
+      setError('')
+      const res = await fetch(`/api/super-admin/managers/${managerId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ is_active: !currentActive }),
       })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to update manager status'))
+      }
+
       await fetchStore()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to toggle manager:', err)
+      setError(err?.message || 'Failed to update manager status')
     } finally {
       setActionLoading(null)
     }
@@ -97,14 +140,22 @@ export default function StoreDetailPage() {
   const toggleCashierActive = async (cashierId: number, currentActive: boolean) => {
     setActionLoading(`cashier-${cashierId}`)
     try {
-      await fetch(`/api/super-admin/cashiers/${cashierId}`, {
+      setError('')
+      const res = await fetch(`/api/super-admin/cashiers/${cashierId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ is_active: !currentActive }),
       })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to update cashier status'))
+      }
+
       await fetchStore()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to toggle cashier:', err)
+      setError(err?.message || 'Failed to update cashier status')
     } finally {
       setActionLoading(null)
     }
@@ -131,9 +182,15 @@ export default function StoreDetailPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="rounded border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => router.push('/super-admin/stores')} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+        <button type="button" title="Back to stores" onClick={() => router.push('/super-admin/stores')} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
           <ArrowLeftIcon size={20} className="text-gray-600 dark:text-gray-400" />
         </button>
         <div className="flex-1">
@@ -157,6 +214,8 @@ export default function StoreDetailPage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Store Name</label>
             <input
               type="text"
+              title="Store name"
+              placeholder="Store name"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               className="w-full px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
@@ -166,6 +225,8 @@ export default function StoreDetailPage() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Currency</label>
             <input
               type="text"
+              title="Store currency"
+              placeholder="Currency code"
               value={editCurrency}
               onChange={(e) => setEditCurrency(e.target.value)}
               className="w-full px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
@@ -174,6 +235,7 @@ export default function StoreDetailPage() {
         </div>
         <div className="flex gap-3 mt-4">
           <button
+            type="button"
             onClick={saveStore}
             disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded text-sm hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50"
@@ -182,6 +244,7 @@ export default function StoreDetailPage() {
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
           <button
+            type="button"
             onClick={toggleStoreActive}
             disabled={actionLoading === 'store'}
             className={`flex items-center gap-2 px-4 py-2 rounded text-sm border ${
@@ -226,6 +289,7 @@ export default function StoreDetailPage() {
                 </td>
                 <td className="px-4 py-2.5 text-center">
                   <button
+                    type="button"
                     onClick={() => toggleManagerActive(m.id, m.is_active)}
                     disabled={actionLoading === `manager-${m.id}`}
                     className={`text-xs px-3 py-1 rounded ${
@@ -264,7 +328,7 @@ export default function StoreDetailPage() {
             ) : cashierAccounts.map((c) => (
               <tr key={c.id} className="border-b border-gray-100 dark:border-gray-800">
                 <td className="px-4 py-2.5 text-gray-900 dark:text-white">{c.full_name}</td>
-                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">{c.phone_number}</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">{c.phone_number || 'N/A'}</td>
                 <td className="px-4 py-2.5 text-center text-gray-600 dark:text-gray-400">{c.role}</td>
                 <td className="px-4 py-2.5 text-center">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -273,6 +337,7 @@ export default function StoreDetailPage() {
                 </td>
                 <td className="px-4 py-2.5 text-center">
                   <button
+                    type="button"
                     onClick={() => toggleCashierActive(c.id, c.is_active)}
                     disabled={actionLoading === `cashier-${c.id}`}
                     className={`text-xs px-3 py-1 rounded ${

@@ -24,7 +24,27 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const updates: Record<string, any> = {}
 
     for (const field of allowedFields) {
-      if (body[field] !== undefined) updates[field] = body[field]
+      if (body[field] === undefined) continue
+
+      if (field === 'full_name' && typeof body[field] === 'string') {
+        updates[field] = body[field].trim()
+        continue
+      }
+
+      if (field === 'phone_number') {
+        if (body[field] === null) {
+          updates[field] = null
+          continue
+        }
+
+        if (typeof body[field] === 'string') {
+          const normalizedPhone = body[field].trim()
+          updates[field] = normalizedPhone.length > 0 ? normalizedPhone : null
+          continue
+        }
+      }
+
+      updates[field] = body[field]
     }
 
     if (Object.keys(updates).length === 0) {
