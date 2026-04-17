@@ -262,9 +262,14 @@ async function generateProfitReport(storeId: string, filters: any) {
 
   let cogs = 0
   if (salesWithCost) {
+    const endDateTime = filters.endDate ? new Date(filters.endDate) : null
+    if (endDateTime) {
+      endDateTime.setHours(23, 59, 59, 999)
+    }
+
     salesWithCost.forEach((item: any) => {
       if (filters.startDate && new Date(item.sales.sale_date) < new Date(filters.startDate)) return
-      if (filters.endDate && new Date(item.sales.sale_date) > new Date(filters.endDate)) return
+      if (endDateTime && new Date(item.sales.sale_date) > endDateTime) return
       cogs += (item.cost_price_snapshot || 0) * item.quantity
     })
   }
