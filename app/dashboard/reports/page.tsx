@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { FileTextIcon, DownloadSimpleIcon, CalendarIcon, FunnelIcon, CaretDownIcon, CaretUpIcon, TrendUpIcon, TrendDownIcon, CurrencyDollarIcon, CreditCardIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
+import { getPurchasedQuantity, getRemainingQuantity } from '@/lib/stock-quantities'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { getPKTDate } from '@/lib/date-utils'
 import { useCurrency } from '@/lib/currency-context'
@@ -225,8 +226,10 @@ export default function ReportsPage() {
   const generateInventoryCSV = (data: any) => {
     let csv = 'Product,SKU,Purchased,Remaining,Sold,Cost Price\n'
     data.batches?.forEach((batch: any) => {
-      const sold = batch.quantity_purchased - batch.quantity_remaining
-      csv += `${batch.products?.name},${batch.products?.sku},${batch.quantity_purchased},${batch.quantity_remaining},${sold},${batch.cost_price}\n`
+      const purchased = getPurchasedQuantity(batch)
+      const remaining = getRemainingQuantity(batch)
+      const sold = purchased - remaining
+      csv += `${batch.products?.name},${batch.products?.sku},${purchased},${remaining},${sold},${batch.cost_price}\n`
     })
     return csv
   }
@@ -243,7 +246,8 @@ export default function ReportsPage() {
       csv += `Total Expenses,${data.expenses.totalAmount}\n`
     }
     if (data.profit) {
-      csv += `Net Profit,${data.profit.netProfit}\n`
+      const netProfit = data.profit.netProfit ?? 0
+      csv += `${netProfit >= 0 ? 'Net Profit' : 'Net Loss'},${netProfit}\n`
       csv += `Profit Margin,${data.profit.profitMargin}%\n`
     }
     return csv
@@ -583,7 +587,9 @@ export default function ReportsPage() {
               {/* Net Position & Inventory */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
-                  <h3 className="text-xs font-semibold mb-1.5 text-gray-700 dark:text-gray-300">Net Profit</h3>
+                  <h3 className="text-xs font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
+                    {(reportData.profit?.netProfit ?? 0) >= 0 ? 'Net Profit' : 'Net Loss'}
+                  </h3>
                   <div className={`text-xl font-bold ${reportData.profit?.netProfit >= 0 ? 'text-black dark:text-cyan-400' : 'text-red-600 dark:text-red-400'}`}>
                     {formatCurrency(reportData.profit?.netProfit ?? 0)}
                   </div>

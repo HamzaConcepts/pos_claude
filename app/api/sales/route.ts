@@ -209,10 +209,26 @@ export async function POST(request: Request) {
       store_id,
       discount_type,
       discount_value,
+      invoice_total,
       customer_name, // Customer details
       customer_phone,
       customer_cnic
     } = body
+
+    const roundToTwo = (value: number): number => Math.round(value * 100) / 100
+
+    const fallbackPartialCustomerName =
+      typeof partial_payment_customer?.customer_name === 'string'
+        ? partial_payment_customer.customer_name.trim()
+        : ''
+    const fallbackPartialCustomerPhone =
+      typeof partial_payment_customer?.customer_phone === 'string'
+        ? partial_payment_customer.customer_phone.trim()
+        : ''
+    const normalizedCustomerName =
+      (typeof customer_name === 'string' ? customer_name.trim() : '') || fallbackPartialCustomerName
+    const normalizedCustomerPhone =
+      (typeof customer_phone === 'string' ? customer_phone.trim() : '') || fallbackPartialCustomerPhone
 
     // Determine the authenticated user for payment recording
     // cashier_id can be:
@@ -286,6 +302,31 @@ export async function POST(request: Request) {
         {
           success: false,
           error: 'Invalid payment method',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
+    if (payment_method === 'Digital' && !normalizedCustomerName) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Customer name is required for Digital payment',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
+    const hasInvoiceTotal = invoice_total !== undefined && invoice_total !== null && invoice_total !== ''
+    const invoiceTotalValue = hasInvoiceTotal ? parseFloat(String(invoice_total)) : null
+
+    if (hasInvoiceTotal && (invoiceTotalValue === null || !Number.isFinite(invoiceTotalValue) || invoiceTotalValue <= 0)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invoice total must be a valid number greater than 0',
           code: 'VALIDATION_ERROR',
         },
         { status: 400 }
@@ -454,7 +495,57 @@ export async function POST(request: Request) {
     // Apply discount to total
     totalAmount = totalAmount - discountAmount
 
-    const paidAmount = amount_paid || 0
+    // For Khaata flow, invoice_total overrides computed list total.
+    if (invoiceTotalValue !== null) {
+      totalAmount = invoiceTotalValue
+    }
+
+    if (invoiceTotalValue !== null) {
+      const baseSubtotal = saleItems.reduce((sum, item) => sum + item.subtotal, 0)
+
+      if (baseSubtotal > 0) {
+        let allocatedSubtotal = 0
+
+        saleItems.forEach((saleItem, index) => {
+          let proportionalSubtotal = 0
+
+          if (index === saleItems.length - 1) {
+            proportionalSubtotal = roundToTwo(totalAmount - allocatedSubtotal)
+          } else {
+            proportionalSubtotal = roundToTwo((saleItem.subtotal / baseSubtotal) * totalAmount)
+          }
+
+          allocatedSubtotal = roundToTwo(allocatedSubtotal + proportionalSubtotal)
+          saleItem.subtotal = proportionalSubtotal
+          saleItem.unit_price = roundToTwo(proportionalSubtotal / saleItem.quantity)
+        })
+
+        const distributedSubtotal = roundToTwo(
+          saleItems.reduce((sum, item) => sum + item.subtotal, 0)
+        )
+        const roundingDifference = roundToTwo(totalAmount - distributedSubtotal)
+
+        if (saleItems.length > 0 && Math.abs(roundingDifference) >= 0.01) {
+          const lastItem = saleItems[saleItems.length - 1]
+          lastItem.subtotal = roundToTwo(lastItem.subtotal + roundingDifference)
+          lastItem.unit_price = roundToTwo(lastItem.subtotal / lastItem.quantity)
+        }
+      }
+    }
+
+    const paidAmount = Number(amount_paid) || 0
+
+    if (invoiceTotalValue !== null && paidAmount > totalAmount) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Amount paid cannot exceed invoice price for Khaata sale',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
     const dueAmount = totalAmount - paidAmount
     const paymentStatus =
       dueAmount <= 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending'
@@ -473,7 +564,10 @@ export async function POST(request: Request) {
 
     if (partial_payment_customer) {
       const { customer_name, customer_phone } = partial_payment_customer
-      if (!customer_name || !customer_phone) {
+      const partialCustomerName = typeof customer_name === 'string' ? customer_name.trim() : ''
+      const partialCustomerPhone = typeof customer_phone === 'string' ? customer_phone.trim() : ''
+
+      if (!partialCustomerName || !partialCustomerPhone) {
         return NextResponse.json(
           {
             success: false,
@@ -513,8 +607,8 @@ export async function POST(request: Request) {
           notes,
           discount_type: discount_type || 'none',
           discount_value: discount_value || 0,
-          customer_name: customer_name || null,
-          customer_phone: customer_phone || null,
+          customer_name: normalizedCustomerName || null,
+          customer_phone: normalizedCustomerPhone || null,
           customer_cnic: customer_cnic || null,
         },
       ])
@@ -557,14 +651,16 @@ export async function POST(request: Request) {
     // Create partial payment customer record if applicable
     if (paymentStatus === 'Partial' && partial_payment_customer) {
       const { customer_name, customer_phone } = partial_payment_customer
+      const partialCustomerName = typeof customer_name === 'string' ? customer_name.trim() : ''
+      const partialCustomerPhone = typeof customer_phone === 'string' ? customer_phone.trim() : ''
       
       const { error: partialPaymentError } = await supabaseAdmin
         .from('partial_payment_customers')
         .insert([
           {
             sale_id: sale.id,
-            customer_name,
-            customer_phone,
+            customer_name: partialCustomerName,
+            customer_phone: partialCustomerPhone,
             total_amount: totalAmount,
             amount_paid: paidAmount,
             amount_remaining: dueAmount,

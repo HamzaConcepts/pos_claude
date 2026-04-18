@@ -9,7 +9,8 @@ import {
   FileTextIcon, 
   BookOpenIcon, 
   UsersIcon,
-  StorefrontIcon
+  StorefrontIcon,
+  LifebuoyIcon
 } from '@phosphor-icons/react'
 import { hasPermission, type UserRole } from '@/lib/supabase'
 
@@ -34,6 +35,7 @@ export default function MobileBottomNav({ userRole }: { userRole: UserRole }) {
     { href: '/dashboard/expenses', label: 'Expenses', icon: FileTextIcon, permission: 'add_expense' },
     { href: '/dashboard/khaata', label: 'Ledger', icon: BookOpenIcon, permission: 'create_user' },
     { href: '/dashboard/cashiers', label: 'Staff', icon: UsersIcon, permission: 'create_user', managerOnly: true },
+    { href: '/dashboard/support', label: 'Support', icon: LifebuoyIcon, permission: 'process_sale' },
     { href: '/dashboard/store', label: 'Settings', icon: StorefrontIcon, permission: 'create_user' },
   ]
 

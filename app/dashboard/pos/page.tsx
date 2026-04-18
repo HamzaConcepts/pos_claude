@@ -42,7 +42,7 @@ export default function POSPage() {
   const [partialPaymentData, setPartialPaymentData] = useState({
     customerName: '',
     customerPhone: '',
-    salePrice: ''
+    invoicePrice: ''
   })
   const [partialPaymentError, setPartialPaymentError] = useState('')
   const [existingCustomers, setExistingCustomers] = useState<any[]>([])
@@ -52,6 +52,10 @@ export default function POSPage() {
   // Customer details states (for regular sales)
   const [customerDetails, setCustomerDetails] = useState({
     name: '',
+    phone: '',
+    cnic: ''
+  })
+  const [customerValidationErrors, setCustomerValidationErrors] = useState({
     phone: '',
     cnic: ''
   })
@@ -275,17 +279,84 @@ export default function POSPage() {
     setShowCustomerResults(results.length > 0)
   }
 
+  const normalizePhoneInput = (value: string): string => {
+    const digitsOnly = value.replace(/\D/g, '')
+
+    // Convert +92/92 prefixed numbers to local 03 format for consistency.
+    if (digitsOnly.startsWith('92') && digitsOnly.length >= 12 && digitsOnly[2] === '3') {
+      return `0${digitsOnly.slice(2, 12)}`
+    }
+
+    // Convert 3XXXXXXXXX to 03XXXXXXXXX.
+    if (digitsOnly.startsWith('3') && digitsOnly.length >= 10) {
+      return `0${digitsOnly.slice(0, 10)}`
+    }
+
+    return digitsOnly.slice(0, 11)
+  }
+
+  const formatCNICInput = (value: string): string => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 13)
+
+    if (digitsOnly.length <= 5) {
+      return digitsOnly
+    }
+
+    if (digitsOnly.length <= 12) {
+      return `${digitsOnly.slice(0, 5)}-${digitsOnly.slice(5)}`
+    }
+
+    return `${digitsOnly.slice(0, 5)}-${digitsOnly.slice(5, 12)}-${digitsOnly.slice(12)}`
+  }
+
+  const validateCustomerPhone = (phone: string): string => {
+    const trimmedPhone = phone.trim()
+    if (!trimmedPhone) return ''
+
+    const phonePattern = /^03\d{9}$/
+
+    if (!phonePattern.test(trimmedPhone)) {
+      return 'Phone number must be exactly 11 digits and start with 03.'
+    }
+
+    return ''
+  }
+
+  const validateCustomerCNIC = (cnic: string): string => {
+    const trimmedCNIC = cnic.trim()
+    if (!trimmedCNIC) return ''
+
+    const dashedCNICPattern = /^\d{5}-\d{7}-\d$/
+
+    if (!dashedCNICPattern.test(trimmedCNIC)) {
+      return 'CNIC must be in XXXXX-XXXXXXX-X format.'
+    }
+
+    return ''
+  }
+
+  const getCustomerValidationErrors = (details: typeof customerDetails) => {
+    return {
+      phone: validateCustomerPhone(details.phone),
+      cnic: validateCustomerCNIC(details.cnic),
+    }
+  }
+
   const selectCustomer = (customer: any) => {
-    setCustomerDetails({
+    const selectedDetails = {
       name: customer.name,
-      phone: customer.phone,
+      phone: normalizePhoneInput(customer.phone || ''),
       cnic: ''
-    })
+    }
+
+    setCustomerDetails(selectedDetails)
+    setCustomerValidationErrors(getCustomerValidationErrors(selectedDetails))
     setShowCustomerResults(false)
   }
 
   const clearCustomer = () => {
     setCustomerDetails({ name: '', phone: '', cnic: '' })
+    setCustomerValidationErrors({ phone: '', cnic: '' })
     setCustomerSearchResults([])
     setShowCustomerResults(false)
   }
@@ -563,7 +634,7 @@ export default function POSPage() {
         setPartialPaymentData({
           customerName: customerDetails.name,
           customerPhone: customerDetails.phone,
-          salePrice: '' // Only ask for sale price
+          invoicePrice: '' // Only ask for invoice price
         })
       }
       setShowPartialPaymentModal(true)
@@ -587,7 +658,7 @@ export default function POSPage() {
       setPartialPaymentData({
         customerName: customerDetails.name,
         customerPhone: customerDetails.phone,
-        salePrice: '' // Only ask for sale price
+        invoicePrice: '' // Only ask for invoice price
       })
     }
     setShowPartialPaymentModal(true)
@@ -646,16 +717,56 @@ export default function POSPage() {
     setError(`Insufficient payment. Total: ${formatCurrency(total, 2)}, Paid: ${formatCurrency(paid, 2)}`)
   }
 
-  const processSaleTransaction = async (partialPaymentCustomer: any, discountAmount: number = 0) => {
+  const processSaleTransaction = async (
+    partialPaymentCustomer: any,
+    discountAmount: number = 0,
+    invoiceTotal?: number
+  ) => {
     setLoading(true)
 
     try {
-      const total = calculateTotal()
       const paid = parseFloat(amountPaid) || 0
       let finalDescription = saleDescription.trim()
+      const fallbackPartialCustomerName =
+        typeof partialPaymentCustomer?.customer_name === 'string'
+          ? partialPaymentCustomer.customer_name.trim()
+          : ''
+      const fallbackPartialCustomerPhone =
+        typeof partialPaymentCustomer?.customer_phone === 'string'
+          ? partialPaymentCustomer.customer_phone.trim()
+          : ''
+      const normalizedCustomerName = customerDetails.name.trim() || fallbackPartialCustomerName
+      const normalizedCustomerPhone = customerDetails.phone.trim() || fallbackPartialCustomerPhone
+      const validationErrors = getCustomerValidationErrors(customerDetails)
       
       if (cart.length === 1 && !finalDescription) {
         finalDescription = cart[0].product.name
+      }
+
+      if (validationErrors.phone || validationErrors.cnic) {
+        setCustomerValidationErrors(validationErrors)
+        setError(validationErrors.phone || validationErrors.cnic)
+        setIsCustomerSectionExpanded(true)
+
+        requestAnimationFrame(() => {
+          const invalidInputId = validationErrors.phone ? 'customer-phone-input' : 'customer-cnic-input'
+          const invalidInput = document.getElementById(invalidInputId) as HTMLInputElement | null
+          invalidInput?.focus()
+        })
+
+        setLoading(false)
+        return
+      }
+
+      if (paymentMethod === 'Digital' && !normalizedCustomerName) {
+        setError('Customer name is required for Digital payment')
+        setIsCustomerSectionExpanded(true)
+        requestAnimationFrame(() => {
+          const customerNameInput = document.getElementById('customer-name-input') as HTMLInputElement | null
+          customerNameInput?.focus()
+        })
+        setLoading(false)
+        return
       }
 
       const storeId = getStoreId()
@@ -699,9 +810,10 @@ export default function POSPage() {
         store_id: storeId,
         discount_type: discountAmount > 0 ? 'amount' : 'none',
         discount_value: discountAmount,
+        invoice_total: typeof invoiceTotal === 'number' ? invoiceTotal : null,
         // Add customer details if provided
-        customer_name: customerDetails.name.trim() || null,
-        customer_phone: customerDetails.phone.trim() || null,
+        customer_name: normalizedCustomerName || null,
+        customer_phone: normalizedCustomerPhone || null,
         customer_cnic: customerDetails.cnic.trim() || null,
       }
 
@@ -723,7 +835,7 @@ export default function POSPage() {
         setSaleDescription('')
         setShowPartialPaymentConfirm(false)
         setShowPartialPaymentModal(false)
-        setPartialPaymentData({ customerName: '', customerPhone: '', salePrice: '' })
+        setPartialPaymentData({ customerName: '', customerPhone: '', invoicePrice: '' })
         setPartialPaymentError('')
         clearCustomer() // Clear customer details
         fetchProducts() // Refresh product stock
@@ -742,14 +854,14 @@ export default function POSPage() {
   }
 
   const handlePartialPaymentSubmit = () => {
-    const { customerName, customerPhone, salePrice } = partialPaymentData
+    const { customerName, customerPhone, invoicePrice } = partialPaymentData
     
     // Clear previous errors
     setPartialPaymentError('')
     
     // Validate all fields are filled
-    if (!customerName.trim() || !customerPhone.trim() || !salePrice.trim()) {
-      setPartialPaymentError('All fields are required. Please fill in customer name, phone number, and sale price.')
+    if (!customerName.trim() || !customerPhone.trim() || !invoicePrice.trim()) {
+      setPartialPaymentError('All fields are required. Please fill in customer name, phone number, and invoice price.')
       return
     }
 
@@ -759,27 +871,30 @@ export default function POSPage() {
       return
     }
 
-    // Validate sale price
-    const salePriceNum = parseFloat(salePrice)
-    if (isNaN(salePriceNum) || salePriceNum <= 0) {
-      setPartialPaymentError('Please enter a valid sale price')
+    // Validate invoice price
+    const invoicePriceNum = parseFloat(invoicePrice)
+    if (isNaN(invoicePriceNum) || invoicePriceNum <= 0) {
+      setPartialPaymentError('Please enter a valid invoice price')
       return
     }
 
     // Check against lowest negotiable
     const lowestNegotiable = calculateLowestNegotiable()
-    if (salePriceNum < lowestNegotiable) {
-      setPartialPaymentError(`Sale price (Rs. ${salePriceNum.toFixed(2)}) cannot be below the minimum acceptable price (Rs. ${lowestNegotiable.toFixed(2)})`)
+    if (invoicePriceNum < lowestNegotiable) {
+      setPartialPaymentError(`Invoice price (Rs. ${invoicePriceNum.toFixed(2)}) cannot be below the minimum acceptable price (Rs. ${lowestNegotiable.toFixed(2)})`)
       return
     }
 
-    // Update amountPaid to the sale price for processing
-    setAmountPaid(salePrice)
+    const paidAmount = parseFloat(amountPaid) || 0
+    if (invoicePriceNum < paidAmount) {
+      setPartialPaymentError(`Invoice price (Rs. ${invoicePriceNum.toFixed(2)}) cannot be less than amount paid (Rs. ${paidAmount.toFixed(2)})`)
+      return
+    }
 
     processSaleTransaction({
       customer_name: customerName.trim(),
       customer_phone: customerPhone.trim(),
-    }, 0)
+    }, 0, invoicePriceNum)
   }
 
   const handlePrintReceipt = () => {
@@ -1306,7 +1421,7 @@ export default function POSPage() {
             >
               <div className="text-left">
                 <h2 className="text-base font-bold text-gray-900 dark:text-white">
-                  Customer Details (Optional)
+                  Customer Details {paymentMethod === 'Digital' ? '(Required for Digital Payment)' : '(Optional)'}
                   {(customerDetails.name || customerDetails.phone) && (
                     <span className="ml-2 text-cyan-600 text-sm font-normal">
                       • {customerDetails.name || customerDetails.phone}
@@ -1332,9 +1447,10 @@ export default function POSPage() {
                 {/* Customer Search/Name */}
                 <div className="relative" ref={customerSearchRef}>
                   <label className="block mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">
-                    Customer Name
+                    Customer Name {paymentMethod === 'Digital' && <span className="text-red-600">*</span>}
                   </label>
                   <input
+                    id="customer-name-input"
                     type="text"
                     value={customerDetails.name}
                     onChange={(e) => handleCustomerSearch(e.target.value)}
@@ -1379,8 +1495,20 @@ export default function POSPage() {
                   <input
                     id="customer-phone-input"
                     type="text"
+                    inputMode="numeric"
+                    pattern="03\d{9}"
+                    title="Use 11 digits starting with 03"
+                    maxLength={11}
                     value={customerDetails.phone}
-                    onChange={(e) => setCustomerDetails({ ...customerDetails, phone: e.target.value })}
+                    onChange={(e) => {
+                      const nextPhone = normalizePhoneInput(e.target.value)
+                      const nextDetails = { ...customerDetails, phone: nextPhone }
+                      setCustomerDetails(nextDetails)
+                      setCustomerValidationErrors((prev) => ({
+                        ...prev,
+                        phone: validateCustomerPhone(nextDetails.phone),
+                      }))
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
@@ -1388,9 +1516,16 @@ export default function POSPage() {
                         cnicInput?.focus()
                       }
                     }}
-                    className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 dark:bg-[#1a1a1a] dark:text-white dark:placeholder-gray-500 ${
+                      customerValidationErrors.phone
+                        ? 'border-red-500 dark:border-red-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     placeholder="e.g., 03001234567"
                   />
+                  {customerValidationErrors.phone && (
+                    <p className="mt-1 text-xs text-red-600">{customerValidationErrors.phone}</p>
+                  )}
                 </div>
 
                 {/* Customer CNIC */}
@@ -1401,8 +1536,20 @@ export default function POSPage() {
                   <input
                     id="customer-cnic-input"
                     type="text"
+                    inputMode="numeric"
+                    pattern="\d{5}-\d{7}-\d"
+                    title="Use XXXXX-XXXXXXX-X format"
+                    maxLength={15}
                     value={customerDetails.cnic}
-                    onChange={(e) => setCustomerDetails({ ...customerDetails, cnic: e.target.value })}
+                    onChange={(e) => {
+                      const nextCNIC = formatCNICInput(e.target.value)
+                      const nextDetails = { ...customerDetails, cnic: nextCNIC }
+                      setCustomerDetails(nextDetails)
+                      setCustomerValidationErrors((prev) => ({
+                        ...prev,
+                        cnic: validateCustomerCNIC(nextDetails.cnic),
+                      }))
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
@@ -1410,9 +1557,16 @@ export default function POSPage() {
                         setIsCustomerSectionExpanded(false)
                       }
                     }}
-                    className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
+                    className={`w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 dark:bg-[#1a1a1a] dark:text-white dark:placeholder-gray-500 ${
+                      customerValidationErrors.cnic
+                        ? 'border-red-500 dark:border-red-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
                     placeholder="e.g., 12345-1234567-1"
                   />
+                  {customerValidationErrors.cnic && (
+                    <p className="mt-1 text-xs text-red-600">{customerValidationErrors.cnic}</p>
+                  )}
                 </div>
 
                 {/* Clear Customer Button */}
@@ -1569,7 +1723,14 @@ export default function POSPage() {
                   Cash
                 </button>
                 <button
-                  onClick={() => setPaymentMethod('Digital')}
+                  onClick={() => {
+                    setPaymentMethod('Digital')
+                    setIsCustomerSectionExpanded(true)
+                    requestAnimationFrame(() => {
+                      const customerNameInput = document.getElementById('customer-name-input') as HTMLInputElement | null
+                      customerNameInput?.focus()
+                    })
+                  }}
                   className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
                     paymentMethod === 'Digital'
                       ? 'bg-cyan-600 text-white border-cyan-600'
@@ -1780,7 +1941,7 @@ export default function POSPage() {
           <div className="bg-white rounded-lg border border-gray-300 max-w-sm w-full p-4 shadow-2xl">
             <div className="mb-4">
               <h2 className="text-base font-semibold text-gray-900 mb-1">Khaata - Customer Information</h2>
-              <p className="text-red-600 text-xs">Please enter customer details and sale price for credit tracking.</p>
+              <p className="text-red-600 text-xs">Please enter customer details and invoice price for credit tracking.</p>
             </div>
 
             {/* Validation Error */}
@@ -1793,18 +1954,24 @@ export default function POSPage() {
             <div className="mb-5 p-4 border border-gray-200 rounded bg-gray-50">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Total Amount:</span>
+                  <span className="text-gray-600">List Total:</span>
                   <span className="font-semibold text-gray-900">{formatCurrency(calculateTotal(), 2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
                   <span className="font-semibold text-gray-900">{formatCurrency(parseFloat(amountPaid) || 0, 2)}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Invoice Price:</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatCurrency(parseFloat(partialPaymentData.invoicePrice) || 0, 2)}
+                  </span>
+                </div>
                 <div className="border-t border-gray-300 pt-2 mt-2"></div>
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-900">Amount Due:</span>
                   <span className="font-bold text-lg text-gray-900">
-                    {formatCurrency(calculateTotal() - (parseFloat(amountPaid) || 0), 2)}
+                    {formatCurrency((parseFloat(partialPaymentData.invoicePrice) || calculateTotal()) - (parseFloat(amountPaid) || 0), 2)}
                   </span>
                 </div>
               </div>
@@ -1884,18 +2051,18 @@ export default function POSPage() {
 
               <div>
                 <label className="block mb-2 font-medium text-sm text-gray-700">
-                  Sale Price <span className="text-red-600">*</span>
+                  Invoice Price <span className="text-red-600">*</span>
                 </label>
                 <input
                   id="khaata-price-input"
                   type="number"
                   step="0.01"
                   min="0"
-                  value={partialPaymentData.salePrice}
+                  value={partialPaymentData.invoicePrice}
                   onChange={(e) => {
                     setPartialPaymentData({
                       ...partialPaymentData,
-                      salePrice: e.target.value
+                      invoicePrice: e.target.value
                     })
                     setPartialPaymentError('')
                   }}
@@ -1907,10 +2074,10 @@ export default function POSPage() {
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600"
-                  placeholder="Enter sale price"
+                  placeholder="Enter invoice price"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Minimum: {formatCurrency(calculateLowestNegotiable(), 2)} (Lowest Negotiable)
+                  This amount will be used as the total amount for this sale. Minimum: {formatCurrency(calculateLowestNegotiable(), 2)} (Lowest Negotiable)
                 </p>
               </div>
             </div>
@@ -1920,7 +2087,7 @@ export default function POSPage() {
                 onClick={() => {
                   setShowPartialPaymentModal(false)
                   setShowPartialPaymentConfirm(false)
-                  setPartialPaymentData({ customerName: '', customerPhone: '', salePrice: '' })
+                  setPartialPaymentData({ customerName: '', customerPhone: '', invoicePrice: '' })
                   setPartialPaymentError('')
                   setShowCustomerDropdown(false)
                   setExistingCustomers([])
@@ -1932,7 +2099,7 @@ export default function POSPage() {
               </button>
               <button
                 onClick={handlePartialPaymentSubmit}
-                disabled={loading || !partialPaymentData.customerName.trim() || !partialPaymentData.customerPhone.trim() || !partialPaymentData.salePrice.trim()}
+                disabled={loading || !partialPaymentData.customerName.trim() || !partialPaymentData.customerPhone.trim() || !partialPaymentData.invoicePrice.trim()}
                 className="flex-1 px-3 py-2.5 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-sm"
               >
                 {loading ? 'Processing...' : 'Confirm Sale'}

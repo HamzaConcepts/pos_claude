@@ -34,6 +34,7 @@ export default function DashboardLayout({
     '/dashboard/khaata',
     '/dashboard/supplier-khaata',
     '/dashboard/cashiers',
+    '/dashboard/support',
     '/dashboard/store'
   ]
 

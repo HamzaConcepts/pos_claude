@@ -185,6 +185,14 @@ export async function DELETE(
       )
     }
 
+    const storeIdNumber = parseInt(storeId)
+    if (isNaN(storeIdNumber)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid store ID' },
+        { status: 400 }
+      )
+    }
+
     const saleId = parseInt((await params).id)
     if (isNaN(saleId)) {
       return NextResponse.json(
@@ -198,10 +206,13 @@ export async function DELETE(
       .from('managers')
       .select('id, store_id')
       .eq('id', managerId)
-      .eq('store_id', parseInt(storeId))
-      .single()
+      .eq('store_id', storeIdNumber)
+      .maybeSingle()
 
     if (managerError || !manager) {
+      if (managerError) {
+        console.error('Manager validation failed:', managerError)
+      }
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Manager not found or does not belong to this store' },
         { status: 403 }
@@ -211,9 +222,9 @@ export async function DELETE(
     // Fetch the sale to verify it exists and belongs to the store
     const { data: sale, error: saleError } = await supabaseAdmin
       .from('sales')
-      .select('*, sale_items(*)')
+      .select('id, sale_number')
       .eq('id', saleId)
-      .eq('store_id', parseInt(storeId))
+      .eq('store_id', storeIdNumber)
       .single()
 
     if (saleError || !sale) {
@@ -223,10 +234,37 @@ export async function DELETE(
       )
     }
 
+    // Delete dependent rows first for constraints that do not cascade in schema-current.
+    const { error: paymentsDeleteError } = await supabaseAdmin
+      .from('payments')
+      .delete()
+      .eq('sale_id', saleId)
+
+    if (paymentsDeleteError) {
+      console.error('Error deleting payment records before sale delete:', paymentsDeleteError)
+      return NextResponse.json(
+        { success: false, error: paymentsDeleteError.message },
+        { status: 500 }
+      )
+    }
+
+    const { error: partialPaymentsDeleteError } = await supabaseAdmin
+      .from('partial_payment_customers')
+      .delete()
+      .eq('sale_id', saleId)
+
+    if (partialPaymentsDeleteError) {
+      console.error('Error deleting partial payment customers before sale delete:', partialPaymentsDeleteError)
+      return NextResponse.json(
+        { success: false, error: partialPaymentsDeleteError.message },
+        { status: 500 }
+      )
+    }
+
     // Delete the sale - the trigger will automatically handle:
     // 1. Stock reversion (restoring quantities to batches)
     // 2. IMEI status updates
-    // 3. Cascade deletion of sale_items, payments, and partial_payment_customers
+    // 3. Cascade deletion of sale_items
     const { error: deleteError } = await supabaseAdmin
       .from('sales')
       .delete()
@@ -234,6 +272,7 @@ export async function DELETE(
 
     if (deleteError) {
       console.error('Error deleting sale:', deleteError)
+
       return NextResponse.json(
         { success: false, error: deleteError.message },
         { status: 500 }

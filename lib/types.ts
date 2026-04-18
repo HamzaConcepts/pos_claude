@@ -33,7 +33,7 @@ export interface Inventory {
   product_id: number
   cost_price: number
   selling_price: number
-  quantity_added: number
+  quantity_purchased: number
   quantity_remaining: number
   low_stock_threshold: number
   batch_number: string | null

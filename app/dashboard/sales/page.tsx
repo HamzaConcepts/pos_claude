@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { CalendarIcon, UserIcon, CurrencyDollarIcon, CreditCardIcon, CaretDownIcon, CaretUpIcon, PackageIcon, FunnelIcon, FileTextIcon, PencilSimpleIcon, XIcon, PrinterIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { generateSalesPDF } from '@/lib/pdf-generator'
-import { getStoreId, isManager, isCashier } from '@/lib/supabase'
+import { supabase, getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import PrintReceiptButton from '@/components/PrintReceiptButton'
 import { getPKTDate } from '@/lib/date-utils'
@@ -324,7 +324,22 @@ export default function SalesPage() {
     if (!deletingSale) return
     
     try {
-      const response = await fetch(`/api/sales/${deletingSale.id}`, {
+      const storeId = getStoreId()
+      const { data: { user } } = await supabase.auth.getUser()
+      const fallbackManagerId = typeof window !== 'undefined' ? sessionStorage.getItem('user_id') : null
+      const managerId = user?.id || fallbackManagerId
+
+      if (!managerId) {
+        setError('Manager authentication required')
+        return
+      }
+
+      if (!storeId) {
+        setError('Store ID is required')
+        return
+      }
+
+      const response = await fetch(`/api/sales/${deletingSale.id}?manager_id=${encodeURIComponent(managerId)}&store_id=${storeId}`, {
         method: 'DELETE'
       })
 
@@ -525,7 +540,7 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSales.map((sale, index) => {
+                {filteredSales.map((sale) => {
                   const isExpanded = expandedSaleId === sale.id
                   const totalCost = sale.sale_items?.reduce(
                     (sum: number, item: any) => sum + (item.cost_price_snapshot || 0) * item.quantity,
@@ -534,9 +549,8 @@ export default function SalesPage() {
                   const profit = sale.total_amount - totalCost
 
                   return (
-                    <>
+                    <Fragment key={sale.id}>
                       <tr
-                        key={sale.id}
                         onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
                         className={`cursor-pointer transition-all border-b border-gray-100 dark:border-gray-800 ${
                           sale.payment_status === 'Partial' 
@@ -660,7 +674,7 @@ export default function SalesPage() {
                         </td>
                       </tr>
                       {isExpanded && (
-                        <tr key={`${sale.id}-details`} className="animate-fadeIn">
+                        <tr className="animate-fadeIn">
                           <td colSpan={7} className={
                             sale.payment_status === 'Partial' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-cyan-50 dark:bg-cyan-900/20'
                           }>
@@ -874,7 +888,7 @@ export default function SalesPage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })}
               </tbody>

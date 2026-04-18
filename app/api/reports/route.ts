@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getPurchasedQuantity, getRemainingQuantity } from '@/lib/stock-quantities'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -234,10 +235,10 @@ async function generateInventoryReport(storeId: string, filters: any) {
 
   if (error) throw error
 
-  const totalStockIn = batches?.reduce((sum, batch) => sum + batch.quantity_purchased, 0) || 0
-  const totalStockValue = batches?.reduce((sum, batch) => sum + (batch.cost_price * batch.quantity_purchased), 0) || 0
-  const totalRemaining = batches?.reduce((sum, batch) => sum + batch.quantity_remaining, 0) || 0
-  const totalSold = batches?.reduce((sum, batch) => sum + (batch.quantity_purchased - batch.quantity_remaining), 0) || 0
+  const totalStockIn = batches?.reduce((sum, batch) => sum + getPurchasedQuantity(batch), 0) || 0
+  const totalStockValue = batches?.reduce((sum, batch) => sum + ((Number(batch.cost_price) || 0) * getPurchasedQuantity(batch)), 0) || 0
+  const totalRemaining = batches?.reduce((sum, batch) => sum + getRemainingQuantity(batch), 0) || 0
+  const totalSold = batches?.reduce((sum, batch) => sum + (getPurchasedQuantity(batch) - getRemainingQuantity(batch)), 0) || 0
 
   return {
     summary: {

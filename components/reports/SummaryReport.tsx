@@ -26,7 +26,7 @@ export function SummaryReport({ reportData, formatCurrency }: SummaryReportProps
         trendLabel="expenses"
       />
       <StatCard
-        title="Net Profit"
+        title={(reportData.profit?.netProfit ?? 0) >= 0 ? 'Net Profit' : 'Net Loss'}
         value={formatCurrency(reportData.profit?.netProfit ?? 0)}
         icon={<TrendUpIcon />}
         trend={reportData.profit?.profitMargin ?? 0}

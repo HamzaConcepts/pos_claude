@@ -21,7 +21,8 @@ import {
   SignOutIcon,
   ReceiptIcon,
   ShoppingCartIcon,
-  ClipboardTextIcon
+  ClipboardTextIcon,
+  LifebuoyIcon
 } from '@phosphor-icons/react'
 import { useState, useEffect } from 'react'
 import { supabase, hasPermission, type UserRole, getStoreId } from '@/lib/supabase'
@@ -148,8 +149,8 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
   const navItems = [
     { href: '/dashboard', label: 'Overview', icon: HouseIcon, permission: 'view_dashboard' },
     { href: '/dashboard/pos', label: 'New Sale', icon: ShoppingBagIcon, permission: 'process_sale' },
-    { href: '/dashboard/inventory', label: 'Products', icon: PackageIcon, permission: 'create_product' },
-    { href: '/dashboard/inventory-purchases', label: 'Stock Purchases', icon: ShoppingCartIcon, permission: 'create_product' },
+    { href: '/dashboard/inventory', label: 'New Purchases', icon: PackageIcon, permission: 'create_product' },
+    { href: '/dashboard/inventory-purchases', label: 'Purchase History', icon: ShoppingCartIcon, permission: 'create_product' },
     { href: '/dashboard/sales', label: 'Sales History', icon: FileTextIcon, permission: 'view_sales' },
     { href: '/dashboard/quotations', label: 'Quotations', icon: ClipboardTextIcon, permission: 'process_sale' },
     { href: '/dashboard/expenses', label: 'Expense Tracker', icon: CurrencyDollarIcon, permission: 'add_expense' },
@@ -158,6 +159,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     { href: '/dashboard/supplier-ledger', label: 'Supplier Ledger', icon: TruckIcon, permission: 'create_user' },
     { href: '/dashboard/cashiers', label: 'Staff Performance', icon: UserGearIcon, permission: 'create_user', managerOnly: true },
     { href: '/dashboard/receipt-settings', label: 'Receipt Settings', icon: ReceiptIcon, permission: 'create_user', managerOnly: true },
+    { href: '/dashboard/support', label: 'Support', icon: LifebuoyIcon, permission: 'process_sale' },
     { href: '/dashboard/store', label: 'Settings', icon: GearIcon, permission: 'create_user' },
   ]
 

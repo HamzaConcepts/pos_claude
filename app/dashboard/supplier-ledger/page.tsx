@@ -469,6 +469,21 @@ export default function SupplierKhaataPage() {
                   )
                 })}
               </tbody>
+              <tfoot>
+                <tr className="bg-cyan-600 text-white font-semibold">
+                  <td colSpan={2} className="px-4 py-2.5 text-sm">TOTAL</td>
+                  <td className="px-4 py-2.5 text-right text-sm">
+                    {formatCurrency(filteredSuppliers.reduce((sum, supplier) => sum + supplier.total_amount, 0), 0)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-sm">
+                    {formatCurrency(filteredSuppliers.reduce((sum, supplier) => sum + supplier.amount_paid, 0), 0)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-sm">
+                    {formatCurrency(filteredSuppliers.reduce((sum, supplier) => sum + supplier.amount_remaining, 0), 0)}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}

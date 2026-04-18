@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CurrencyDollarIcon, TrendUpIcon, CalendarIcon, PlusIcon, XIcon, PencilSimpleIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { supabase, getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -110,6 +110,13 @@ export default function ExpensesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [selectedCashier, setSelectedCashier] = useState<any>(null)
 
+  // Filter states
+  const [searchFilter, setSearchFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('')
+  const [startDateFilter, setStartDateFilter] = useState('')
+  const [endDateFilter, setEndDateFilter] = useState('')
+
   useEffect(() => {
     // Check roles
     const checkRole = async () => {
@@ -194,23 +201,82 @@ export default function ExpensesPage() {
     }
   }
 
-  const calculateStats = () => {
+  const operatingExpenses = useMemo(() => {
+    return expenses.filter(e => e.category !== 'new_product' && e.category !== 'inventory_restock')
+  }, [expenses])
+
+  const availableCategories = useMemo(() => {
+    return Array.from(new Set(operatingExpenses.map(e => e.category))).sort()
+  }, [operatingExpenses])
+
+  const filteredOperatingExpenses = useMemo(() => {
+    return operatingExpenses.filter((expense) => {
+      if (categoryFilter && expense.category !== categoryFilter) {
+        return false
+      }
+
+      if (paymentMethodFilter && (expense.payment_method || '') !== paymentMethodFilter) {
+        return false
+      }
+
+      const expenseDateValue = new Date(expense.expense_date)
+
+      if (startDateFilter) {
+        const startDate = new Date(startDateFilter)
+        if (expenseDateValue < startDate) {
+          return false
+        }
+      }
+
+      if (endDateFilter) {
+        const endDate = new Date(endDateFilter)
+        endDate.setHours(23, 59, 59, 999)
+        if (expenseDateValue > endDate) {
+          return false
+        }
+      }
+
+      if (searchFilter.trim()) {
+        const query = searchFilter.toLowerCase()
+        const searchableText = [
+          expense.description,
+          formatCategory(expense.category),
+          expense.recorded_by_name || expense.managers?.full_name || '',
+          expense.product_display || '',
+          expense.payment_method || ''
+        ]
+          .join(' ')
+          .toLowerCase()
+
+        if (!searchableText.includes(query)) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [operatingExpenses, categoryFilter, paymentMethodFilter, startDateFilter, endDateFilter, searchFilter])
+
+  const clearFilters = () => {
+    setSearchFilter('')
+    setCategoryFilter('')
+    setPaymentMethodFilter('')
+    setStartDateFilter('')
+    setEndDateFilter('')
+  }
+
+  const calculateStats = (expenseList: Expense[]) => {
     const today = new Date()
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const startOfYear = new Date(today.getFullYear(), 0, 1)
 
-    // EXCLUDE inventory-related expenses from operating expense calculations
-    const operatingExpenses = expenses.filter(e => 
-      e.category !== 'new_product' && e.category !== 'inventory_restock'
-    )
-
-    const todayExpenses = operatingExpenses.filter(e => 
+    const todayExpenses = expenseList.filter(e => 
       new Date(e.expense_date).toDateString() === today.toDateString()
     )
-    const monthExpenses = operatingExpenses.filter(e => 
+    const monthExpenses = expenseList.filter(e => 
       new Date(e.expense_date) >= startOfMonth
     )
-    const yearExpenses = operatingExpenses.filter(e => 
+    const yearExpenses = expenseList.filter(e => 
       new Date(e.expense_date) >= startOfYear
     )
 
@@ -218,7 +284,7 @@ export default function ExpensesPage() {
       today: todayExpenses.reduce((sum, e) => sum + e.amount, 0),
       month: monthExpenses.reduce((sum, e) => sum + e.amount, 0),
       year: yearExpenses.reduce((sum, e) => sum + e.amount, 0),
-      total: operatingExpenses.reduce((sum, e) => sum + e.amount, 0)
+      total: expenseList.reduce((sum, e) => sum + e.amount, 0)
     }
   }
 
@@ -449,7 +515,10 @@ export default function ExpensesPage() {
     }
   }
 
-  const stats = calculateStats()
+  const stats = calculateStats(filteredOperatingExpenses)
+  const hasActiveFilters = Boolean(
+    searchFilter || categoryFilter || paymentMethodFilter || startDateFilter || endDateFilter
+  )
 
   if (loading) {
     return <ExpensesSkeleton />
@@ -473,6 +542,78 @@ export default function ExpensesPage() {
           {error}
         </div>
       )}
+
+      {/* Filters */}
+      <div className="mb-4 p-3 rounded border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow dark:shadow-none">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-2">
+          <input
+            type="text"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            placeholder="Search description, type, staff..."
+            aria-label="Search expenses"
+            title="Search expenses"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+          />
+
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            aria-label="Filter by expense type"
+            title="Filter by expense type"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+          >
+            <option value="">All Types</option>
+            {availableCategories.map((cat) => (
+              <option key={cat} value={cat}>
+                {formatCategory(cat)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={paymentMethodFilter}
+            onChange={(e) => setPaymentMethodFilter(e.target.value)}
+            aria-label="Filter by payment method"
+            title="Filter by payment method"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+          >
+            <option value="">All Payments</option>
+            <option value="Cash">Cash</option>
+            <option value="Digital">Digital</option>
+          </select>
+
+          <input
+            type="date"
+            value={startDateFilter}
+            onChange={(e) => setStartDateFilter(e.target.value)}
+            aria-label="Filter expenses from date"
+            title="Filter expenses from date"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+          />
+
+          <input
+            type="date"
+            value={endDateFilter}
+            onChange={(e) => setEndDateFilter(e.target.value)}
+            aria-label="Filter expenses to date"
+            title="Filter expenses to date"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+          />
+
+          <button
+            onClick={clearFilters}
+            disabled={!hasActiveFilters}
+            className="px-3 py-2 bg-gray-100 border border-gray-300 rounded text-sm hover:bg-gray-200 disabled:opacity-60 disabled:cursor-not-allowed dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-600"
+          >
+            Clear Filters
+          </button>
+        </div>
+
+        <p className="text-xs mt-2 text-gray-600 dark:text-gray-400">
+          Showing {filteredOperatingExpenses.length} of {operatingExpenses.length} operating expenses
+        </p>
+      </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -526,9 +667,11 @@ export default function ExpensesPage() {
           </p>
         </div>
         
-        {expenses.filter(e => e.category !== 'new_product' && e.category !== 'inventory_restock').length === 0 ? (
+        {filteredOperatingExpenses.length === 0 ? (
           <div className="p-6 text-center text-gray-500 dark:text-gray-400 text-sm">
-            No operating expenses recorded yet. Click "Add Expense" to get started.
+            {operatingExpenses.length === 0
+              ? 'No operating expenses recorded yet. Click "Add Expense" to get started.'
+              : 'No operating expenses match your current filters.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -545,7 +688,7 @@ export default function ExpensesPage() {
                 </tr>
               </thead>
               <tbody>
-                {expenses.filter(e => e.category !== 'new_product' && e.category !== 'inventory_restock').map((expense, index) => (
+                {filteredOperatingExpenses.map((expense) => (
                   <tr
                     key={expense.id}
                     className="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-gray-800"

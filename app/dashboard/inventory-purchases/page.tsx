@@ -177,7 +177,7 @@ export default function InventoryPurchasesPage() {
 
         <div className="p-4 rounded border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-600 dark:text-gray-400">Total Investment</span>
+            <span className="text-xs text-gray-600 dark:text-gray-400">Total Purchases</span>
             <CurrencyDollarIcon className="text-blue-600 dark:text-blue-400" size={16} />
           </div>
           <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
