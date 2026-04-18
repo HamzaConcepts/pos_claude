@@ -38,30 +38,30 @@ export function InventoryReport({ reportData, formatCurrency }: InventoryReportP
       </div>
 
       {/* Inventory List */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden dark:bg-gray-800 dark:border-gray-700">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-gray-50 border-b border-gray-200 dark:bg-gray-700 dark:border-gray-600">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Product</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">SKU</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Purchased</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Remaining</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Sold</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Cost Price</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Product</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">SKU</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Purchased</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Remaining</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Sold</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Cost Price</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {Array.isArray(reportData.batches) && reportData.batches.map((batch: any) => (
-                <tr key={batch.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm">{batch.products?.name}</td>
-                  <td className="px-4 py-3 text-sm">{batch.products?.sku}</td>
-                  <td className="px-4 py-3 text-sm">{batch.quantity_purchased}</td>
-                  <td className="px-4 py-3 text-sm">{batch.quantity_remaining}</td>
-                  <td className="px-4 py-3 text-sm">
+                <tr key={batch.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{batch.products?.name}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{batch.products?.sku}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{batch.quantity_purchased}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{batch.quantity_remaining}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
                     {batch.quantity_purchased - batch.quantity_remaining}
                   </td>
-                  <td className="px-4 py-3 text-sm">{formatCurrency(batch.cost_price)}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">{formatCurrency(batch.cost_price)}</td>
                 </tr>
               ))}
             </tbody>
