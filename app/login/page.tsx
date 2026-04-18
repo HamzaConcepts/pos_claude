@@ -16,6 +16,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
 
+  const clearClientAuthState = async () => {
+    localStorage.removeItem('user_session')
+    sessionStorage.clear()
+
+    try {
+      // Local scope avoids revoke errors for stale/expired tokens.
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch {
+      // Ignore sign-out errors; local state is already cleared.
+    }
+  }
+
   useEffect(() => {
     checkExistingSession()
   }, [])
@@ -41,8 +53,7 @@ export default function LoginPage() {
           return
         } else {
           // Manager exists but no store - sign them out and clear
-          await supabase.auth.signOut()
-          sessionStorage.clear()
+          await clearClientAuthState()
         }
       }
 
@@ -67,25 +78,21 @@ export default function LoginPage() {
               return
             } else {
               // Invalid cashier session - clear it
-              localStorage.removeItem('user_session')
-              sessionStorage.clear()
+              await clearClientAuthState()
             }
           } else {
             // Invalid session format - clear it
-            localStorage.removeItem('user_session')
-            sessionStorage.clear()
+            await clearClientAuthState()
           }
         } catch (err) {
           // Corrupted session data - clear it
-          localStorage.removeItem('user_session')
-          sessionStorage.clear()
+          await clearClientAuthState()
         }
       }
     } catch (err) {
       console.error('Session check error:', err)
       // On error, clear everything
-      localStorage.removeItem('user_session')
-      sessionStorage.clear()
+      await clearClientAuthState()
     } finally {
       setCheckingSession(false)
     }
@@ -187,21 +194,21 @@ export default function LoginPage() {
 
         if (managerCheckError) {
           console.error('Manager check error:', managerCheckError)
-          await supabase.auth.signOut()
+          await clearClientAuthState()
           setError('Error fetching manager data. Please try again.')
           setLoading(false)
           return
         }
 
         if (!managerData) {
-          await supabase.auth.signOut()
+          await clearClientAuthState()
           setError('Manager account not found. Please contact support.')
           setLoading(false)
           return
         }
 
         if (managerData.is_active === false) {
-          await supabase.auth.signOut()
+          await clearClientAuthState()
           setError('Your account has been deactivated. Please contact support.')
           setLoading(false)
           return
@@ -217,12 +224,12 @@ export default function LoginPage() {
             .maybeSingle()
 
           if (request) {
-            await supabase.auth.signOut()
+            await clearClientAuthState()
             setError('Your account is pending approval from the store manager.')
             setLoading(false)
             return
           } else {
-            await supabase.auth.signOut()
+            await clearClientAuthState()
             setError('Your account is not associated with any store.')
             setLoading(false)
             return

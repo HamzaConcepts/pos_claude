@@ -91,6 +91,20 @@ export default function DashboardLayout({
     checkUser()
   }, [])
 
+  const clearClientAuthState = async () => {
+    localStorage.removeItem('user_session')
+    sessionStorage.removeItem('store_id')
+    sessionStorage.removeItem('user_type')
+    sessionStorage.removeItem('user_id')
+
+    try {
+      // Local scope avoids server revoke failures from stale tokens.
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch {
+      // Ignore sign-out errors; local state is already cleared.
+    }
+  }
+
   const checkUser = async () => {
     try {
       // First check for cashier session in localStorage
@@ -119,6 +133,7 @@ export default function DashboardLayout({
 
       if (sessionError || !session || !session.user) {
         // No valid session, redirect to login
+        await clearClientAuthState()
         setIsAuthenticated(false)
         setLoading(false)
         router.replace('/login')
@@ -135,7 +150,7 @@ export default function DashboardLayout({
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         // Session check failed
-        await supabase.auth.signOut()
+        await clearClientAuthState()
         setIsAuthenticated(false)
         setLoading(false)
         if (response.status === 403) {
@@ -167,6 +182,7 @@ export default function DashboardLayout({
       setIsAuthenticated(true)
       setLoading(false)
     } catch (error) {
+      await clearClientAuthState()
       setIsAuthenticated(false)
       setLoading(false)
       router.replace('/login')
