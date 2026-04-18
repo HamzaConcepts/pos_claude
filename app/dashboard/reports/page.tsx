@@ -49,13 +49,6 @@ export default function ReportsPage() {
   const [cashiers, setCashiers] = useState<any[]>([])
   const [categories, setCategories] = useState<string[]>([])
 
-  // Auto-generate report when quick period changes
-  useEffect(() => {
-    if (quickPeriod !== 'custom') {
-      generateReport()
-    }
-  }, [quickPeriod])
-
   useEffect(() => {
     fetchCashiers()
     fetchCategories()
@@ -478,6 +471,16 @@ export default function ReportsPage() {
         </div>
       )}
 
+      <div className="mb-4 flex justify-end">
+        <button
+          onClick={generateReport}
+          disabled={loading}
+          className="px-4 py-2 text-sm rounded-lg transition-colors bg-black text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-cyan-600 dark:hover:bg-cyan-700"
+        >
+          {loading ? 'Generating...' : 'Generate Report'}
+        </button>
+      </div>
+
       {/* Export Buttons - Compact */}
       {reportData && (
         <div className="flex gap-2 mb-4">
@@ -654,7 +657,7 @@ export default function ReportsPage() {
       ) : (
         <div className="text-center py-12 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
           <FileTextIcon className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-600" />
-          <p className="text-gray-600 dark:text-gray-400">Select a period to view reports</p>
+          <p className="text-gray-600 dark:text-gray-400">Select filters and click Generate Report</p>
         </div>
       )}
     </div>
