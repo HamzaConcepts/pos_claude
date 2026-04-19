@@ -6,6 +6,42 @@ interface ProfitReportProps {
 export function ProfitReport({ reportData, formatCurrency }: ProfitReportProps) {
   if (!reportData) return null
 
+  const maxTrendMagnitude = reportData.periodData && Array.isArray(reportData.periodData) && reportData.periodData.length > 0
+    ? Math.max(...reportData.periodData.map((d: any) => Math.abs(d.value || 0)))
+    : 0
+
+  const trendWidthClasses = [
+    'w-0',
+    'w-[5%]',
+    'w-[10%]',
+    'w-[15%]',
+    'w-[20%]',
+    'w-[25%]',
+    'w-[30%]',
+    'w-[35%]',
+    'w-[40%]',
+    'w-[45%]',
+    'w-[50%]',
+    'w-[55%]',
+    'w-[60%]',
+    'w-[65%]',
+    'w-[70%]',
+    'w-[75%]',
+    'w-[80%]',
+    'w-[85%]',
+    'w-[90%]',
+    'w-[95%]',
+    'w-full'
+  ]
+
+  const getTrendWidthClass = (value: number) => {
+    if (maxTrendMagnitude <= 0) return trendWidthClasses[0]
+
+    const ratio = Math.min(Math.abs(value) / maxTrendMagnitude, 1)
+    const bucket = Math.round(ratio * (trendWidthClasses.length - 1))
+    return trendWidthClasses[bucket]
+  }
+
   return (
     <div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -92,21 +128,33 @@ export function ProfitReport({ reportData, formatCurrency }: ProfitReportProps) 
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Profit Trend</h3>
           <div className="space-y-2">
             {reportData.periodData.map((item: any) => (
-              <div key={item.date} className="flex items-center gap-4">
-                <span className="text-sm text-gray-600 dark:text-gray-400 w-32">{item.date}</span>
-                <div className="flex-1 bg-gray-100 rounded-full h-6 relative dark:bg-gray-700">
-                  <div
-                    className={`rounded-full h-6 flex items-center justify-end pr-2 ${
+              <div
+                key={item.date}
+                className={`flex items-center justify-between rounded-md border px-3 py-2 ${
+                  item.value >= 0
+                    ? 'border-green-200 bg-green-50 dark:border-green-900/50 dark:bg-green-900/20'
+                    : 'border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-900/20'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span
+                    className={`h-6 w-1 rounded-full ${
                       item.value >= 0 ? 'bg-green-500' : 'bg-red-500'
                     }`}
-                    style={{
-                      width: `${Math.min(Math.abs(item.value) / Math.max(...reportData.periodData.map((d: any) => Math.abs(d.value))) * 100, 100)}%`
-                    }}
-                  >
-                    <span className="text-xs text-white font-medium">
-                      {formatCurrency(item.value)}
-                    </span>
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{item.date}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-24 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                    <div
+                      className={`h-2.5 rounded-full ${
+                        item.value >= 0 ? 'bg-green-500' : 'bg-red-500'
+                      } ${getTrendWidthClass(item.value || 0)}`}
+                    />
                   </div>
+                  <span className={`text-sm font-semibold ${item.value >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                    {formatCurrency(item.value)}
+                  </span>
                 </div>
               </div>
             ))}

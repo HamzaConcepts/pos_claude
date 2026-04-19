@@ -15,6 +15,10 @@ const whatsappContacts = [
     label: '0333 9161419',
     href: 'https://wa.me/923339161419',
   },
+  {
+    label: '0325 1541216',
+    href: 'https://wa.me/923251541216',
+  }
 ]
 
 const supportEmail = 'theofficialhectagon@gmail.com'

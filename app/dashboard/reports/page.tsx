@@ -24,7 +24,7 @@ interface ReportFilters {
   category: string
 }
 
-type QuickPeriod = 'today' | 'week' | 'month' | 'year' | 'custom'
+type QuickPeriod = 'today' | 'week' | 'month' | 'year' | 'allTime' | 'custom'
 
 export default function ReportsPage() {
   const isDarkMode = useDarkMode()
@@ -49,6 +49,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false)
   const [cashiers, setCashiers] = useState<any[]>([])
   const [categories, setCategories] = useState<string[]>([])
+  const [cashierSearch, setCashierSearch] = useState('')
 
   useEffect(() => {
     fetchCashiers()
@@ -58,17 +59,33 @@ export default function ReportsPage() {
   // Clear report data when report type changes to avoid stale data display
   useEffect(() => {
     setReportData(null)
-  }, [filters.type])
+  }, [filters.type, filters.startDate, filters.endDate, filters.period, filters.cashierId, filters.paymentMethod, filters.category])
+
+  const handleReportTypeChange = (type: ReportFilters['type']) => {
+    setFilters(prev => ({
+      ...prev,
+      type,
+      cashierId: type === 'sales' ? prev.cashierId : '',
+      category: type === 'expenses' ? prev.category : '',
+      paymentMethod: type === 'summary' ? prev.paymentMethod : ''
+    }))
+
+    if (type !== 'sales') {
+      setCashierSearch('')
+    }
+  }
 
   const handleQuickPeriodChange = (period: QuickPeriod) => {
     setQuickPeriod(period)
     const pktDate = getPKTDate()
     let startDate = ''
     let endDate = pktDate
+    let periodType: ReportFilters['period'] = filters.period
 
     switch (period) {
       case 'today':
         startDate = endDate
+        periodType = 'daily'
         break
       case 'week':
         // Calculate start of week in PKT
@@ -77,22 +94,37 @@ export default function ReportsPage() {
         const weekStart = new Date(pktToday)
         weekStart.setDate(pktToday.getDate() - pktToday.getDay()) // Start of week (Sunday)
         startDate = weekStart.toISOString().split('T')[0]
+        periodType = 'daily'
         break
       case 'month':
         const [yr, mo] = pktDate.split('-')
         startDate = `${yr}-${mo}-01`
+        periodType = 'daily'
         break
       case 'year':
         const [yearOnly] = pktDate.split('-')
         startDate = `${yearOnly}-01-01`
+        periodType = 'monthly'
+        break
+      case 'allTime':
+        startDate = ''
+        endDate = ''
+        periodType = 'monthly'
         break
       case 'custom':
         setShowCustomDates(true)
         return
     }
 
-    setFilters({ ...filters, startDate, endDate })
+    const nextFilters: Partial<ReportFilters> = {
+      startDate,
+      endDate,
+      period: periodType,
+    }
+
+    setFilters(prev => ({ ...prev, ...nextFilters }))
     setShowCustomDates(false)
+    void generateReport(nextFilters)
   }
 
   const fetchCashiers = async () => {
@@ -105,7 +137,11 @@ export default function ReportsPage() {
       const response = await fetch(`/api/cashiers?store_id=${storeId}`)
       const data = await response.json()
       if (data.success) {
-        setCashiers(data.data || [])
+        const normalizedCashiers = (data.data || []).map((cashier: any) => ({
+          ...cashier,
+          name: cashier.name || cashier.full_name || cashier.fullName || `Cashier #${cashier.id}`,
+        }))
+        setCashiers(normalizedCashiers)
       } else {
         setCashiers([])
       }
@@ -125,7 +161,15 @@ export default function ReportsPage() {
       const response = await fetch(`/api/expenses?store_id=${storeId}`)
       const data = await response.json()
       if (data.success && data.data) {
-        const uniqueCategories = [...new Set(data.data.map((exp: any) => exp.category))] as string[]
+        const excludedCategories = new Set(['new_product', 'inventory_restock'])
+        const uniqueCategories = [...new Set(
+          data.data
+            .map((exp: any) => exp.category)
+            .filter((category: any) => {
+              if (!category || typeof category !== 'string') return false
+              return !excludedCategories.has(category.toLowerCase())
+            })
+        )] as string[]
         setCategories(uniqueCategories)
       } else {
         setCategories([])
@@ -136,7 +180,7 @@ export default function ReportsPage() {
     }
   }
 
-  const generateReport = async () => {
+  const generateReport = async (overrideFilters?: Partial<ReportFilters>) => {
     setLoading(true)
     try {
       const storeId = getStoreId()
@@ -145,17 +189,30 @@ export default function ReportsPage() {
         setLoading(false)
         return
       }
+
+      const effectiveFilters: ReportFilters = {
+        ...filters,
+        ...overrideFilters,
+      }
+
       const params = new URLSearchParams({
         store_id: storeId.toString(),
-        type: filters.type,
-        start_date: filters.startDate,
-        end_date: filters.endDate
+        type: effectiveFilters.type
       })
 
-      if (filters.period) params.append('period', filters.period)
-      if (filters.cashierId) params.append('cashier_id', filters.cashierId)
-      if (filters.paymentMethod) params.append('payment_method', filters.paymentMethod)
-      if (filters.category) params.append('category', filters.category)
+      if (effectiveFilters.startDate) {
+        params.append('start_date', effectiveFilters.startDate)
+      }
+
+      if (effectiveFilters.endDate) {
+        params.append('end_date', effectiveFilters.endDate)
+      }
+      if (effectiveFilters.period) params.append('period', effectiveFilters.period)
+      if (effectiveFilters.cashierId) params.append('cashier_id', effectiveFilters.cashierId)
+      if (effectiveFilters.type === 'summary' && effectiveFilters.paymentMethod) {
+        params.append('payment_method', effectiveFilters.paymentMethod)
+      }
+      if (effectiveFilters.category) params.append('category', effectiveFilters.category)
 
       const response = await fetch(`/api/reports?${params}`)
       const data = await response.json()
@@ -179,23 +236,26 @@ export default function ReportsPage() {
 
     let csvContent = ''
     let filename = 'report.csv'
+    const dateLabel = filters.startDate || filters.endDate
+      ? `${filters.startDate || 'beginning'}-to-${filters.endDate || 'today'}`
+      : 'all-time'
 
     switch (filters.type) {
       case 'sales':
         csvContent = generateSalesCSV(reportData)
-        filename = `sales-report-${filters.startDate}-to-${filters.endDate}.csv`
+        filename = `sales-report-${dateLabel}.csv`
         break
       case 'expenses':
         csvContent = generateExpensesCSV(reportData)
-        filename = `expenses-report-${filters.startDate}-to-${filters.endDate}.csv`
+        filename = `expenses-report-${dateLabel}.csv`
         break
       case 'inventory':
         csvContent = generateInventoryCSV(reportData)
-        filename = `inventory-report-${filters.startDate}-to-${filters.endDate}.csv`
+        filename = `inventory-report-${dateLabel}.csv`
         break
       default:
         csvContent = generateSummaryCSV(reportData)
-        filename = `summary-report-${filters.startDate}-to-${filters.endDate}.csv`
+        filename = `summary-report-${dateLabel}.csv`
     }
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
@@ -257,12 +317,74 @@ export default function ReportsPage() {
     return formatCurrencyFromContext(amount, 0)
   }
 
+  const normalizedCashierSearch = cashierSearch.trim().toLowerCase()
+  const getCashierDisplayName = (cashier: any) => cashier.name || cashier.full_name || cashier.fullName || `Cashier #${cashier.id}`
+  const filteredCashiers = cashiers.filter((cashier) =>
+    getCashierDisplayName(cashier).toLowerCase().includes(normalizedCashierSearch)
+  )
+
   return (
     <div className="animate-fadeIn p-4 max-w-7xl mx-auto bg-gray-50 dark:bg-gray-900 dark:text-gray-100">
       {/* Header */}
       <div className="mb-4">
         <h1 className="text-2xl font-bold mb-1 text-gray-900 dark:text-gray-100">Reports & Analytics</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400">Comprehensive business insights and reports</p>
+      </div>
+
+      {/* Tabs for Report Type */}
+      <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex gap-1 overflow-x-auto">
+          <button
+            onClick={() => handleReportTypeChange('summary')}
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'summary'
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            Summary
+          </button>
+          <button
+            onClick={() => handleReportTypeChange('sales')}
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'sales'
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            Sales
+          </button>
+          <button
+            onClick={() => handleReportTypeChange('expenses')}
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'expenses'
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            Expenses
+          </button>
+          <button
+            onClick={() => handleReportTypeChange('inventory')}
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'inventory'
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            Inventory
+          </button>
+          <button
+            onClick={() => handleReportTypeChange('profit')}
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'profit'
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            Profit & Loss
+          </button>
+        </div>
       </div>
 
       {/* Quick Period Buttons */}
@@ -309,6 +431,16 @@ export default function ReportsPage() {
             This Year
           </button>
           <button
+            onClick={() => handleQuickPeriodChange('allTime')}
+            className={`px-4 py-2 text-sm rounded-lg transition-colors ${
+              quickPeriod === 'allTime'
+                ? 'bg-black text-white dark:bg-cyan-600'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+            }`}
+          >
+            All Time
+          </button>
+          <button
             onClick={() => handleQuickPeriodChange('custom')}
             className={`px-4 py-2 text-sm rounded-lg transition-colors flex items-center gap-1 ${
               quickPeriod === 'custom'
@@ -321,6 +453,12 @@ export default function ReportsPage() {
           </button>
         </div>
 
+        {quickPeriod === 'allTime' && (
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+            All Time is active. Reports include data from your first recorded transaction to date.
+          </p>
+        )}
+
         {/* Custom Date Range Section */}
         {showCustomDates && (
           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -329,6 +467,7 @@ export default function ReportsPage() {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Start Date</label>
                 <input
                   type="date"
+                  title="Start date"
                   value={filters.startDate}
                   onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 text-sm bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
@@ -338,6 +477,7 @@ export default function ReportsPage() {
                 <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">End Date</label>
                 <input
                   type="date"
+                  title="End date"
                   value={filters.endDate}
                   onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 text-sm bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
@@ -345,7 +485,7 @@ export default function ReportsPage() {
               </div>
             </div>
             <button
-              onClick={generateReport}
+              onClick={() => void generateReport()}
               disabled={loading}
               className="mt-3 px-4 py-2 text-sm rounded-lg transition-colors bg-black text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-cyan-600 dark:hover:bg-cyan-700"
             >
@@ -355,116 +495,112 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* Tabs for Report Type */}
-      <div className="mb-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex gap-1 overflow-x-auto">
-          <button
-            onClick={() => setFilters({ ...filters, type: 'summary' })}
-            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-              filters.type === 'summary'
-                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
-          >
-            Summary
-          </button>
-          <button
-            onClick={() => setFilters({ ...filters, type: 'sales' })}
-            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-              filters.type === 'sales'
-                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
-          >
-            Sales
-          </button>
-          <button
-            onClick={() => setFilters({ ...filters, type: 'expenses' })}
-            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-              filters.type === 'expenses'
-                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
-          >
-            Expenses
-          </button>
-          <button
-            onClick={() => setFilters({ ...filters, type: 'inventory' })}
-            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-              filters.type === 'inventory'
-                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
-          >
-            Inventory
-          </button>
-          <button
-            onClick={() => setFilters({ ...filters, type: 'profit' })}
-            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-              filters.type === 'profit'
-                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
-            }`}
-          >
-            Profit & Loss
-          </button>
-        </div>
-      </div>
-
-      {/* Additional Filters - Compact */}
-      {(filters.type === 'sales' || filters.type === 'expenses') && (
+      {/* Summary Filters */}
+      {filters.type === 'summary' && (
         <div className="mb-4 p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {(filters.type === 'sales' || filters.type === 'expenses') && (
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Payment Method</label>
-                <select
-                  value={filters.paymentMethod}
-                  onChange={(e) => setFilters({ ...filters, paymentMethod: e.target.value })}
-                  className="w-full border rounded px-2 py-1.5 text-sm bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                >
-                  <option value="">All</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Digital">Digital</option>
-                </select>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Payment Method</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: 'All', value: '' },
+                  { label: 'Cash', value: 'Cash' },
+                  { label: 'Digital', value: 'Digital' }
+                ].map(option => (
+                  <button
+                    key={option.label}
+                    onClick={() => setFilters({ ...filters, paymentMethod: option.value })}
+                    className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                      filters.paymentMethod === option.value
+                        ? 'bg-black text-white dark:bg-cyan-600'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
-            )}
-
-            {filters.type === 'sales' && (
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Cashier</label>
-                <select
-                  value={filters.cashierId}
-                  onChange={(e) => setFilters({ ...filters, cashierId: e.target.value })}
-                  className="w-full border rounded px-2 py-1.5 text-sm bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                >
-                  <option value="">All</option>
-                  {cashiers.map(cashier => (
-                    <option key={cashier.id} value={cashier.id}>{cashier.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {filters.type === 'expenses' && (
-              <div>
-                <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Category</label>
-                <select
-                  value={filters.category}
-                  onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                  className="w-full border rounded px-2 py-1.5 text-sm bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                >
-                  <option value="">All</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            </div>
 
             <div className="flex items-end">
               <button
-                onClick={generateReport}
+                onClick={() => void generateReport()}
+                disabled={loading}
+                className="w-full px-3 py-1.5 text-sm rounded transition-colors bg-black text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-cyan-600 dark:hover:bg-cyan-700"
+              >
+                {loading ? 'Loading...' : 'Apply'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sales Filters */}
+      {filters.type === 'sales' && (
+        <div className="mb-4 p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Search Cashier</label>
+              <input
+                type="text"
+                value={cashierSearch}
+                onChange={(e) => setCashierSearch(e.target.value)}
+                placeholder="Type cashier name"
+                className="w-full border rounded px-2 py-1.5 text-sm bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Cashier</label>
+              <select
+                title="Cashier"
+                value={filters.cashierId}
+                onChange={(e) => setFilters({ ...filters, cashierId: e.target.value })}
+                className="w-full border rounded px-2 py-1.5 text-sm bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              >
+                <option value="">All Cashiers</option>
+                {filteredCashiers.map(cashier => (
+                  <option key={cashier.id} value={cashier.id}>{getCashierDisplayName(cashier)}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                onClick={() => void generateReport()}
+                disabled={loading}
+                className="w-full px-3 py-1.5 text-sm rounded transition-colors bg-black text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-cyan-600 dark:hover:bg-cyan-700"
+              >
+                {loading ? 'Loading...' : 'Apply'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expenses Filters */}
+      {filters.type === 'expenses' && (
+        <div className="mb-4 p-3 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Category</label>
+              <select
+                title="Expense category"
+                value={filters.category}
+                onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                className="w-full border rounded px-2 py-1.5 text-sm bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              >
+                <option value="">All</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                onClick={() => void generateReport()}
                 disabled={loading}
                 className="w-full px-3 py-1.5 text-sm rounded transition-colors bg-black text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-cyan-600 dark:hover:bg-cyan-700"
               >
@@ -477,7 +613,7 @@ export default function ReportsPage() {
 
       <div className="mb-4 flex justify-end">
         <button
-          onClick={generateReport}
+          onClick={() => void generateReport()}
           disabled={loading}
           className="px-4 py-2 text-sm rounded-lg transition-colors bg-black text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-cyan-600 dark:hover:bg-cyan-700"
         >
@@ -512,7 +648,7 @@ export default function ReportsPage() {
             <svg width={40} height={Math.round(40 * (1196 / 1061))} viewBox="0 0 1061 1196" fill="none" xmlns="http://www.w3.org/2000/svg" className="fill-current text-cyan-500 mx-auto"><path d="M538.795 609.092L871.505 276.381C976.486 372.749 1042.32 511.172 1042.38 664.993C1041.64 664.973 1040.9 664.949 1040.16 664.926C1046.75 665.171 1053.37 665.296 1060.02 665.298C777.219 665.385 546.193 886.933 530.915 1165.94L530.096 1180.67C530.596 1189.81 530.158 1186.07 530.102 1193.71L530.096 1195.39C530.096 1190.47 529.746 1185.56 529.88 1180.67C522.081 894.715 287.839 665.299 0 665.299C6.05981 665.299 12.0958 665.194 18.1064 664.992C18.1652 506.975 88.0333 365.252 198.592 268.889L538.795 609.092ZM674.459 135.664L538.795 271.328L403.132 135.664L538.795 0L674.459 135.664Z" /></svg>
           </div>
           <div className="w-40 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mx-auto mb-3">
-            <div className="h-full bg-cyan-500 rounded-full" style={{ animation: 'progressBar 1.5s ease-in-out infinite' }} />
+            <div className="h-full bg-cyan-500 rounded-full [animation:progressBar_1.5s_ease-in-out_infinite]" />
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400">Generating report...</p>
         </div>
@@ -532,7 +668,7 @@ export default function ReportsPage() {
                     </div>
                   </div>
                   <div className="text-xl font-bold mb-2 text-green-600 dark:text-green-400">
-                    {formatCurrency(reportData.sales?.totalRevenue ?? 0)}
+                    {formatCurrency(reportData.sales?.totalReceived ?? reportData.sales?.totalRevenue ?? 0)}
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
                     <div className="p-1.5 rounded bg-gray-50 dark:bg-gray-700">

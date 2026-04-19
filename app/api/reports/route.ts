@@ -16,6 +16,25 @@ const supabaseAdmin = createClient(
   }
 )
 
+function toSafeNumber(value: any): number {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
+function getReceivedAmount(sale: any): number {
+  const paidAmount = toSafeNumber(sale.amount_paid)
+  if (paidAmount > 0) {
+    return paidAmount
+  }
+
+  const paymentStatus = String(sale.payment_status || '').toLowerCase()
+  if (paymentStatus === 'paid') {
+    return toSafeNumber(sale.total_amount)
+  }
+
+  return 0
+}
+
 // GET - Generate comprehensive reports
 export async function GET(request: NextRequest) {
   try {
@@ -52,7 +71,7 @@ export async function GET(request: NextRequest) {
         reportData = await generateProfitReport(storeId, { startDate, endDate, period })
         break
       case 'summary':
-        reportData = await generateSummaryReport(storeId, { startDate, endDate, period })
+        reportData = await generateSummaryReport(storeId, { startDate, endDate, period, cashierId, paymentMethod })
         break
       default:
         return NextResponse.json(
@@ -91,7 +110,10 @@ async function generateSalesReport(storeId: string, filters: any) {
     query = query.lte('sale_date', endDateTime.toISOString())
   }
   if (filters.cashierId) {
-    query = query.eq('cashier_id', filters.cashierId)
+    const cashierRefId = Number.parseInt(filters.cashierId, 10)
+    if (!Number.isNaN(cashierRefId)) {
+      query = query.eq('cashier_ref_id', cashierRefId)
+    }
   }
   if (filters.paymentMethod) {
     query = query.eq('payment_method', filters.paymentMethod)
@@ -101,22 +123,72 @@ async function generateSalesReport(storeId: string, filters: any) {
 
   if (error) throw error
 
+  const salesRows = sales || []
+  const cashierRefIds = [...new Set(salesRows.map((sale: any) => sale.cashier_ref_id).filter((id: any) => Number.isInteger(id)))]
+  const managerIds = [...new Set(salesRows.map((sale: any) => sale.cashier_id).filter((id: any) => typeof id === 'string' && id.trim().length > 0))]
+
+  const cashierNameMap = new Map<number, string>()
+  const managerNameMap = new Map<string, string>()
+
+  if (cashierRefIds.length > 0) {
+    const { data: cashiers, error: cashiersError } = await supabaseAdmin
+      .from('cashiers')
+      .select('id, full_name')
+      .in('id', cashierRefIds)
+
+    if (cashiersError) throw cashiersError
+
+    ;(cashiers || []).forEach((cashier: any) => {
+      cashierNameMap.set(cashier.id, cashier.full_name)
+    })
+  }
+
+  if (managerIds.length > 0) {
+    const { data: managers, error: managersError } = await supabaseAdmin
+      .from('managers')
+      .select('id, full_name')
+      .in('id', managerIds)
+
+    if (managersError) throw managersError
+
+    ;(managers || []).forEach((manager: any) => {
+      managerNameMap.set(manager.id, manager.full_name)
+    })
+  }
+
+  const enrichedSales = salesRows.map((sale: any) => {
+    const cashierName = sale.cashier_name
+      || (Number.isInteger(sale.cashier_ref_id) ? cashierNameMap.get(sale.cashier_ref_id) : null)
+      || (typeof sale.cashier_id === 'string' ? managerNameMap.get(sale.cashier_id) : null)
+      || null
+
+    return {
+      ...sale,
+      cashier_name: cashierName,
+    }
+  })
+
   // Calculate statistics
-  const totalSales = sales?.length || 0
-  const totalRevenue = sales?.reduce((sum, sale) => sum + sale.total_amount, 0) || 0
-  const totalCash = sales?.filter(s => s.payment_method === 'Cash').reduce((sum, s) => sum + s.total_amount, 0) || 0
-  const totalDigital = sales?.filter(s => s.payment_method === 'Digital').reduce((sum, s) => sum + s.total_amount, 0) || 0
+  const totalSales = enrichedSales.length || 0
+  const totalRevenue = enrichedSales.reduce((sum, sale) => sum + toSafeNumber(sale.total_amount), 0)
+  const totalCash = enrichedSales
+    .filter((sale: any) => sale.payment_method === 'Cash')
+    .reduce((sum: number, sale: any) => sum + getReceivedAmount(sale), 0)
+  const totalDigital = enrichedSales
+    .filter((sale: any) => sale.payment_method === 'Digital')
+    .reduce((sum: number, sale: any) => sum + getReceivedAmount(sale), 0)
+  const totalReceived = enrichedSales.reduce((sum, sale) => sum + getReceivedAmount(sale), 0)
   const avgOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0
 
   // Group by period if specified
   let periodData: any[] = []
-  if (filters.period && sales) {
-    periodData = groupByPeriod(sales, filters.period, 'sale_date', 'total_amount')
+  if (filters.period && enrichedSales.length > 0) {
+    periodData = groupByPeriod(enrichedSales, filters.period, 'sale_date', 'total_amount')
   }
 
   // Top products
   const productSales: any = {}
-  sales?.forEach(sale => {
+  enrichedSales.forEach(sale => {
     sale.sale_items?.forEach((item: any) => {
       if (!productSales[item.product_name]) {
         productSales[item.product_name] = { quantity: 0, revenue: 0 }
@@ -135,13 +207,14 @@ async function generateSalesReport(storeId: string, filters: any) {
     summary: {
       totalSales,
       totalRevenue,
+      totalReceived,
       totalCash,
       totalDigital,
       avgOrderValue,
-      paidCount: sales?.filter(s => s.payment_status === 'Paid').length || 0,
-      partialCount: sales?.filter(s => s.payment_status === 'Partial').length || 0
+      paidCount: enrichedSales.filter((sale: any) => sale.payment_status === 'Paid').length || 0,
+      partialCount: enrichedSales.filter((sale: any) => sale.payment_status === 'Partial').length || 0
     },
-    sales: sales || [],
+    sales: enrichedSales,
     periodData,
     topProducts
   }
@@ -160,9 +233,7 @@ async function generateExpensesReport(storeId: string, filters: any) {
     query = query.gte('expense_date', filters.startDate)
   }
   if (filters.endDate) {
-    const endDateTime = new Date(filters.endDate)
-    endDateTime.setHours(23, 59, 59, 999)
-    query = query.lte('expense_date', endDateTime.toISOString())
+    query = query.lte('expense_date', filters.endDate)
   }
   if (filters.category) {
     query = query.eq('category', filters.category)
@@ -182,12 +253,30 @@ async function generateExpensesReport(storeId: string, filters: any) {
   const totalDigital = expenses?.filter(e => e.payment_method === 'Digital').reduce((sum, e) => sum + e.amount, 0) || 0
 
   // Group by category
-  const byCategory: any = {}
+  const categoryStats: any = {}
   expenses?.forEach(exp => {
-    if (!byCategory[exp.category]) {
-      byCategory[exp.category] = 0
+    const categoryName = exp.category || 'Uncategorized'
+    if (!categoryStats[categoryName]) {
+      categoryStats[categoryName] = {
+        total: 0,
+        count: 0,
+      }
     }
-    byCategory[exp.category] += exp.amount
+    categoryStats[categoryName].total += exp.amount
+    categoryStats[categoryName].count += 1
+  })
+
+  const categoryBreakdown = Object.entries(categoryStats)
+    .map(([category, stats]: [string, any]) => ({
+      category,
+      total: stats.total,
+      count: stats.count,
+    }))
+    .sort((a, b) => b.total - a.total)
+
+  const byCategory: any = {}
+  categoryBreakdown.forEach((entry: any) => {
+    byCategory[entry.category] = entry.total
   })
 
   // Group by period if specified
@@ -204,6 +293,7 @@ async function generateExpensesReport(storeId: string, filters: any) {
       totalDigital
     },
     expenses: expenses || [],
+    categoryBreakdown,
     byCategory,
     periodData
   }
@@ -228,7 +318,9 @@ async function generateInventoryReport(storeId: string, filters: any) {
     query = query.gte('purchase_date', filters.startDate)
   }
   if (filters.endDate) {
-    query = query.lte('purchase_date', filters.endDate)
+    const endDateTime = new Date(filters.endDate)
+    endDateTime.setHours(23, 59, 59, 999)
+    query = query.lte('purchase_date', endDateTime.toISOString())
   }
 
   const { data: batches, error } = await query
@@ -236,7 +328,7 @@ async function generateInventoryReport(storeId: string, filters: any) {
   if (error) throw error
 
   const totalStockIn = batches?.reduce((sum, batch) => sum + getPurchasedQuantity(batch), 0) || 0
-  const totalStockValue = batches?.reduce((sum, batch) => sum + ((Number(batch.cost_price) || 0) * getPurchasedQuantity(batch)), 0) || 0
+  const totalStockValue = batches?.reduce((sum, batch) => sum + ((Number(batch.cost_price) || 0) * getRemainingQuantity(batch)), 0) || 0
   const totalRemaining = batches?.reduce((sum, batch) => sum + getRemainingQuantity(batch), 0) || 0
   const totalSold = batches?.reduce((sum, batch) => sum + (getPurchasedQuantity(batch) - getRemainingQuantity(batch)), 0) || 0
 
@@ -256,24 +348,56 @@ async function generateProfitReport(storeId: string, filters: any) {
   const expensesReport = await generateExpensesReport(storeId, filters)
 
   // Calculate cost of goods sold
-  const { data: salesWithCost } = await supabaseAdmin
+  let cogsQuery = supabaseAdmin
     .from('sale_items')
     .select('cost_price_snapshot, quantity, subtotal, sales!inner(store_id, sale_date)')
     .eq('sales.store_id', parseInt(storeId))
 
+  if (filters.startDate) {
+    cogsQuery = cogsQuery.gte('sales.sale_date', filters.startDate)
+  }
+
+  if (filters.endDate) {
+    const endDateTime = new Date(filters.endDate)
+    endDateTime.setHours(23, 59, 59, 999)
+    cogsQuery = cogsQuery.lte('sales.sale_date', endDateTime.toISOString())
+  }
+
+  const { data: salesWithCost, error: salesWithCostError } = await cogsQuery
+
+  if (salesWithCostError) throw salesWithCostError
+
   let cogs = 0
   if (salesWithCost) {
-    const endDateTime = filters.endDate ? new Date(filters.endDate) : null
-    if (endDateTime) {
-      endDateTime.setHours(23, 59, 59, 999)
-    }
-
     salesWithCost.forEach((item: any) => {
-      if (filters.startDate && new Date(item.sales.sale_date) < new Date(filters.startDate)) return
-      if (endDateTime && new Date(item.sales.sale_date) > endDateTime) return
-      cogs += (item.cost_price_snapshot || 0) * item.quantity
+      cogs += toSafeNumber(item.cost_price_snapshot) * toSafeNumber(item.quantity)
     })
   }
+
+  const salesTrend = salesReport.periodData || []
+  const expensesTrend = expensesReport.periodData || []
+  const trendMap = new Map<string, { sales: number; expenses: number }>()
+
+  salesTrend.forEach((point: any) => {
+    const existing = trendMap.get(point.date) || { sales: 0, expenses: 0 }
+    existing.sales = toSafeNumber(point.value)
+    trendMap.set(point.date, existing)
+  })
+
+  expensesTrend.forEach((point: any) => {
+    const existing = trendMap.get(point.date) || { sales: 0, expenses: 0 }
+    existing.expenses = toSafeNumber(point.value)
+    trendMap.set(point.date, existing)
+  })
+
+  const periodData = Array.from(trendMap.entries())
+    .map(([date, values]) => ({
+      date,
+      value: values.sales - values.expenses,
+      sales: values.sales,
+      expenses: values.expenses,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date))
 
   const grossProfit = salesReport.summary.totalRevenue - cogs
   const netProfit = grossProfit - expensesReport.summary.totalAmount
@@ -288,6 +412,7 @@ async function generateProfitReport(storeId: string, filters: any) {
       netProfit,
       profitMargin
     },
+    periodData,
     salesData: salesReport.periodData,
     expensesData: expensesReport.periodData
   }
@@ -296,7 +421,7 @@ async function generateProfitReport(storeId: string, filters: any) {
 async function generateSummaryReport(storeId: string, filters: any) {
   const sales = await generateSalesReport(storeId, filters)
   const expenses = await generateExpensesReport(storeId, filters)
-  const inventory = await generateInventoryReport(storeId, filters)
+  const inventory = await generateInventoryReport(storeId, {})
   const profit = await generateProfitReport(storeId, filters)
 
   // Calculate cash present (Cash sales - Cash expenses)
@@ -316,13 +441,39 @@ async function generateSummaryReport(storeId: string, filters: any) {
 }
 
 function generateCashFlowTrend(salesReport: any, expensesReport: any, filters: any) {
-  // Determine date range
-  const startDate = filters.startDate ? new Date(filters.startDate) : new Date()
-  const endDate = filters.endDate ? new Date(filters.endDate) : new Date()
-  
+  const salesData = salesReport.sales || []
+  const expensesData = expensesReport.expenses || []
+
+  const transactionDates = [
+    ...salesData.map((sale: any) => new Date(sale.sale_date)),
+    ...expensesData.map((expense: any) => new Date(expense.expense_date))
+  ].filter((date: Date) => !Number.isNaN(date.getTime()))
+
+  let startDate = filters.startDate ? new Date(filters.startDate) : null
+  let endDate = filters.endDate ? new Date(filters.endDate) : null
+
+  if (!startDate && transactionDates.length > 0) {
+    startDate = new Date(Math.min(...transactionDates.map(date => date.getTime())))
+  }
+
+  if (!endDate && transactionDates.length > 0) {
+    endDate = new Date(Math.max(...transactionDates.map(date => date.getTime())))
+  }
+
+  if (!startDate) {
+    startDate = new Date()
+  }
+
+  if (!endDate) {
+    endDate = new Date()
+  }
+
+  startDate.setHours(0, 0, 0, 0)
+  endDate.setHours(23, 59, 59, 999)
+
   // Create daily entries for the entire range
   const trendMap: any = {}
-  
+
   // Fill in all dates in the range with zero values
   const currentDate = new Date(startDate)
   while (currentDate <= endDate) {
@@ -332,16 +483,14 @@ function generateCashFlowTrend(salesReport: any, expensesReport: any, filters: a
   }
 
   // Add sales data
-  const salesData = salesReport.sales || []
   salesData.forEach((sale: any) => {
     const date = new Date(sale.sale_date).toISOString().split('T')[0]
     if (trendMap[date]) {
-      trendMap[date].cashIn += sale.total_amount
+      trendMap[date].cashIn += getReceivedAmount(sale)
     }
   })
 
   // Add expenses data
-  const expensesData = expensesReport.expenses || []
   expensesData.forEach((expense: any) => {
     const date = new Date(expense.expense_date).toISOString().split('T')[0]
     if (trendMap[date]) {

@@ -10,16 +10,13 @@
 5. when we are making a sale , and we give a price that is less then the minimum negotiable price , so if we try to add it in customers khata , so the field "SALES PRICE" first replace it with INVOICE price , and other thing is that the price paid here is not reflected in the sales history and recipt as well , simply it is being ignored 
 2. manager cant delete sales history
 8. when creating a new sale , and selecting digital as payment so it should must ask for the name of the customer and the name should exactly almost match with the digital recipt
-
-
+15. add a ticket system , a good one !
+7. when you genetat a summary / report , then when i click on cash so it should should all the history in a scrollable widget , same goes for digital etc.... , for all tabs like inventory , summary , expenses etc
+10. when genrating a report of inventory module , so it dosen show reports dayiley , monthly , only yealry shows and its also not accurate it shows only the first loaded product , after that it dosent show any thign
+12. in summary (reports tab) , stock quantity is showing wrong
 
 # IN REVIEW
 
 
 # HAVE TO DO
-7. when you genetat a summary / report , then when i click on cash so it should should all the history in a scrollable widget , same goes for digital etc.... , for all tabs like inventory , summary , expenses etc
-10. when genrating a report of inventory module , so it dosen show reports dayiley , monthly , only yealry shows and its also not accurate it shows only the first loaded product , after that it dosent show any thign
-12. in summary (reports tab) , stock quantity is showing wrong
-
-15. add a ticket system , a good one !
 16. set a cron job for daily/weekly/monthly expenses 

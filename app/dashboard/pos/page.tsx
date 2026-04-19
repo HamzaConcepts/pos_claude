@@ -22,6 +22,7 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [filteredProducts, setFilteredProducts] = useState<ProductWithBackwardCompatibility[]>([])
+  const [quantityInputs, setQuantityInputs] = useState<Record<number, string>>({})
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
   const [amountPaid, setAmountPaid] = useState('')
   const [saleDescription, setSaleDescription] = useState('')
@@ -415,6 +416,20 @@ export default function POSPage() {
     }
   }, [searchTerm, products])
 
+  useEffect(() => {
+    setQuantityInputs((prev) => {
+      const next: Record<number, string> = {}
+      cart.forEach((item) => {
+        next[item.product.id] = String(item.quantity)
+      })
+
+      const sameLength = Object.keys(prev).length === Object.keys(next).length
+      const sameValues = sameLength && Object.keys(next).every((key) => prev[Number(key)] === next[Number(key)])
+
+      return sameValues ? prev : next
+    })
+  }, [cart])
+
   const fetchCurrentUser = async () => {
     // First check for Supabase Auth user (managers)
     const { data: { user } } = await supabase.auth.getUser()
@@ -556,6 +571,39 @@ export default function POSPage() {
         )
       )
     }
+  }
+
+  const handleQuantityInputChange = (productId: number, value: string) => {
+    if (/^\d*$/.test(value)) {
+      setQuantityInputs((prev) => ({
+        ...prev,
+        [productId]: value,
+      }))
+    }
+  }
+
+  const commitQuantityInput = (item: CartItem) => {
+    const rawValue = (quantityInputs[item.product.id] ?? String(item.quantity)).trim()
+
+    if (!rawValue) {
+      setQuantityInputs((prev) => ({ ...prev, [item.product.id]: String(item.quantity) }))
+      return
+    }
+
+    const parsedQuantity = Number.parseInt(rawValue, 10)
+    if (Number.isNaN(parsedQuantity)) {
+      setQuantityInputs((prev) => ({ ...prev, [item.product.id]: String(item.quantity) }))
+      return
+    }
+
+    if (parsedQuantity !== item.quantity) {
+      updateQuantity(item.product.id, parsedQuantity)
+      // Keep showing current value until cart update (or validation) settles.
+      setQuantityInputs((prev) => ({ ...prev, [item.product.id]: String(item.quantity) }))
+      return
+    }
+
+    setQuantityInputs((prev) => ({ ...prev, [item.product.id]: String(item.quantity) }))
   }
 
   const removeFromCart = (productId: number) => {
@@ -1656,17 +1704,43 @@ export default function POSPage() {
                               onClick={() =>
                                 updateQuantity(item.product.id, item.quantity - 1)
                               }
+                              title={`Decrease quantity for ${item.product.name}`}
+                              aria-label={`Decrease quantity for ${item.product.name}`}
                               className="p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-[#2a2a2a] dark:text-gray-300"
                             >
                               <MinusIcon size={14} />
                             </button>
-                            <span className="font-medium w-8 text-center dark:text-white">
-                              {item.quantity}
-                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={item.product.stock_quantity}
+                              value={quantityInputs[item.product.id] ?? String(item.quantity)}
+                              onChange={(e) => handleQuantityInputChange(item.product.id, e.target.value)}
+                              onBlur={() => commitQuantityInput(item)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  e.currentTarget.blur()
+                                }
+
+                                if (e.key === 'Escape') {
+                                  e.preventDefault()
+                                  setQuantityInputs((prev) => ({
+                                    ...prev,
+                                    [item.product.id]: String(item.quantity),
+                                  }))
+                                  e.currentTarget.blur()
+                                }
+                              }}
+                              className="w-12 bg-transparent text-center font-medium outline-none [appearance:textfield] dark:text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                              aria-label={`Quantity for ${item.product.name}`}
+                            />
                             <button
                               onClick={() =>
                                 updateQuantity(item.product.id, item.quantity + 1)
                               }
+                              title={`Increase quantity for ${item.product.name}`}
+                              aria-label={`Increase quantity for ${item.product.name}`}
                               className="p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-[#2a2a2a] dark:text-gray-300"
                             >
                               <PlusIcon size={14} />
@@ -1679,6 +1753,8 @@ export default function POSPage() {
 
                           <button
                             onClick={() => removeFromCart(item.product.id)}
+                            title={`Remove ${item.product.name} from cart`}
+                            aria-label={`Remove ${item.product.name} from cart`}
                             className="p-1.5 rounded-lg transition-colors hover:bg-red-50 text-red-600 dark:hover:bg-red-900/30 dark:text-red-400"
                           >
                             <TrashIcon size={16} />
