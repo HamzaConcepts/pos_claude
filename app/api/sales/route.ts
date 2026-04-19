@@ -18,6 +18,84 @@ const supabaseAdmin = createClient(
   }
 )
 
+const roundToTwo = (value: number): number => Math.round(value * 100) / 100
+
+const deriveStorePrefix = (storeName?: string | null, storeCode?: string | null): string => {
+  const tokens = (storeName || '').toUpperCase().match(/[A-Z0-9]+/g) || []
+  let prefix = ''
+
+  if (tokens.length >= 2) {
+    prefix = tokens.slice(0, 3).map((token) => token[0]).join('')
+  } else if (tokens.length === 1) {
+    prefix = tokens[0].slice(0, 3)
+  }
+
+  if (!prefix) {
+    prefix = ((storeCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3)) || 'SAL'
+  }
+
+  return prefix.padEnd(3, 'X')
+}
+
+const formatStoreSaleNumber = (prefix: string, sequenceNumber: number): string => {
+  return `${prefix}-${String(sequenceNumber).padStart(3, '0')}`
+}
+
+const resolveCashierName = async (sale: any): Promise<string> => {
+  if (sale.cashier_ref_id) {
+    const { data: cashier } = await supabaseAdmin
+      .from('cashiers')
+      .select('full_name')
+      .eq('id', sale.cashier_ref_id)
+      .single()
+
+    if (cashier?.full_name) {
+      return cashier.full_name
+    }
+
+    const { data: cashierAccountFromRef } = await supabaseAdmin
+      .from('cashier_accounts')
+      .select('full_name')
+      .eq('id', sale.cashier_ref_id)
+      .single()
+
+    if (cashierAccountFromRef?.full_name) {
+      return cashierAccountFromRef.full_name
+    }
+  }
+
+  if (sale.cashier_id) {
+    const cashierIdText = String(sale.cashier_id)
+
+    if (cashierIdText.includes('-')) {
+      const { data: manager } = await supabaseAdmin
+        .from('managers')
+        .select('full_name')
+        .eq('id', cashierIdText)
+        .single()
+
+      if (manager?.full_name) {
+        return manager.full_name
+      }
+    } else {
+      const parsedCashierId = Number.parseInt(cashierIdText, 10)
+      if (!Number.isNaN(parsedCashierId)) {
+        const { data: cashierAccount } = await supabaseAdmin
+          .from('cashier_accounts')
+          .select('full_name')
+          .eq('id', parsedCashierId)
+          .single()
+
+        if (cashierAccount?.full_name) {
+          return cashierAccount.full_name
+        }
+      }
+    }
+  }
+
+  return 'Unknown'
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -215,8 +293,6 @@ export async function POST(request: Request) {
       customer_cnic
     } = body
 
-    const roundToTwo = (value: number): number => Math.round(value * 100) / 100
-
     const fallbackPartialCustomerName =
       typeof partial_payment_customer?.customer_name === 'string'
         ? partial_payment_customer.customer_name.trim()
@@ -229,6 +305,8 @@ export async function POST(request: Request) {
       (typeof customer_name === 'string' ? customer_name.trim() : '') || fallbackPartialCustomerName
     const normalizedCustomerPhone =
       (typeof customer_phone === 'string' ? customer_phone.trim() : '') || fallbackPartialCustomerPhone
+    const normalizedCashierId = typeof cashier_id === 'string' ? cashier_id.trim() : cashier_id
+    const normalizedCashierRefId = typeof cashier_ref_id === 'string' ? cashier_ref_id.trim() : cashier_ref_id
 
     // Determine the authenticated user for payment recording
     // cashier_id can be:
@@ -238,7 +316,7 @@ export async function POST(request: Request) {
     let isManagerUser = false
 
     // Check if we have a valid cashier_id
-    if (!cashier_id && !cashier_ref_id) {
+    if (!normalizedCashierId && !normalizedCashierRefId) {
       return NextResponse.json(
         {
           success: false,
@@ -250,7 +328,7 @@ export async function POST(request: Request) {
     }
 
     // Prioritize cashier_id for authentication (who is making the sale)
-    const authId = cashier_id || cashier_ref_id
+    const authId = normalizedCashierId || normalizedCashierRefId
     const authIdStr = String(authId)
 
     // Check if it's a UUID (manager)
@@ -274,6 +352,25 @@ export async function POST(request: Request) {
       paymentRecorderId = parsedId
     }
 
+    let cashierRefIdForSale: number | null = null
+    if (!isManagerUser) {
+      const fallbackCashierRef = normalizedCashierRefId ?? paymentRecorderId
+      const parsedCashierRef = Number.parseInt(String(fallbackCashierRef), 10)
+
+      if (Number.isNaN(parsedCashierRef)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid user authentication',
+            code: 'AUTHENTICATION_ERROR',
+          },
+          { status: 401 }
+        )
+      }
+
+      cashierRefIdForSale = parsedCashierRef
+    }
+
     // Validation
     if (!items || items.length === 0) {
       return NextResponse.json(
@@ -291,6 +388,18 @@ export async function POST(request: Request) {
         {
           success: false,
           error: 'Store ID is required',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
+    const parsedStoreId = parseInt(String(store_id), 10)
+    if (Number.isNaN(parsedStoreId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid store ID',
           code: 'VALIDATION_ERROR',
         },
         { status: 400 }
@@ -333,6 +442,23 @@ export async function POST(request: Request) {
       )
     }
 
+    const { data: storeDetails, error: storeDetailsError } = await supabaseAdmin
+      .from('stores')
+      .select('store_name, store_code')
+      .eq('id', parsedStoreId)
+      .single()
+
+    if (storeDetailsError || !storeDetails) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Store not found',
+          code: 'STORE_NOT_FOUND',
+        },
+        { status: 404 }
+      )
+    }
+
     // Fetch product details and calculate total
     let totalAmount = 0
     const saleItems = []
@@ -357,7 +483,7 @@ export async function POST(request: Request) {
           )
         `)
         .eq('id', item.product_id)
-        .eq('store_id', parseInt(store_id))
+        .eq('store_id', parsedStoreId)
         .single()
 
       if (productError || !product) {
@@ -376,7 +502,7 @@ export async function POST(request: Request) {
         .from('stock_batches')
         .select('id, quantity_remaining, purchase_date')
         .eq('product_id', item.product_id)
-        .eq('store_id', parseInt(store_id))
+        .eq('store_id', parsedStoreId)
         .eq('is_depleted', false)
         .gt('quantity_remaining', 0)
         .order('purchase_date', { ascending: true })
@@ -400,7 +526,19 @@ export async function POST(request: Request) {
       )
 
       // Check stock availability
-      if (totalStock < item.quantity) {
+      const itemQuantity = Number.parseInt(String(item.quantity), 10)
+      if (!Number.isInteger(itemQuantity) || itemQuantity <= 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Invalid quantity for ${product.name}`,
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        )
+      }
+
+      if (totalStock < itemQuantity) {
         return NextResponse.json(
           {
             success: false,
@@ -413,11 +551,11 @@ export async function POST(request: Request) {
 
       // Validate IMEI numbers for phone products
       if (product.is_phone) {
-        if (!item.imei_numbers || item.imei_numbers.length !== item.quantity) {
+        if (!item.imei_numbers || item.imei_numbers.length !== itemQuantity) {
           return NextResponse.json(
             {
               success: false,
-              error: `Please select ${item.quantity} IMEI number${item.quantity > 1 ? 's' : ''} for ${product.name}`,
+              error: `Please select ${itemQuantity} IMEI number${itemQuantity > 1 ? 's' : ''} for ${product.name}`,
               code: 'IMEI_REQUIRED',
             },
             { status: 400 }
@@ -430,7 +568,7 @@ export async function POST(request: Request) {
           .select('id, imei_number, status')
           .in('imei_number', item.imei_numbers)
           .eq('product_id', product.id)
-          .eq('store_id', parseInt(store_id))
+          .eq('store_id', parsedStoreId)
 
         if (imeiError || !imeiRecords || imeiRecords.length !== item.imei_numbers.length) {
           return NextResponse.json(
@@ -460,20 +598,48 @@ export async function POST(request: Request) {
       const aggStock = Array.isArray(product.aggregated_stock) 
         ? product.aggregated_stock[0] 
         : product.aggregated_stock
-      
-      const sellingPrice = aggStock?.aggregated_selling_price || 0
+
+      const defaultSellingPrice = Number(aggStock?.aggregated_selling_price || 0)
+      const lowestNegotiable = Number(aggStock?.aggregated_lowest_negotiable || 0)
+      const rawRequestedUnitPrice = item.unit_price
+      const hasRequestedUnitPrice = rawRequestedUnitPrice !== undefined && rawRequestedUnitPrice !== null && rawRequestedUnitPrice !== ''
+      const requestedUnitPrice = hasRequestedUnitPrice ? Number(rawRequestedUnitPrice) : null
+
+      if (hasRequestedUnitPrice && (!Number.isFinite(requestedUnitPrice) || (requestedUnitPrice as number) < 0)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Invalid unit price for ${product.name}`,
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        )
+      }
+
+      if (hasRequestedUnitPrice && (requestedUnitPrice as number) < lowestNegotiable && !isManagerUser) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Manager confirmation is required to set ${product.name} below lowest negotiable price`,
+            code: 'MANAGER_CONFIRMATION_REQUIRED',
+          },
+          { status: 403 }
+        )
+      }
+
+      const sellingPrice = roundToTwo(hasRequestedUnitPrice ? (requestedUnitPrice as number) : defaultSellingPrice)
       
       // Use aggregated_cost_price for cost calculation (for profit tracking)
       const costPrice = aggStock?.aggregated_cost_price || 0
       
-      const subtotal = sellingPrice * item.quantity
+      const subtotal = roundToTwo(sellingPrice * itemQuantity)
       totalAmount += subtotal
 
       saleItems.push({
         product_id: product.id,
         product_sku: product.sku,
         product_name: product.name,
-        quantity: item.quantity,
+        quantity: itemQuantity,
         unit_price: sellingPrice,
         cost_price_snapshot: costPrice,
         subtotal,
@@ -579,10 +745,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // Note: sale_number_store is auto-generated by database trigger
-    // It provides per-store sequential IDs (1, 2, 3, ...)
-    // The old sale_number field is kept for backward compatibility
-    const saleNumber = `SALE-${Date.now()}`
+    // sale_number_store is auto-generated by DB trigger; we store a provisional number first,
+    // then replace it with PREFIX-001 format once sale_number_store is known.
+    const saleNumber = `TMP-${Date.now()}-${Math.floor(Math.random() * 1000)}`
 
     // For the sales table: use cashier_id only for managers (UUID)
     // For cashier accounts, use null and rely on cashier_ref_id
@@ -597,13 +762,13 @@ export async function POST(request: Request) {
           sale_date: getPKTNow(), // Use PKT timezone
           sale_description: sale_description || null,
           cashier_id: cashierIdForSale, // Only UUID (managers), null for cashier accounts
-          cashier_ref_id: cashier_ref_id || null, // Reference to selected cashier
+          cashier_ref_id: cashierRefIdForSale, // Reference to selected cashier
           total_amount: totalAmount,
           payment_method,
           payment_status: paymentStatus,
           amount_paid: paidAmount,
           amount_due: dueAmount > 0 ? dueAmount : 0,
-          store_id: parseInt(store_id),
+          store_id: parsedStoreId,
           notes,
           discount_type: discount_type || 'none',
           discount_value: discount_value || 0,
@@ -617,6 +782,21 @@ export async function POST(request: Request) {
 
     if (saleError) throw saleError
 
+    const salePrefix = deriveStorePrefix(storeDetails.store_name, storeDetails.store_code)
+    const formattedSaleNumber = formatStoreSaleNumber(salePrefix, sale.sale_number_store)
+
+    const { error: saleNumberUpdateError } = await supabaseAdmin
+      .from('sales')
+      .update({ sale_number: formattedSaleNumber })
+      .eq('id', sale.id)
+      .eq('store_id', parsedStoreId)
+
+    if (saleNumberUpdateError) {
+      throw saleNumberUpdateError
+    }
+
+    sale.sale_number = formattedSaleNumber
+
     // Create payment record (track all payments)
     if (paidAmount > 0) {
       const paymentData: any = {
@@ -624,7 +804,7 @@ export async function POST(request: Request) {
         amount: paidAmount,
         payment_method,
         payment_date: getPKTNow(), // Use PKT timezone
-        store_id: parseInt(store_id),
+        store_id: parsedStoreId,
       }
       
       // The constraint requires EXACTLY ONE of manager_id or cashier_id to be set
@@ -664,7 +844,7 @@ export async function POST(request: Request) {
             total_amount: totalAmount,
             amount_paid: paidAmount,
             amount_remaining: dueAmount,
-            store_id: parseInt(store_id),
+            store_id: parsedStoreId,
           },
         ])
 
@@ -695,7 +875,7 @@ export async function POST(request: Request) {
       const { data: fifoResult, error: fifoError } = await supabaseAdmin
         .rpc('deduct_stock_fifo', {
           p_product_id: saleItem.product_id,
-          p_store_id: parseInt(store_id),
+          p_store_id: parsedStoreId,
           p_quantity: saleItem.quantity,
           p_sale_id: sale.id,
         })
@@ -716,7 +896,7 @@ export async function POST(request: Request) {
           })
           .in('imei_number', saleItem.imei_numbers)
           .eq('product_id', saleItem.product_id)
-          .eq('store_id', parseInt(store_id))
+          .eq('store_id', parsedStoreId)
 
         if (imeiUpdateError) {
           console.error('IMEI update error:', imeiUpdateError)
@@ -741,38 +921,7 @@ export async function POST(request: Request) {
       throw new Error('Failed to fetch sale details')
     }
 
-    // Determine cashier name based on priority:
-    // 1. If cashier_ref_id exists, use that (selected cashier from sidebar or cashier account)
-    // 2. If cashier_id exists (manager UUID), use manager's name
-    // 3. Otherwise, 'Unknown'
-    if (completeSale.cashier_ref_id) {
-      const { data: cashier } = await supabaseAdmin
-        .from('cashiers')
-        .select('full_name')
-        .eq('id', completeSale.cashier_ref_id)
-        .single()
-      
-      if (cashier) {
-        completeSale.cashier_name = cashier.full_name
-      } else {
-        completeSale.cashier_name = 'Unknown'
-      }
-    } else if (completeSale.cashier_id) {
-      // Manager UUID - fetch from managers table
-      const { data: manager } = await supabaseAdmin
-        .from('managers')
-        .select('full_name')
-        .eq('id', completeSale.cashier_id)
-        .single()
-      
-      if (manager) {
-        completeSale.cashier_name = manager.full_name
-      } else {
-        completeSale.cashier_name = 'Unknown'
-      }
-    } else {
-      completeSale.cashier_name = 'Unknown'
-    }
+    completeSale.cashier_name = await resolveCashierName(completeSale)
 
     return NextResponse.json({
       success: true,

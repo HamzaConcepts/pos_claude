@@ -12,6 +12,7 @@ import { useCurrency } from '@/lib/currency-context'
 interface CartItem {
   product: ProductWithBackwardCompatibility
   quantity: number
+  unit_price_override?: number | null
   imei_numbers?: string[]  // For phone products
 }
 
@@ -23,6 +24,7 @@ export default function POSPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filteredProducts, setFilteredProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [quantityInputs, setQuantityInputs] = useState<Record<number, string>>({})
+  const [priceInputs, setPriceInputs] = useState<Record<number, string>>({})
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
   const [amountPaid, setAmountPaid] = useState('')
   const [saleDescription, setSaleDescription] = useState('')
@@ -430,6 +432,48 @@ export default function POSPage() {
     })
   }, [cart])
 
+  useEffect(() => {
+    setPriceInputs((prev) => {
+      const next: Record<number, string> = {}
+      cart.forEach((item) => {
+        next[item.product.id] = getEffectiveUnitPrice(item).toFixed(2)
+      })
+
+      const sameLength = Object.keys(prev).length === Object.keys(next).length
+      const sameValues = sameLength && Object.keys(next).every((key) => prev[Number(key)] === next[Number(key)])
+
+      return sameValues ? prev : next
+    })
+  }, [cart])
+
+  const getBaseUnitPrice = (item: CartItem) => {
+    return item.product.aggregated_stock?.aggregated_selling_price || 0
+  }
+
+  const getEffectiveUnitPrice = (item: CartItem) => {
+    if (typeof item.unit_price_override === 'number' && Number.isFinite(item.unit_price_override)) {
+      return item.unit_price_override
+    }
+    return getBaseUnitPrice(item)
+  }
+
+  const getLineTotal = (item: CartItem) => {
+    return getEffectiveUnitPrice(item) * item.quantity
+  }
+
+  const getCashierSessionId = (): number | null => {
+    const userSession = localStorage.getItem('user_session')
+    if (!userSession) return null
+
+    try {
+      const session = JSON.parse(userSession)
+      const parsedId = Number.parseInt(String(session?.id), 10)
+      return Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null
+    } catch {
+      return null
+    }
+  }
+
   const fetchCurrentUser = async () => {
     // First check for Supabase Auth user (managers)
     const { data: { user } } = await supabase.auth.getUser()
@@ -440,18 +484,9 @@ export default function POSPage() {
     }
     
     // If no Supabase user, check for cashier session in localStorage
-    const userSession = localStorage.getItem('user_session')
-    if (userSession) {
-      try {
-        const session = JSON.parse(userSession)
-        // Cashier session stores 'id', not 'user_id'
-        // For cashier accounts, use the cashier account ID
-        if (session.id) {
-          setCashierId(session.id.toString())
-        }
-      } catch (err) {
-        console.error('Failed to parse user session:', err)
-      }
+    const sessionCashierId = getCashierSessionId()
+    if (sessionCashierId !== null) {
+      setCashierId(sessionCashierId.toString())
     }
   }
 
@@ -606,6 +641,49 @@ export default function POSPage() {
     setQuantityInputs((prev) => ({ ...prev, [item.product.id]: String(item.quantity) }))
   }
 
+  const updateUnitPrice = (productId: number, newUnitPrice: number | null) => {
+    setCart(
+      cart.map((cartItem) => {
+        if (cartItem.product.id !== productId) return cartItem
+
+        const basePrice = cartItem.product.aggregated_stock?.aggregated_selling_price || 0
+        if (newUnitPrice === null || Math.abs(newUnitPrice - basePrice) < 0.0001) {
+          return { ...cartItem, unit_price_override: null }
+        }
+
+        return { ...cartItem, unit_price_override: newUnitPrice }
+      })
+    )
+  }
+
+  const handlePriceInputChange = (productId: number, value: string) => {
+    if (/^\d*(\.\d{0,2})?$/.test(value)) {
+      setPriceInputs((prev) => ({
+        ...prev,
+        [productId]: value,
+      }))
+    }
+  }
+
+  const commitPriceInput = (item: CartItem) => {
+    const rawValue = (priceInputs[item.product.id] ?? getEffectiveUnitPrice(item).toFixed(2)).trim()
+
+    if (!rawValue) {
+      updateUnitPrice(item.product.id, null)
+      setPriceInputs((prev) => ({ ...prev, [item.product.id]: getBaseUnitPrice(item).toFixed(2) }))
+      return
+    }
+
+    const parsedValue = Number.parseFloat(rawValue)
+    if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+      setPriceInputs((prev) => ({ ...prev, [item.product.id]: getEffectiveUnitPrice(item).toFixed(2) }))
+      return
+    }
+
+    updateUnitPrice(item.product.id, parsedValue)
+    setPriceInputs((prev) => ({ ...prev, [item.product.id]: parsedValue.toFixed(2) }))
+  }
+
   const removeFromCart = (productId: number) => {
     setCart(cart.filter((item) => item.product.id !== productId))
   }
@@ -621,8 +699,7 @@ export default function POSPage() {
 
   const calculateTotal = () => {
     return cart.reduce((sum, item) => {
-      const price = item.product.aggregated_stock?.aggregated_selling_price || 0
-      return sum + price * item.quantity
+      return sum + getLineTotal(item)
     }, 0)
   }
 
@@ -645,16 +722,29 @@ export default function POSPage() {
       return
     }
 
-    // Validate sale description
-    let finalDescription = saleDescription.trim()
-    if (cart.length > 1 && !finalDescription) {
-      setError('Sale description is required for orders with multiple items')
-      return
-    }
-    
-    // If single item and no description, use product name
-    if (cart.length === 1 && !finalDescription) {
-      finalDescription = cart[0].product.name
+    const hasBelowLowestOverride = cart.some((item) => {
+      if (typeof item.unit_price_override !== 'number') return false
+      const lowestNegotiable = item.product.aggregated_stock?.aggregated_lowest_negotiable || 0
+      return item.unit_price_override < lowestNegotiable
+    })
+
+    if (hasBelowLowestOverride) {
+      const { data: { user } } = await supabase.auth.getUser()
+      const isManagerUser = user !== null
+
+      if (!isManagerUser) {
+        setError('Manager confirmation is required for prices below lowest negotiable value.')
+        return
+      }
+
+      const confirmOverride = window.confirm(
+        'One or more item prices are below the lowest negotiable value. Confirm manager override to continue.'
+      )
+
+      if (!confirmOverride) {
+        setError('Sale cancelled. Manager override was not confirmed.')
+        return
+      }
     }
 
     const total = calculateTotal()
@@ -835,24 +925,49 @@ export default function POSPage() {
         }
       }
 
-      // Determine if this is a manager or cashier
+      // Resolve actor identity at submit time to avoid stale state races.
       const { data: { user } } = await supabase.auth.getUser()
-      const isManager = user !== null
+      const sessionUserType = sessionStorage.getItem('user_type')
+      const sessionManagerId =
+        sessionUserType === 'Manager' ? sessionStorage.getItem('user_id') : null
+      const resolvedManagerId = user?.id || sessionManagerId || null
+
+      const selectedCashierId = Number.parseInt(String(selectedCashierFromSidebar?.id ?? ''), 10)
+      const resolvedSelectedCashierId =
+        Number.isInteger(selectedCashierId) && selectedCashierId > 0
+          ? selectedCashierId
+          : null
+      const fallbackCashierIdFromState = Number.parseInt(cashierId, 10)
+      const resolvedCashierId =
+        resolvedSelectedCashierId ??
+        getCashierSessionId() ??
+        (Number.isInteger(fallbackCashierIdFromState) && fallbackCashierIdFromState > 0
+          ? fallbackCashierIdFromState
+          : null)
+      const isManager = Boolean(resolvedManagerId)
+
+      if (!isManager && !resolvedCashierId) {
+        setError('User authentication required. Please login again.')
+        router.push('/login')
+        setLoading(false)
+        return
+      }
       
       const saleData = {
         items: cart.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,
+          unit_price: getEffectiveUnitPrice(item),
           imei_numbers: item.imei_numbers || [], // Include IMEI numbers
         })),
         sale_description: finalDescription,
         payment_method: paymentMethod,
         amount_paid: paid,
         // If manager is making sale, send their UUID. If cashier, send null and use cashier_ref_id
-        cashier_id: isManager ? cashierId : null,
+        cashier_id: isManager ? resolvedManagerId : null,
         // Manager: don't use sidebar selection, always null so manager's name shows
         // Cashier: use selected cashier from sidebar OR their own ID
-        cashier_ref_id: isManager ? null : (selectedCashierFromSidebar?.id || cashierId),
+        cashier_ref_id: isManager ? null : resolvedCashierId,
         notes: null,
         partial_payment_customer: partialPaymentCustomer,
         store_id: storeId,
@@ -1130,9 +1245,9 @@ export default function POSPage() {
 
           {/* Footer */}
           <div className="text-center mt-3 pt-2 border-t border-dashed border-black">
-            <p className="font-bold">{receiptSettings?.thank_you_message || 'Thank you!'}</p>
+            <p className="font-bold whitespace-pre-line">{receiptSettings?.thank_you_message || 'Thank you!'}</p>
             {receiptSettings?.return_policy && (
-              <p className="text-[9px] mt-1 text-gray-600">{receiptSettings.return_policy}</p>
+              <p className="text-[9px] mt-1 text-gray-600 whitespace-pre-line">{receiptSettings.return_policy}</p>
             )}
             <p className="text-[10px] mt-1">
               {new Date().toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
@@ -1357,6 +1472,8 @@ export default function POSPage() {
         <div className={`flex gap-3 mt-5 print:hidden ${receiptSettings?.default_format === 'thermal' ? 'max-w-[280px] mx-auto' : 'max-w-2xl mx-auto px-4'}`}>
           <PrintReceiptButton
             sale={lastSale}
+            settings={receiptSettings || undefined}
+            currency={currency}
             className="flex-1"
           />
           <button
@@ -1665,9 +1782,47 @@ export default function POSPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <p className="font-medium text-gray-900 dark:text-white">{item.product.name}</p>
-                          <p className="text-xs mt-1 text-gray-600 dark:text-gray-400">
-                            Rs. {(item.product.aggregated_stock?.aggregated_selling_price || 0).toFixed(2)} each
-                          </p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              List: {formatCurrency(getBaseUnitPrice(item), 2)} each
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <label className="text-[11px] font-medium text-gray-600 dark:text-gray-400">Unit Price</label>
+                              <input
+                                type="text"
+                                value={priceInputs[item.product.id] ?? getEffectiveUnitPrice(item).toFixed(2)}
+                                onChange={(e) => handlePriceInputChange(item.product.id, e.target.value)}
+                                onBlur={() => commitPriceInput(item)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    e.currentTarget.blur()
+                                  }
+
+                                  if (e.key === 'Escape') {
+                                    e.preventDefault()
+                                    setPriceInputs((prev) => ({
+                                      ...prev,
+                                      [item.product.id]: getEffectiveUnitPrice(item).toFixed(2),
+                                    }))
+                                    e.currentTarget.blur()
+                                  }
+                                }}
+                                className="w-24 px-2 py-1 text-xs border rounded bg-white border-gray-300 focus:outline-none focus:border-cyan-600 dark:bg-[#111] dark:border-gray-600 dark:text-white"
+                                aria-label={`Unit price for ${item.product.name}`}
+                              />
+                            </div>
+                            {typeof item.unit_price_override === 'number' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] border bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-700 dark:text-cyan-300">
+                                Custom price
+                              </span>
+                            )}
+                            {typeof item.unit_price_override === 'number' && item.unit_price_override < (item.product.aggregated_stock?.aggregated_lowest_negotiable || 0) && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] border bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/20 dark:border-orange-700 dark:text-orange-300">
+                                Below lowest negotiable
+                              </span>
+                            )}
+                          </div>
                           {item.product.is_phone && (
                             <div className="mt-2">
                               {item.imei_numbers && item.imei_numbers.length > 0 ? (
@@ -1732,7 +1887,7 @@ export default function POSPage() {
                                   e.currentTarget.blur()
                                 }
                               }}
-                              className="w-12 bg-transparent text-center font-medium outline-none [appearance:textfield] dark:text-white [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                              className="w-12 px-1 py-1 bg-white border-x border-gray-300 text-center font-medium outline-none focus:bg-cyan-50 dark:bg-[#111] dark:border-gray-600 dark:text-white dark:focus:bg-cyan-900/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               aria-label={`Quantity for ${item.product.name}`}
                             />
                             <button
@@ -1748,7 +1903,7 @@ export default function POSPage() {
                           </div>
 
                           <p className="font-semibold w-20 text-right dark:text-gray-200">
-                            {formatCurrency((item.product.aggregated_stock?.aggregated_selling_price || 0) * item.quantity, 2)}
+                            {formatCurrency(getLineTotal(item), 2)}
                           </p>
 
                           <button
@@ -1836,7 +1991,7 @@ export default function POSPage() {
 
             <div className="mb-4">
               <label htmlFor="saleDescription" className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                Sale Description {cart.length > 1 && <span className="text-red-600">*</span>}
+                Sale Description (Optional)
               </label>
               <input
                 id="saleDescription"
@@ -1844,7 +1999,7 @@ export default function POSPage() {
                 value={saleDescription}
                 onChange={(e) => setSaleDescription(e.target.value)}
                 className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
-                placeholder={cart.length === 1 ? "Optional (will use product name)" : "Required for multiple items"}
+                placeholder="Optional (single-item sales auto-use product name)"
               />
               {cart.length === 1 && !saleDescription && (
                 <p className="text-xs mt-1.5 text-gray-500 dark:text-gray-400">

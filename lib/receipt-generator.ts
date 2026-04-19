@@ -19,6 +19,9 @@ export const DEFAULT_RECEIPT_SETTINGS: Omit<ReceiptSettings, 'id' | 'store_id' |
   return_policy: null,
 }
 
+const HECTAGON_FOOTER_LOGO_PATH = '/logo-black.png'
+const imageDataCache = new Map<string, Promise<{ base64: string; width: number; height: number } | null>>()
+
 /**
  * Format currency with custom currency symbol
  */
@@ -53,6 +56,24 @@ function formatDate(dateString: string, format: 'full' | 'short' = 'full'): stri
   })
 }
 
+function splitMultilineTextForPdf(doc: jsPDF, text: string, maxWidth: number): string[] {
+  const normalized = (text || '').replace(/\r\n/g, '\n')
+  const sourceLines = normalized.split('\n')
+  const output: string[] = []
+
+  sourceLines.forEach((line) => {
+    if (!line.trim()) {
+      output.push('')
+      return
+    }
+
+    const wrappedLines = doc.splitTextToSize(line, maxWidth)
+    output.push(...wrappedLines)
+  })
+
+  return output.length > 0 ? output : ['']
+}
+
 /**
  * Calculate subtotal before discount
  */
@@ -85,8 +106,17 @@ function calculateDiscountAmount(data: ReceiptData): number {
  * Load image from URL and return as base64 data URL for jsPDF
  */
 async function loadImageAsBase64(url: string): Promise<{ base64: string; width: number; height: number } | null> {
+  if (!url) {
+    return null
+  }
+
+  const cached = imageDataCache.get(url)
+  if (cached) {
+    return cached
+  }
+
   try {
-    return await new Promise((resolve) => {
+    const loader = new Promise<{ base64: string; width: number; height: number } | null>((resolve) => {
       const img = new Image()
       img.crossOrigin = 'anonymous'
       img.onload = () => {
@@ -108,6 +138,9 @@ async function loadImageAsBase64(url: string): Promise<{ base64: string; width: 
       }
       img.src = url
     })
+
+    imageDataCache.set(url, loader)
+    return await loader
   } catch {
     return null
   }
@@ -124,322 +157,214 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
 
   const settings = data.settings
   const currency = data.currency || 'PKR'
-  const pageWidth = doc.internal.pageSize.getWidth() // 210mm
-  const pageHeight = doc.internal.pageSize.getHeight() // 297mm
-  const marginLeft = 15
-  const marginRight = 15
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const marginLeft = 20
+  const marginRight = 20
   const contentWidth = pageWidth - marginLeft - marginRight
-  let yPos = 15
+  const centerX = pageWidth / 2
+  let yPos = 18
 
-  // ===== TWO-COLUMN HEADER =====
-  // Left: Logo + Business Name | Right: Contact details
-  const headerLeftWidth = contentWidth * 0.5
-  const headerRightX = marginLeft + contentWidth * 0.55
+  const drawDivider = () => {
+    doc.setDrawColor(0, 0, 0)
+    doc.setLineWidth(0.25)
+    doc.line(marginLeft, yPos, pageWidth - marginRight, yPos)
+    yPos += 5
+  }
 
-  let logoLoaded = false
+  // Top restaurant logo (smaller, centered)
   if (settings.show_logo && settings.logo_url) {
-    const logoData = await loadImageAsBase64(settings.logo_url)
-    if (logoData) {
-      const maxLogoHeight = 18
-      const maxLogoWidth = 40
-      const aspectRatio = logoData.width / logoData.height
-      let logoWidth = maxLogoHeight * aspectRatio
-      let logoHeight = maxLogoHeight
-      if (logoWidth > maxLogoWidth) {
-        logoWidth = maxLogoWidth
-        logoHeight = maxLogoWidth / aspectRatio
+    const headerLogo = await loadImageAsBase64(settings.logo_url)
+    if (headerLogo) {
+      const maxLogoWidth = 24
+      const maxLogoHeight = 14
+      const aspectRatio = headerLogo.width / headerLogo.height
+      let logoWidth = maxLogoWidth
+      let logoHeight = logoWidth / aspectRatio
+
+      if (logoHeight > maxLogoHeight) {
+        logoHeight = maxLogoHeight
+        logoWidth = logoHeight * aspectRatio
       }
-      doc.addImage(logoData.base64, 'PNG', marginLeft, yPos, logoWidth, logoHeight)
-      // Business name next to logo
-      doc.setFontSize(18)
-      doc.setFont('helvetica', 'bold')
-      doc.text(settings.business_name, marginLeft + logoWidth + 4, yPos + logoHeight / 2 + 2)
-      logoLoaded = true
+
+      doc.addImage(headerLogo.base64, 'PNG', centerX - logoWidth / 2, yPos, logoWidth, logoHeight)
+      yPos += logoHeight + 4
     }
   }
 
-  if (!logoLoaded) {
-    doc.setFontSize(18)
-    doc.setFont('helvetica', 'bold')
-    doc.text(settings.business_name, marginLeft, yPos + 6)
-  }
+  // Header text
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(15)
+  doc.text(settings.business_name || 'BUSINESS NAME', centerX, yPos, { align: 'center' })
+  yPos += 5.5
 
-  // Right column: contact info, right-aligned
-  let rightY = yPos + 2
-  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
   if (settings.business_address) {
-    const addrLines = doc.splitTextToSize(settings.business_address, contentWidth * 0.4)
-    doc.text(addrLines, pageWidth - marginRight, rightY, { align: 'right' })
-    rightY += addrLines.length * 3.5
-  }
-  if (settings.business_phone) {
-    doc.text(`Tel: ${settings.business_phone}`, pageWidth - marginRight, rightY, { align: 'right' })
-    rightY += 3.5
-  }
-  if (settings.business_email) {
-    doc.text(settings.business_email, pageWidth - marginRight, rightY, { align: 'right' })
-    rightY += 3.5
-  }
-  if (settings.show_tax_id && settings.tax_id) {
-    doc.text(`Tax ID: ${settings.tax_id}`, pageWidth - marginRight, rightY, { align: 'right' })
-    rightY += 3.5
+    const addressLines = doc.splitTextToSize(settings.business_address, contentWidth)
+    addressLines.forEach((line: string) => {
+      doc.text(line, centerX, yPos, { align: 'center' })
+      yPos += 4
+    })
   }
 
-  yPos = Math.max(yPos + 22, rightY + 4)
+  const contactParts = [settings.business_phone, settings.business_email].filter(Boolean)
+  if (contactParts.length > 0) {
+    doc.text(contactParts.join(' / '), centerX, yPos, { align: 'center' })
+    yPos += 4
+  }
 
-  // ===== DARK TITLE BAR =====
-  doc.setFillColor(30, 30, 30)
-  doc.rect(marginLeft, yPos, contentWidth, 10, 'F')
-  doc.setFontSize(13)
+  yPos += 1
+  drawDivider()
+
+  // Sale number boxed line
+  const saleLabel = `SALE NO # ${data.sale_number}`
+  const boxWidth = Math.min(112, contentWidth)
+  const boxX = centerX - boxWidth / 2
+  doc.setDrawColor(0, 0, 0)
+  doc.rect(boxX, yPos, boxWidth, 9)
   doc.setFont('helvetica', 'bold')
-  doc.setTextColor(255, 255, 255)
-  doc.text('SALES RECEIPT', pageWidth / 2, yPos + 7, { align: 'center' })
-  doc.setTextColor(0, 0, 0)
-  yPos += 14
+  doc.setFontSize(11)
+  doc.text(saleLabel, centerX, yPos + 6, { align: 'center' })
+  yPos += 13
 
-  // ===== METADATA GRID (2×3) =====
-  doc.setFontSize(9)
-  const col1X = marginLeft
-  const col2X = marginLeft + contentWidth / 3
-  const col3X = marginLeft + (contentWidth * 2) / 3
-
-  // Row 1
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(120, 120, 120)
-  doc.text('Receipt #', col1X, yPos)
-  doc.text('Date', col2X, yPos)
-  doc.text('Cashier', col3X, yPos)
-  yPos += 4
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(0, 0, 0)
-  doc.text(data.sale_number, col1X, yPos)
-  doc.text(formatDate(data.sale_date, 'short'), col2X, yPos)
-  doc.text(data.cashier_name || 'Unknown', col3X, yPos)
-  yPos += 6
-
-  // Row 2
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(120, 120, 120)
-  doc.text('Payment Method', col1X, yPos)
-  doc.text('Payment Status', col2X, yPos)
-  yPos += 4
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(0, 0, 0)
-  doc.text(data.payment_method, col1X, yPos)
-  if (data.payment_status === 'Partial') {
-    doc.setTextColor(211, 47, 47)
-    doc.text('PARTIAL PAYMENT', col2X, yPos)
-    doc.setTextColor(0, 0, 0)
-  } else {
-    doc.text(data.payment_status, col2X, yPos)
-  }
-  yPos += 7
-
-  // Separator
-  doc.setDrawColor(220, 220, 220)
-  doc.setLineWidth(0.3)
-  doc.line(marginLeft, yPos, pageWidth - marginRight, yPos)
+  doc.setFontSize(10)
+  doc.text(`Date    : ${formatDate(data.sale_date, 'short')}`, marginLeft, yPos)
+  yPos += 5
+  doc.text(`Cashier : ${data.cashier_name || 'Unknown'}`, marginLeft, yPos)
+  yPos += 5
+  const customerDisplay = data.customer_name || data.partial_customer?.name || '-'
+  doc.text(`Customer name: ${customerDisplay}`, marginLeft, yPos)
   yPos += 5
 
-  // ===== CUSTOMER INFO (if present) =====
-  if (data.customer_name || data.customer_phone) {
-    doc.setFillColor(248, 248, 248)
-    const custBoxHeight = 6 + (data.customer_name ? 5 : 0) + (data.customer_phone ? 5 : 0) + ((data as any).customer_cnic ? 5 : 0)
-    doc.rect(marginLeft, yPos, contentWidth, custBoxHeight, 'F')
-    yPos += 4
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.text('CUSTOMER', marginLeft + 3, yPos)
-    yPos += 5
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    if (data.customer_name) {
-      doc.text(`Name: ${data.customer_name}`, marginLeft + 3, yPos)
-      yPos += 4
-    }
-    if (data.customer_phone) {
-      doc.text(`Phone: ${data.customer_phone}`, marginLeft + 3, yPos)
-      yPos += 4
-    }
-    if ((data as any).customer_cnic) {
-      doc.text(`CNIC: ${(data as any).customer_cnic}`, marginLeft + 3, yPos)
-      yPos += 4
-    }
-    yPos += 4
-  }
+  drawDivider()
 
-  // ===== PARTIAL PAYMENT CUSTOMER (if present) =====
-  if (data.partial_customer) {
-    doc.setFillColor(255, 235, 235)
-    doc.setDrawColor(211, 47, 47)
-    doc.setLineWidth(0.5)
-    doc.rect(marginLeft, yPos, contentWidth, 22, 'FD')
-    yPos += 5
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(211, 47, 47)
-    doc.text('PARTIAL PAYMENT - CREDIT SALE', marginLeft + 3, yPos)
-    doc.setTextColor(0, 0, 0)
-    yPos += 5
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.text(`Customer: ${data.partial_customer.name}`, marginLeft + 3, yPos)
-    doc.text(`Phone: ${data.partial_customer.phone}`, marginLeft + contentWidth / 2, yPos)
-    yPos += 5
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(211, 47, 47)
-    doc.text(`Amount Due: ${formatCurrency(data.partial_customer.amount_remaining, currency)}`, marginLeft + 3, yPos)
-    doc.setTextColor(0, 0, 0)
-    yPos += 8
-  }
-
-  // ===== ITEMS TABLE (5 columns: #, Description, Qty, Unit Price, Amount) =====
-  const tableData = data.items.map((item, idx) => [
-    (idx + 1).toString(),
+  // Items table with ITEM / QTY / PRICE
+  const tableData = data.items.map((item) => [
     item.name,
     item.quantity.toString(),
-    formatCurrency(item.unit_price, currency),
-    formatCurrency(item.subtotal, currency),
+    item.unit_price.toFixed(2),
   ])
 
   autoTable(doc, {
     startY: yPos,
-    head: [['#', 'Item Description', 'Qty', 'Unit Price', 'Amount']],
+    head: [['ITEM', 'QTY', 'PRICE']],
     body: tableData,
     margin: { left: marginLeft, right: marginRight },
     headStyles: {
-      fillColor: [30, 30, 30],
-      textColor: [255, 255, 255],
+      fillColor: [255, 255, 255],
+      textColor: [0, 0, 0],
+      lineColor: [0, 0, 0],
+      lineWidth: 0.2,
       fontStyle: 'bold',
       fontSize: 9,
-      cellPadding: 3,
+      cellPadding: 2.5,
     },
     bodyStyles: {
       fontSize: 9,
       cellPadding: 2.5,
+      lineColor: [230, 230, 230],
+      lineWidth: 0.1,
     },
     columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 'auto' },
-      2: { cellWidth: 18, halign: 'center' },
-      3: { cellWidth: 32, halign: 'right' },
-      4: { cellWidth: 32, halign: 'right' },
+      0: { cellWidth: 'auto', halign: 'left' },
+      1: { cellWidth: 20, halign: 'center' },
+      2: { cellWidth: 30, halign: 'right' },
     },
-    alternateRowStyles: {
-      fillColor: [248, 248, 248],
-    },
-    styles: {
-      lineColor: [220, 220, 220],
-      lineWidth: 0.2,
-    },
+    theme: 'plain',
+    styles: { overflow: 'linebreak' },
   })
 
-  yPos = (doc as any).lastAutoTable.finalY + 8
+  yPos = (doc as any).lastAutoTable.finalY + 4
+  drawDivider()
 
-  // ===== TOTALS SUMMARY BOX (right-aligned) =====
-  const totalsBoxWidth = 85
-  const totalsX = pageWidth - marginRight - totalsBoxWidth
+  const subtotal = calculateSubtotal(data)
+  const discountAmount = calculateDiscountAmount(data)
 
-  const hasDiscount = data.discount_type !== 'none' && data.discount_value > 0
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Subtotal', pageWidth - marginRight - 55, yPos)
+  doc.text(subtotal.toFixed(2), pageWidth - marginRight, yPos, { align: 'right' })
+  yPos += 5
 
-  // Background box
-  let totalsBoxHeight = 30 // base: Total + Paid + Change/Due
-  if (hasDiscount) totalsBoxHeight += 12
-  if (data.payment_status === 'Partial') totalsBoxHeight += 2
-
-  doc.setFillColor(248, 248, 248)
-  doc.setDrawColor(220, 220, 220)
-  doc.setLineWidth(0.3)
-  doc.rect(totalsX, yPos, totalsBoxWidth, totalsBoxHeight, 'FD')
-
-  let tY = yPos + 5
-  doc.setFontSize(9)
-
-  // Subtotal (if discount applied)
-  if (hasDiscount) {
-    const subtotal = calculateSubtotal(data)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Subtotal:', totalsX + 3, tY)
-    doc.text(formatCurrency(subtotal, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
-    tY += 5
-
-    doc.setTextColor(211, 47, 47)
-    const discountLabel = data.discount_type === 'percentage'
-      ? `Discount (${data.discount_value}%):`
-      : 'Discount:'
-    doc.text(discountLabel, totalsX + 3, tY)
-    doc.text(`-${formatCurrency(calculateDiscountAmount(data), currency)}`, totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-    tY += 6
-
-    // Inner separator
-    doc.setDrawColor(200, 200, 200)
-    doc.setLineWidth(0.2)
-    doc.line(totalsX + 3, tY, totalsX + totalsBoxWidth - 3, tY)
-    tY += 4
+  if (discountAmount > 0) {
+    doc.text('Discount', pageWidth - marginRight - 55, yPos)
+    doc.text(`-${discountAmount.toFixed(2)}`, pageWidth - marginRight, yPos, { align: 'right' })
+    yPos += 5
   }
 
-  // Total
+  drawDivider()
+  doc.setFont('helvetica', 'bold')
   doc.setFontSize(12)
-  doc.setFont('helvetica', 'bold')
-  doc.text('TOTAL:', totalsX + 3, tY)
-  doc.text(formatCurrency(data.total_amount, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
-  tY += 6
+  doc.text('TOTAL', pageWidth - marginRight - 55, yPos)
+  doc.text(data.total_amount.toFixed(2), pageWidth - marginRight, yPos, { align: 'right' })
+  yPos += 5
+  drawDivider()
 
-  // Amount Paid
-  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text('Amount Paid:', totalsX + 3, tY)
-  doc.text(formatCurrency(data.amount_paid, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
-  tY += 5
+  doc.setFontSize(10)
+  doc.text(`Payment: ${data.payment_method.toUpperCase()}`, marginLeft, yPos)
+  yPos += 5
+  doc.text('Received:', pageWidth - marginRight - 55, yPos)
+  doc.text(data.amount_paid.toFixed(2), pageWidth - marginRight, yPos, { align: 'right' })
+  yPos += 5
 
-  // Change or Amount Due
   if (data.payment_status === 'Partial') {
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(211, 47, 47)
-    doc.text('Amount Due:', totalsX + 3, tY)
-    doc.text(formatCurrency(data.amount_due, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
+    doc.text('Amount Due:', pageWidth - marginRight - 55, yPos)
+    doc.text(data.amount_due.toFixed(2), pageWidth - marginRight, yPos, { align: 'right' })
   } else {
-    doc.text('Change:', totalsX + 3, tY)
-    doc.text(formatCurrency(data.change_given, currency), totalsX + totalsBoxWidth - 3, tY, { align: 'right' })
+    doc.text('Change:', pageWidth - marginRight - 55, yPos)
+    doc.text(data.change_given.toFixed(2), pageWidth - marginRight, yPos, { align: 'right' })
   }
-
-  yPos += totalsBoxHeight + 10
-
-  // ===== FOOTER SECTION =====
-  doc.setDrawColor(30, 30, 30)
-  doc.setLineWidth(0.3)
-  doc.line(marginLeft, yPos, pageWidth - marginRight, yPos)
   yPos += 6
 
-  // Thank you message
-  doc.setFontSize(11)
+  drawDivider()
+
+  // Footer message and branding
   doc.setFont('helvetica', 'bold')
-  doc.text(settings.thank_you_message, pageWidth / 2, yPos, { align: 'center' })
-  yPos += 6
+  doc.setFontSize(10)
+  const thankYouLines = splitMultilineTextForPdf(doc, settings.thank_you_message, contentWidth)
+  thankYouLines.forEach((line) => {
+    if (!line) {
+      yPos += 3
+      return
+    }
+    doc.text(line, centerX, yPos, { align: 'center' })
+    yPos += 4
+  })
 
-  // Return policy
   if (settings.return_policy) {
-    doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(102, 102, 102)
-    const policyLines = doc.splitTextToSize(settings.return_policy, contentWidth)
-    doc.text(policyLines, pageWidth / 2, yPos, { align: 'center' })
-    yPos += policyLines.length * 3.5 + 4
-    doc.setTextColor(0, 0, 0)
+    doc.setFontSize(8)
+    const policyLines = splitMultilineTextForPdf(doc, settings.return_policy, contentWidth)
+    policyLines.forEach((line) => {
+      if (!line) {
+        yPos += 2
+        return
+      }
+      doc.text(line, centerX, yPos, { align: 'center' })
+      yPos += 3.5
+    })
   }
 
-  // Generated timestamp (bottom-right)
-  doc.setFontSize(7)
+  yPos += 3
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(150, 150, 150)
-  doc.text(
-    `Generated: ${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi', dateStyle: 'medium', timeStyle: 'short' })}`,
-    pageWidth - marginRight, pageHeight - 10, { align: 'right' }
-  )
-  doc.setTextColor(0, 0, 0)
+  doc.setFontSize(9)
+  doc.text('Developed by Hectagon', centerX, yPos, { align: 'center' })
+  yPos += 4
+  doc.text('www.thehectagon.com', centerX, yPos, { align: 'center' })
+  yPos += 5
+
+  const footerLogo = await loadImageAsBase64(HECTAGON_FOOTER_LOGO_PATH)
+  if (footerLogo) {
+    const maxLogoWidth = 12
+    const aspectRatio = footerLogo.width / footerLogo.height
+    const logoWidth = maxLogoWidth
+    const logoHeight = logoWidth / aspectRatio
+    const logoY = Math.min(yPos, pageHeight - 20)
+    doc.addImage(footerLogo.base64, 'PNG', centerX - logoWidth / 2, logoY, logoWidth, logoHeight)
+  }
 
   return doc
 }
@@ -458,96 +383,19 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
   const settings = data.settings
   const currency = data.currency || 'PKR'
   const paperWidth = options?.paperWidth || settings.thermal_paper_width || '80mm'
-  const maxChars = paperWidth === '80mm' ? 48 : 32
-  const receiptWidth = paperWidth === '80mm' ? '302px' : '219px' // Approximate pixel width
-
-  const hasDiscount = data.discount_type !== 'none' && data.discount_value > 0
-  const subtotal = hasDiscount ? calculateSubtotal(data) : data.total_amount
+  const receiptWidth = paperWidth === '80mm' ? '302px' : '219px'
+  const subtotal = calculateSubtotal(data)
   const discountAmount = calculateDiscountAmount(data)
 
-  // Build items HTML
-  const itemsHTML = data.items.map(item => `
+  const itemsHTML = data.items.map((item) => `
     <tr>
-      <td style="padding: 2px 0; vertical-align: top;">
-        <div style="font-size: 11px; max-width: ${paperWidth === '80mm' ? '180px' : '120px'}; word-wrap: break-word;">
-          ${escapeHTML(item.name)}
-        </div>
-        <div style="font-size: 10px; color: #666;">
-          ${item.quantity} × ${currency} ${item.unit_price.toFixed(0)}
-        </div>
-      </td>
-      <td style="padding: 2px 0; text-align: right; vertical-align: top; font-weight: bold; font-size: 11px;">
-        ${item.subtotal.toFixed(0)}
-      </td>
+      <td style="padding: 2px 0; font-size: 11px;">${escapeHTML(item.name)}</td>
+      <td style="padding: 2px 0; text-align: center; font-size: 11px; width: 40px;">${item.quantity}</td>
+      <td style="padding: 2px 0; text-align: right; font-size: 11px; width: 72px;">${item.unit_price.toFixed(2)}</td>
     </tr>
   `).join('')
 
-  // Customer info section
-  let customerHTML = ''
-  if (data.customer_name || data.customer_phone) {
-    customerHTML = `
-      <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="font-weight: bold; font-size: 10px;">Customer:</div>
-        ${data.customer_name ? `<div style="font-size: 10px;">${escapeHTML(data.customer_name)}</div>` : ''}
-        ${data.customer_phone ? `<div style="font-size: 10px;">Ph: ${escapeHTML(data.customer_phone)}</div>` : ''}
-      </div>
-    `
-  }
-
-  // Partial payment customer section
-  let partialCustomerHTML = ''
-  if (data.partial_customer) {
-    partialCustomerHTML = `
-      <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-        <div style="font-weight: bold; font-size: 10px;">⚠ CREDIT SALE:</div>
-        <div style="font-size: 10px;">${escapeHTML(data.partial_customer.name)}</div>
-        <div style="font-size: 10px;">Ph: ${escapeHTML(data.partial_customer.phone)}</div>
-        <div style="font-weight: bold; font-size: 10px;">Due: ${currency} ${data.partial_customer.amount_remaining.toFixed(0)}</div>
-      </div>
-    `
-  }
-
-  // Discount section
-  let discountHTML = ''
-  if (hasDiscount) {
-    discountHTML = `
-      <tr>
-        <td style="padding: 2px 0; font-size: 10px;">Subtotal:</td>
-        <td style="padding: 2px 0; text-align: right; font-size: 10px;">${currency} ${subtotal.toFixed(0)}</td>
-      </tr>
-      <tr>
-        <td style="padding: 2px 0; font-size: 10px;">Discount:</td>
-        <td style="padding: 2px 0; text-align: right; font-size: 10px;">-${discountAmount.toFixed(0)}</td>
-      </tr>
-    `
-  }
-
-  // Amount due or change
-  let finalAmountHTML = ''
-  if (data.payment_status === 'Partial') {
-    finalAmountHTML = `
-      <tr style="font-weight: bold;">
-        <td style="padding: 2px 0; font-size: 10px;">DUE:</td>
-        <td style="padding: 2px 0; text-align: right; font-size: 10px;">${currency} ${data.amount_due.toFixed(0)}</td>
-      </tr>
-    `
-  } else {
-    finalAmountHTML = `
-      <tr>
-        <td style="padding: 2px 0; font-size: 10px;">Change:</td>
-        <td style="padding: 2px 0; text-align: right; font-size: 10px;">${currency} ${data.change_given.toFixed(0)}</td>
-      </tr>
-    `
-  }
-
-  // Logo HTML for thermal
-  let logoHTML = ''
-  if (settings.show_logo && settings.logo_url) {
-    const logoMaxWidth = paperWidth === '80mm' ? '100px' : '70px'
-    logoHTML = `<div style="text-align: center; margin-bottom: 4px;">
-      <img src="${escapeHTML(settings.logo_url)}" alt="Logo" style="max-width: ${logoMaxWidth}; max-height: 40px; object-fit: contain;" onerror="this.style.display='none'" />
-    </div>`
-  }
+  const customerDisplay = escapeHTML(data.customer_name || data.partial_customer?.name || '-')
 
   return `
 <!DOCTYPE html>
@@ -583,95 +431,80 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
 </head>
 <body>
   <div class="receipt">
-    <!-- Header -->
-    <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-      ${logoHTML}
-      <div style="font-weight: bold; font-size: 13px; letter-spacing: 1px;">${escapeHTML(settings.business_name)}</div>
-      ${settings.business_address ? `<div style="font-size: 10px; margin-top: 2px;">${escapeHTML(settings.business_address)}</div>` : ''}
-      ${settings.business_phone ? `<div style="font-size: 10px;">Tel: ${escapeHTML(settings.business_phone)}</div>` : ''}
-      ${settings.business_email ? `<div style="font-size: 9px;">${escapeHTML(settings.business_email)}</div>` : ''}
-      ${settings.show_tax_id && settings.tax_id ? `<div style="font-size: 9px; margin-top: 2px;">Tax ID: ${escapeHTML(settings.tax_id)}</div>` : ''}
+    <div style="text-align: center; font-size: 11px; line-height: 1.35;">
+      <div style="font-weight: bold; font-size: 13px;">${escapeHTML(settings.business_name || 'BUSINESS NAME')}</div>
+      ${settings.business_address ? `<div>${escapeHTML(settings.business_address)}</div>` : ''}
+      ${(settings.business_phone || settings.business_email) ? `<div>${escapeHTML([settings.business_phone, settings.business_email].filter(Boolean).join(' / '))}</div>` : ''}
     </div>
 
-    <!-- Receipt Title -->
-    <div style="text-align: center; font-weight: bold; font-size: 12px; letter-spacing: 2px; margin-bottom: 6px;">SALES RECEIPT</div>
+    <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
 
-    <!-- Sale Info -->
-    <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-      <table style="width: 100%; font-size: 10px;">
-        <tr>
-          <td>Sale#:</td>
-          <td style="text-align: right; font-weight: bold;">${escapeHTML(data.sale_number)}</td>
-        </tr>
-        <tr>
-          <td>Date:</td>
-          <td style="text-align: right;">${formatDate(data.sale_date, 'short')}</td>
-        </tr>
-        <tr>
-          <td>Cashier:</td>
-          <td style="text-align: right;">${escapeHTML(data.cashier_name || '-')}</td>
-        </tr>
-        <tr>
-          <td>Payment:</td>
-          <td style="text-align: right;">${data.payment_method}</td>
-        </tr>
-        ${data.payment_status === 'Partial' ? `
-        <tr style="font-weight: bold;">
-          <td>Status:</td>
-          <td style="text-align: right;">PARTIAL ⚠</td>
-        </tr>
-        ` : ''}
-      </table>
+    <div style="border: 1px solid #000; padding: 4px 6px; text-align: center; font-weight: bold; font-size: 11px; margin-bottom: 6px;">
+      SALE NO # ${escapeHTML(data.sale_number)}
     </div>
 
-    <!-- Customer Info -->
-    ${customerHTML}
-
-    <!-- Partial Payment Customer -->
-    ${partialCustomerHTML}
-
-    <!-- Items -->
-    <div style="border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px;">
-      <table style="width: 100%;">
-        <thead>
-          <tr style="border-bottom: 1px solid #000;">
-            <th style="text-align: left; padding: 4px 0; font-size: 10px;">Item</th>
-            <th style="text-align: right; padding: 4px 0; font-size: 10px;">Amt</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsHTML}
-        </tbody>
-      </table>
+    <div style="font-size: 10.5px; line-height: 1.45; margin-bottom: 6px;">
+      <div>Date   : ${formatDate(data.sale_date, 'short')}</div>
+      <div>Cashier: ${escapeHTML(data.cashier_name || 'Unknown')}</div>
+      <div>Customer name: ${customerDisplay}</div>
     </div>
 
-    <!-- Totals -->
-    <table style="width: 100%;">
+    <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+    <table style="width: 100%; border-collapse: collapse; font-size: 10.5px;">
+      <thead>
+        <tr style="border-bottom: 1px solid #000;">
+          <th style="text-align: left; padding: 3px 0;">ITEM</th>
+          <th style="text-align: center; padding: 3px 0; width: 40px;">QTY</th>
+          <th style="text-align: right; padding: 3px 0; width: 72px;">PRICE</th>
+        </tr>
+      </thead>
       <tbody>
-        ${discountHTML}
-        <tr style="font-weight: bold; font-size: 12px; border-top: 1px solid #000;">
-          <td style="padding: 4px 0;">TOTAL:</td>
-          <td style="padding: 4px 0; text-align: right;">${currency} ${data.total_amount.toFixed(0)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 2px 0; font-size: 10px;">Paid:</td>
-          <td style="padding: 2px 0; text-align: right; font-size: 10px;">${currency} ${data.amount_paid.toFixed(0)}</td>
-        </tr>
-        ${finalAmountHTML}
+        ${itemsHTML}
       </tbody>
     </table>
 
-    ${data.payment_status === 'Partial' ? `
-    <div style="margin-top: 8px; padding: 4px; background: #000; color: #fff; text-align: center; font-weight: bold; font-size: 10px;">
-      ⚠ AMOUNT DUE ⚠
+    <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+    ${discountAmount > 0 ? `
+    <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 2px;">
+      <span>Discount</span>
+      <span>-${discountAmount.toFixed(2)}</span>
     </div>
     ` : ''}
 
-    <!-- Footer -->
-    <div style="text-align: center; margin-top: 12px; padding-top: 8px; border-top: 1px dashed #000;">
-      <div style="font-weight: bold; font-size: 11px;">${escapeHTML(settings.thank_you_message)}</div>
-      ${settings.return_policy ? `<div style="font-size: 8px; margin-top: 4px; color: #666;">${escapeHTML(settings.return_policy)}</div>` : ''}
-      <div style="font-size: 8px; margin-top: 8px;">${new Date().toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</div>
+    <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-bottom: 2px;">
+      <span>Subtotal</span>
+      <span>${subtotal.toFixed(2)}</span>
+    </div>
+
+    <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 11.5px; margin-bottom: 2px;">
+      <span>TOTAL</span>
+      <span>${data.total_amount.toFixed(2)}</span>
+    </div>
+
+    <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
+
+    <div style="font-size: 10.5px; line-height: 1.45;">
+      <div>Payment: ${data.payment_method.toUpperCase()}</div>
+      <div style="display: flex; justify-content: space-between;"><span>Received:</span><span>${data.amount_paid.toFixed(2)}</span></div>
+      ${data.payment_status === 'Partial'
+        ? `<div style="display: flex; justify-content: space-between;"><span>Amount Due:</span><span>${data.amount_due.toFixed(2)}</span></div>`
+        : `<div style="display: flex; justify-content: space-between;"><span>Change:</span><span>${data.change_given.toFixed(2)}</span></div>`}
+    </div>
+
+    <div style="border-top: 1px dashed #000; margin: 8px 0 6px;"></div>
+
+    <div style="text-align: center; font-size: 10px; line-height: 1.45;">
+      <div style="font-weight: bold; white-space: pre-line;">${escapeHTML(settings.thank_you_message)}</div>
+      ${settings.return_policy ? `<div style="font-size: 9px; margin-top: 3px; white-space: pre-line;">${escapeHTML(settings.return_policy)}</div>` : ''}
+      <div style="margin-top: 4px;">Developed by Hectagon</div>
+      <div>www.thehectagon.com</div>
+      <div style="margin-top: 6px;">
+        <img src="${HECTAGON_FOOTER_LOGO_PATH}" alt="HECTAGON LOGO" style="max-width: 64px; max-height: 24px; object-fit: contain;" onerror="this.style.display='none'" />
+      </div>
     </div>
   </div>
 </body>
@@ -689,6 +522,10 @@ function escapeHTML(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
+}
+
+function escapeHTMLWithLineBreaks(str: string): string {
+  return escapeHTML(str).replace(/\r?\n/g, '<br/>')
 }
 
 // ===== UTILITY FUNCTIONS =====

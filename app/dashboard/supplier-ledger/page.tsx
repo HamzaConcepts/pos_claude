@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, PackageIcon, CurrencyDollarIcon } from '@phosphor-icons/react'
-import { getStoreId } from '@/lib/supabase'
+import { getStoreId, supabase } from '@/lib/supabase'
 import { useCurrency } from '@/lib/currency-context'
 
 interface SupplierKhaata {
@@ -60,6 +60,33 @@ interface InitialSupplier {
   created_at: string
 }
 
+interface SupplierPaymentHistory {
+  id: number
+  supplier_id: number | null
+  supplier_khaata_id: number
+  payment_amount: number
+  payment_date: string
+  payment_method: string
+  notes: string | null
+  payment_reference: string | null
+  transaction_remaining_before: number | null
+  transaction_remaining_after: number | null
+  supplier_remaining_before: number | null
+  supplier_remaining_after: number | null
+  supplier_khaata?: {
+    id: number
+    stock_batches?: {
+      id: number
+      batch_number: string
+      products?: {
+        id: number
+        name: string
+        sku: string
+      }
+    }
+  }
+}
+
 export default function SupplierKhaataPage() {
   const { currency, formatCurrency } = useCurrency()
   const [suppliers, setSuppliers] = useState<SupplierKhaata[]>([])
@@ -84,11 +111,72 @@ export default function SupplierKhaataPage() {
     payment_method: 'Cash',
     notes: ''
   })
+  const [paymentHistoryBySupplier, setPaymentHistoryBySupplier] = useState<Record<number, SupplierPaymentHistory[]>>({})
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState<Record<number, boolean>>({})
+  const [recorderManagerId, setRecorderManagerId] = useState<string | null>(null)
+  const [recorderCashierId, setRecorderCashierId] = useState<number | null>(null)
 
   useEffect(() => {
+    resolvePaymentRecorder()
     fetchSuppliers()
     fetchInitialSuppliers()
   }, [])
+
+  const resolvePaymentRecorder = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.id) {
+        setRecorderManagerId(user.id)
+        setRecorderCashierId(null)
+        return
+      }
+
+      const userSession = localStorage.getItem('user_session')
+      if (userSession) {
+        const parsed = JSON.parse(userSession)
+        const parsedCashierId = Number.parseInt(String(parsed?.id), 10)
+        if (!Number.isNaN(parsedCashierId)) {
+          setRecorderManagerId(null)
+          setRecorderCashierId(parsedCashierId)
+          return
+        }
+      }
+
+      setRecorderManagerId(null)
+      setRecorderCashierId(null)
+    } catch (err) {
+      console.error('Failed to resolve payment recorder:', err)
+      setRecorderManagerId(null)
+      setRecorderCashierId(null)
+    }
+  }
+
+  const fetchPaymentHistory = async (supplierId: number) => {
+    if (paymentHistoryBySupplier[supplierId]) {
+      return
+    }
+
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      setPaymentHistoryLoading((prev) => ({ ...prev, [supplierId]: true }))
+
+      const response = await fetch(`/api/supplier-khaata-payments?store_id=${storeId}&supplier_id=${supplierId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setPaymentHistoryBySupplier((prev) => ({
+          ...prev,
+          [supplierId]: result.data || [],
+        }))
+      }
+    } catch (err) {
+      console.error('Failed to fetch supplier payment history:', err)
+    } finally {
+      setPaymentHistoryLoading((prev) => ({ ...prev, [supplierId]: false }))
+    }
+  }
 
   const fetchSuppliers = async () => {
     try {
@@ -171,6 +259,7 @@ export default function SupplierKhaataPage() {
       newExpanded.delete(key)
     } else {
       newExpanded.add(key)
+      fetchPaymentHistory(supplierId)
     }
     setExpandedSuppliers(newExpanded)
   }
@@ -252,7 +341,9 @@ export default function SupplierKhaataPage() {
         payment_amount: paymentAmount,
         payment_method: paymentFormData.payment_method,
         notes: paymentFormData.notes.trim() || null,
-        store_id: getStoreId()
+        store_id: getStoreId(),
+        recorded_by: recorderManagerId,
+        cashier_id: recorderCashierId,
       }
 
       const response = await fetch('/api/supplier-khaata-payments', {
@@ -267,7 +358,13 @@ export default function SupplierKhaataPage() {
         setShowPayDuesModal(false)
         setSelectedForPayment(null)
         setPaymentFormData({ payment_amount: '', payment_method: 'Cash', notes: '' })
+        setPaymentHistoryBySupplier((prev) => {
+          const next = { ...prev }
+          delete next[selectedForPayment.supplier_id]
+          return next
+        })
         fetchSuppliers()
+        fetchPaymentHistory(selectedForPayment.supplier_id)
       } else {
         setError(result.error || 'Failed to record payment')
       }
@@ -336,7 +433,7 @@ export default function SupplierKhaataPage() {
               <svg width={40} height={Math.round(40 * (1196 / 1061))} viewBox="0 0 1061 1196" fill="none" xmlns="http://www.w3.org/2000/svg" className="fill-current text-cyan-500 mx-auto"><path d="M538.795 609.092L871.505 276.381C976.486 372.749 1042.32 511.172 1042.38 664.993C1041.64 664.973 1040.9 664.949 1040.16 664.926C1046.75 665.171 1053.37 665.296 1060.02 665.298C777.219 665.385 546.193 886.933 530.915 1165.94L530.096 1180.67C530.596 1189.81 530.158 1186.07 530.102 1193.71L530.096 1195.39C530.096 1190.47 529.746 1185.56 529.88 1180.67C522.081 894.715 287.839 665.299 0 665.299C6.05981 665.299 12.0958 665.194 18.1064 664.992C18.1652 506.975 88.0333 365.252 198.592 268.889L538.795 609.092ZM674.459 135.664L538.795 271.328L403.132 135.664L538.795 0L674.459 135.664Z" /></svg>
             </div>
             <div className="w-40 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mx-auto mb-3">
-              <div className="h-full bg-cyan-500 rounded-full" style={{ animation: 'progressBar 1.5s ease-in-out infinite' }} />
+              <div className="h-full bg-cyan-500 rounded-full animate-pulse" />
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">Loading supplier accounts...</p>
           </div>
@@ -366,10 +463,9 @@ export default function SupplierKhaataPage() {
                   const isExpanded = expandedSuppliers.has(supplier.supplier_id.toString())
                   
                   return (
-                    <>
+                    <Fragment key={`supplier-block-${supplier.supplier_id}`}>
                       {/* Aggregated Row */}
                       <tr 
-                        key={`supplier-${supplier.supplier_id}`}
                         className="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                         onClick={() => toggleSupplierExpansion(supplier.supplier_id)}
                       >
@@ -465,7 +561,79 @@ export default function SupplierKhaataPage() {
                           </td>
                         </tr>
                       ))}
-                    </>
+
+                      {isExpanded && (
+                        <tr className="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#161616]">
+                          <td colSpan={7} className="px-4 py-3">
+                            <div className="rounded border border-gray-200 dark:border-gray-700">
+                              <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">Payment History (FIFO allocations)</p>
+                              </div>
+
+                              {paymentHistoryLoading[supplier.supplier_id] ? (
+                                <p className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">Loading payment history...</p>
+                              ) : (paymentHistoryBySupplier[supplier.supplier_id] || []).length === 0 ? (
+                                <p className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">No payment records yet.</p>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                                      <tr>
+                                        <th className="px-3 py-2 text-left">Date</th>
+                                        <th className="px-3 py-2 text-left">Reference</th>
+                                        <th className="px-3 py-2 text-left">Product / Batch</th>
+                                        <th className="px-3 py-2 text-right">Applied</th>
+                                        <th className="px-3 py-2 text-right">Txn Remaining</th>
+                                        <th className="px-3 py-2 text-right">Supplier Remaining</th>
+                                        <th className="px-3 py-2 text-left">Method</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {(paymentHistoryBySupplier[supplier.supplier_id] || []).map((payment) => {
+                                        const productName = payment.supplier_khaata?.stock_batches?.products?.name || 'Unknown Product'
+                                        const batchNumber = payment.supplier_khaata?.stock_batches?.batch_number || 'N/A'
+
+                                        return (
+                                          <tr key={`payment-${payment.id}`} className="border-t border-gray-100 dark:border-gray-700">
+                                            <td className="px-3 py-2 text-gray-700 dark:text-gray-300">
+                                              {new Date(payment.payment_date).toLocaleString('en-PK', {
+                                                timeZone: 'Asia/Karachi',
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                hour12: true,
+                                              })}
+                                            </td>
+                                            <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-300">{payment.payment_reference || '-'}</td>
+                                            <td className="px-3 py-2 text-gray-700 dark:text-gray-300">
+                                              <div>{productName}</div>
+                                              <div className="text-[11px] text-gray-500 dark:text-gray-400">Batch: {batchNumber}</div>
+                                            </td>
+                                            <td className="px-3 py-2 text-right font-semibold text-green-600">{formatCurrency(payment.payment_amount, 0)}</td>
+                                            <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">
+                                              {formatCurrency(payment.transaction_remaining_before || 0, 0)} {'->'} {formatCurrency(payment.transaction_remaining_after || 0, 0)}
+                                            </td>
+                                            <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">
+                                              {formatCurrency(payment.supplier_remaining_before || 0, 0)} {'->'} {formatCurrency(payment.supplier_remaining_after || 0, 0)}
+                                            </td>
+                                            <td className="px-3 py-2 text-gray-700 dark:text-gray-300">
+                                              <div>{payment.payment_method}</div>
+                                              {payment.notes && <div className="text-[11px] text-gray-500 dark:text-gray-400">{payment.notes}</div>}
+                                            </td>
+                                          </tr>
+                                        )
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   )
                 })}
               </tbody>
@@ -577,6 +745,8 @@ export default function SupplierKhaataPage() {
                   max={selectedRecord.total_amount}
                   value={formData.amount_paid}
                   onChange={(e) => setFormData({ ...formData, amount_paid: e.target.value })}
+                  title="Amount paid"
+                  placeholder="0.00"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 />
                 {formData.amount_paid && (
@@ -701,11 +871,10 @@ export default function SupplierKhaataPage() {
                 <select
                   value={paymentFormData.payment_method}
                   onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
+                  title="Payment method"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="Cash">Cash</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="Check">Check</option>
                   <option value="Digital">Digital</option>
                 </select>
               </div>

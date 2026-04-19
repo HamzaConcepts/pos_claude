@@ -629,7 +629,9 @@ export default function SalesPage() {
                             </button>
                             <div onClick={(e) => e.stopPropagation()}>
                               <PrintReceiptButton
-                                saleId={sale.id}
+                                sale={sale}
+                                settings={receiptSettings || undefined}
+                                currency={currency}
                                 variant="small"
                               />
                             </div>
@@ -1334,6 +1336,8 @@ export default function SalesPage() {
             <div className="flex gap-3 p-4 border-t border-gray-200 dark:border-gray-700 print:hidden">
               <PrintReceiptButton
                 sale={receiptSale}
+                settings={receiptSettings || undefined}
+                currency={currency}
                 className="flex-1"
               />
               <button

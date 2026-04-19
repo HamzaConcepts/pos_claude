@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/recurring-expenses/process",
+      "schedule": "0 4 * * *"
+    }
+  ],
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "devCommand": "npm run dev",

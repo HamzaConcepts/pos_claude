@@ -325,24 +325,24 @@ export default function ReceiptSettingsPage() {
                 <label className="block text-sm font-medium mb-1 text-gray-600 dark:text-zinc-400">
                   Thank You Message
                 </label>
-                <input
-                  type="text"
+                <textarea
                   value={settings.thank_you_message || ''}
                   onChange={(e) => handleChange('thank_you_message', e.target.value)}
+                  rows={3}
                   className="w-full px-3 py-2 rounded-md border bg-white border-gray-300 text-gray-900 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white"
-                  placeholder="Thank you for your purchase!"
+                  placeholder="Thank you for your purchase!\nPlease visit again."
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-600 dark:text-zinc-400">
                   Return Policy (optional)
                 </label>
-                <input
-                  type="text"
+                <textarea
                   value={settings.return_policy || ''}
                   onChange={(e) => handleChange('return_policy', e.target.value)}
+                  rows={3}
                   className="w-full px-3 py-2 rounded-md border bg-white border-gray-300 text-gray-900 dark:bg-zinc-900 dark:border-zinc-700 dark:text-white"
-                  placeholder="Returns accepted within 7 days with receipt"
+                  placeholder="Returns accepted within 7 days with receipt\nNo exchange on damaged items"
                 />
               </div>
             </div>

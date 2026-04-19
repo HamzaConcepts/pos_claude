@@ -57,18 +57,44 @@ export async function GET(
         .single()
       if (cashier) {
         cashierName = cashier.full_name
+      } else {
+        const { data: cashierAccount } = await supabase
+          .from('cashier_accounts')
+          .select('full_name')
+          .eq('id', sale.cashier_ref_id)
+          .single()
+        if (cashierAccount) {
+          cashierName = cashierAccount.full_name
+        }
       }
     }
 
-    // If no cashier_ref_id, check cashier_id (manager UUID)
+    // If no cashier name yet, check cashier_id (manager UUID or legacy cashier account id)
     if (!cashierName && sale.cashier_id) {
-      const { data: manager } = await supabase
-        .from('managers')
-        .select('full_name')
-        .eq('user_id', sale.cashier_id)
-        .single()
-      if (manager) {
-        cashierName = manager.full_name
+      const cashierIdText = String(sale.cashier_id)
+
+      if (cashierIdText.includes('-')) {
+        const { data: manager } = await supabase
+          .from('managers')
+          .select('full_name')
+          .eq('id', cashierIdText)
+          .single()
+
+        if (manager) {
+          cashierName = manager.full_name
+        }
+      } else {
+        const parsedCashierId = Number.parseInt(cashierIdText, 10)
+        if (!Number.isNaN(parsedCashierId)) {
+          const { data: cashierAccount } = await supabase
+            .from('cashier_accounts')
+            .select('full_name')
+            .eq('id', parsedCashierId)
+            .single()
+          if (cashierAccount) {
+            cashierName = cashierAccount.full_name
+          }
+        }
       }
     }
 

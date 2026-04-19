@@ -31,12 +31,55 @@ export async function GET(request: Request) {
 
     let query = supabaseAdmin
       .from('supplier_khaata_payments')
-      .select('*')
+      .select(`
+        id,
+        supplier_id,
+        supplier_khaata_id,
+        supplier_name,
+        supplier_phone,
+        payment_amount,
+        payment_date,
+        payment_method,
+        notes,
+        payment_reference,
+        transaction_remaining_before,
+        transaction_remaining_after,
+        supplier_remaining_before,
+        supplier_remaining_after,
+        recorded_by,
+        cashier_id,
+        created_at,
+        supplier_khaata (
+          id,
+          supplier_id,
+          stock_batch_id,
+          total_amount,
+          amount_paid,
+          amount_remaining,
+          stock_batches (
+            id,
+            batch_number,
+            purchase_date,
+            products (
+              id,
+              name,
+              sku
+            )
+          )
+        )
+      `)
       .eq('store_id', parseInt(storeId))
       .order('payment_date', { ascending: false })
 
     if (supplierId) {
-      query = query.eq('supplier_khaata_id', parseInt(supplierId))
+      const parsedSupplierId = Number.parseInt(supplierId, 10)
+      if (Number.isNaN(parsedSupplierId)) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid supplier_id value' },
+          { status: 400 }
+        )
+      }
+      query = query.eq('supplier_id', parsedSupplierId)
     }
 
     const { data, error } = await query
@@ -68,7 +111,9 @@ export async function POST(request: Request) {
       payment_amount,
       payment_method = 'Cash',
       notes,
-      store_id
+      store_id,
+      recorded_by,
+      cashier_id,
     } = body
 
     // Validation
@@ -86,12 +131,41 @@ export async function POST(request: Request) {
       )
     }
 
+    const parsedStoreId = parseInt(String(store_id), 10)
+    const parsedSupplierId = parseInt(String(supplier_id), 10)
+    const parsedPaymentAmount = parseFloat(String(payment_amount))
+    const parsedCashierId = cashier_id ? parseInt(String(cashier_id), 10) : null
+    const normalizedPaymentMethod = payment_method === 'Cash' ? 'Cash' : payment_method === 'Digital' ? 'Digital' : null
+    const hasManagerRecorder = typeof recorded_by === 'string' && recorded_by.trim().length > 0
+    const hasCashierRecorder = Number.isInteger(parsedCashierId)
+
+    if (Number.isNaN(parsedStoreId) || Number.isNaN(parsedSupplierId) || !Number.isFinite(parsedPaymentAmount)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid supplier/store/payment values' },
+        { status: 400 }
+      )
+    }
+
+    if (hasManagerRecorder === hasCashierRecorder) {
+      return NextResponse.json(
+        { success: false, error: 'Exactly one recorder is required: recorded_by (manager UUID) or cashier_id' },
+        { status: 400 }
+      )
+    }
+
+    if (!normalizedPaymentMethod) {
+      return NextResponse.json(
+        { success: false, error: 'Payment method must be Cash or Digital' },
+        { status: 400 }
+      )
+    }
+
     // Fetch all transactions for this supplier
     const { data: transactions, error: transactionsError } = await supabaseAdmin
       .from('supplier_khaata')
       .select('*')
-      .eq('supplier_id', parseInt(supplier_id))
-      .eq('store_id', parseInt(store_id))
+      .eq('supplier_id', parsedSupplierId)
+      .eq('store_id', parsedStoreId)
       .gt('amount_remaining', 0)
       .order('created_at', { ascending: true })
 
@@ -106,15 +180,17 @@ export async function POST(request: Request) {
     const totalRemaining = transactions.reduce((sum, t) => sum + t.amount_remaining, 0)
 
     // Check if payment exceeds remaining amount
-    if (payment_amount > totalRemaining) {
+    if (parsedPaymentAmount > totalRemaining) {
       return NextResponse.json(
-        { success: false, error: `Payment amount (${payment_amount}) exceeds total remaining balance (${totalRemaining})` },
+        { success: false, error: `Payment amount (${parsedPaymentAmount}) exceeds total remaining balance (${totalRemaining})` },
         { status: 400 }
       )
     }
 
-    // Distribute payment across transactions proportionally
-    let remainingPayment = parseFloat(payment_amount)
+    // Distribute payment across transactions in FIFO order and track before/after balances.
+    let remainingPayment = parsedPaymentAmount
+    let supplierRemainingBefore = totalRemaining
+    const paymentReference = `SUP-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
     const updates = []
 
     for (const transaction of transactions) {
@@ -123,6 +199,8 @@ export async function POST(request: Request) {
       const amountToApply = Math.min(remainingPayment, transaction.amount_remaining)
       const newAmountPaid = transaction.amount_paid + amountToApply
       const newAmountRemaining = transaction.amount_remaining - amountToApply
+      const supplierRemainingBeforeForLine = supplierRemainingBefore
+      const supplierRemainingAfter = Math.max(0, supplierRemainingBeforeForLine - amountToApply)
 
       // Update this transaction
       const { error: updateError } = await supabaseAdmin
@@ -143,30 +221,53 @@ export async function POST(request: Request) {
       }
 
       // Record payment
-      await supabaseAdmin
+      const { error: paymentInsertError } = await supabaseAdmin
         .from('supplier_khaata_payments')
         .insert({
+          supplier_id: parsedSupplierId,
           supplier_khaata_id: transaction.id,
           supplier_name: transaction.supplier_name,
           supplier_phone: transaction.supplier_phone,
           payment_amount: amountToApply,
-          payment_method,
+          payment_method: normalizedPaymentMethod,
           notes,
-          store_id: parseInt(store_id)
+          payment_reference: paymentReference,
+          transaction_remaining_before: transaction.amount_remaining,
+          transaction_remaining_after: newAmountRemaining,
+          supplier_remaining_before: supplierRemainingBeforeForLine,
+          supplier_remaining_after: supplierRemainingAfter,
+          store_id: parsedStoreId,
+          recorded_by: hasManagerRecorder ? recorded_by : null,
+          cashier_id: hasCashierRecorder ? parsedCashierId : null,
         })
 
+      if (paymentInsertError) {
+        console.error('Error recording supplier payment allocation:', paymentInsertError)
+        return NextResponse.json(
+          { success: false, error: paymentInsertError.message },
+          { status: 500 }
+        )
+      }
+
       remainingPayment -= amountToApply
+      supplierRemainingBefore = supplierRemainingAfter
       updates.push({
         transaction_id: transaction.id,
-        amount_applied: amountToApply
+        amount_applied: amountToApply,
+        transaction_remaining_before: transaction.amount_remaining,
+        transaction_remaining_after: newAmountRemaining,
+        supplier_remaining_before: supplierRemainingBeforeForLine,
+        supplier_remaining_after: supplierRemainingAfter,
       })
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        total_payment: payment_amount,
+        total_payment: parsedPaymentAmount,
+        payment_reference: paymentReference,
         transactions_updated: updates.length,
+        supplier_remaining_after: supplierRemainingBefore,
         updates
       },
       message: 'Payment recorded successfully'

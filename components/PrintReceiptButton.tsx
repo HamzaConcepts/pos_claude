@@ -20,6 +20,8 @@ interface PrintReceiptButtonProps {
   saleId?: number
   // Optional: pre-loaded settings (to avoid extra API call)
   settings?: ReceiptSettings
+  // Optional: pre-loaded currency code (to avoid store-info API call)
+  currency?: string
   // Button style variant
   variant?: 'default' | 'icon' | 'small'
   // Callback after successful print
@@ -32,6 +34,7 @@ export default function PrintReceiptButton({
   sale,
   saleId,
   settings: propSettings,
+  currency: propCurrency,
   variant = 'default',
   onPrintComplete,
   className = '',
@@ -43,21 +46,32 @@ export default function PrintReceiptButton({
   // Fetch receipt data from API if saleId is provided
   const fetchReceiptData = async (): Promise<{ data: ReceiptData; settings: ReceiptSettings } | null> => {
     try {
-      // Fetch currency from store info
       const storeId = getStoreId()
-      let currency = 'PKR' // default
-      
-      try {
-        const storeInfoResponse = await fetch(`/api/store-info?store_id=${storeId}`)
-        const storeInfoResult = await storeInfoResponse.json()
-        if (storeInfoResult.success && storeInfoResult.data.currency) {
-          currency = storeInfoResult.data.currency
+      const resolveCurrency = async (): Promise<string> => {
+        if (propCurrency) {
+          return propCurrency
         }
-      } catch (e) {
-        console.warn('Failed to fetch currency, using PKR', e)
+
+        if (sale?.currency) {
+          return sale.currency
+        }
+
+        let resolvedCurrency = 'PKR'
+        try {
+          const storeInfoResponse = await fetch(`/api/store-info?store_id=${storeId}`)
+          const storeInfoResult = await storeInfoResponse.json()
+          if (storeInfoResult.success && storeInfoResult.data.currency) {
+            resolvedCurrency = storeInfoResult.data.currency
+          }
+        } catch (e) {
+          console.warn('Failed to fetch currency, using PKR', e)
+        }
+
+        return resolvedCurrency
       }
 
       if (sale && propSettings) {
+        const currency = await resolveCurrency()
         // Use provided data directly
         return {
           data: saleToReceiptData(sale, propSettings, currency),
@@ -66,6 +80,7 @@ export default function PrintReceiptButton({
       }
 
       if (sale) {
+        const currency = await resolveCurrency()
         // Have sale but need settings — fetch receipt settings and store logo
         const [settingsResponse, storeInfoResponse] = await Promise.all([
           fetch(`/api/receipt-settings?store_id=${storeId}`),

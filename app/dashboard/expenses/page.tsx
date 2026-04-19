@@ -35,6 +35,23 @@ interface PredefinedExpense {
   default_amount: number
   description: string | null
   is_active: boolean
+  is_recurring?: boolean
+}
+
+interface RecurringExpense {
+  id: number
+  name: string
+  category: string
+  default_amount: number
+  description: string | null
+  is_active: boolean
+  recurrence_frequency: 'daily' | 'weekly' | 'monthly' | 'yearly'
+  next_due_date: string | null
+  reminder_days_before: number
+  auto_create: boolean
+  default_payment_method: 'Cash' | 'Digital'
+  days_until_due?: number | null
+  due_status?: 'overdue' | 'due_today' | 'due_soon' | 'upcoming' | 'unscheduled'
 }
 
 const EXPENSE_CATEGORIES = [
@@ -75,9 +92,12 @@ export default function ExpensesPage() {
   const { currency, formatCurrency } = useCurrency()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [predefinedExpenses, setPredefinedExpenses] = useState<PredefinedExpense[]>([])
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([])
+  const [dueRecurringExpenses, setDueRecurringExpenses] = useState<RecurringExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showRecurringModal, setShowRecurringModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [userId, setUserId] = useState<string>('')
@@ -108,7 +128,21 @@ export default function ExpensesPage() {
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
   const [expenseDate, setExpenseDate] = useState(getPKTDate())
   const [submitting, setSubmitting] = useState(false)
+  const [recurringSubmitting, setRecurringSubmitting] = useState(false)
   const [selectedCashier, setSelectedCashier] = useState<any>(null)
+
+  const [recurringForm, setRecurringForm] = useState({
+    name: '',
+    category: EXPENSE_CATEGORIES[0],
+    default_amount: '',
+    description: '',
+    recurrence_frequency: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'yearly',
+    next_due_date: getPKTDate(),
+    reminder_days_before: '3',
+    auto_create: true,
+    default_payment_method: 'Cash' as 'Cash' | 'Digital',
+    is_active: true,
+  })
 
   // Filter states
   const [searchFilter, setSearchFilter] = useState('')
@@ -128,6 +162,8 @@ export default function ExpensesPage() {
     fetchCurrentUser()
     fetchExpenses()
     fetchPredefinedExpenses()
+    fetchRecurringExpenses()
+    fetchDueRecurringExpenses()
     loadSelectedCashier()
   }, [])
 
@@ -194,10 +230,131 @@ export default function ExpensesPage() {
 
       if (result.success) {
         // Only show active predefined expenses
-        setPredefinedExpenses(result.data.filter((e: PredefinedExpense) => e.is_active))
+        setPredefinedExpenses(result.data.filter((e: PredefinedExpense) => e.is_active && !e.is_recurring))
       }
     } catch (err) {
       console.error('Failed to fetch predefined expenses:', err)
+    }
+  }
+
+  const fetchRecurringExpenses = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/recurring-expenses?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setRecurringExpenses(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch recurring expenses:', err)
+    }
+  }
+
+  const fetchDueRecurringExpenses = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/recurring-expenses?store_id=${storeId}&view=due`)
+      const result = await response.json()
+
+      if (result.success) {
+        setDueRecurringExpenses(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch due recurring expenses:', err)
+    }
+  }
+
+  const resetRecurringForm = () => {
+    setRecurringForm({
+      name: '',
+      category: EXPENSE_CATEGORIES[0],
+      default_amount: '',
+      description: '',
+      recurrence_frequency: 'monthly',
+      next_due_date: getPKTDate(),
+      reminder_days_before: '3',
+      auto_create: true,
+      default_payment_method: 'Cash',
+      is_active: true,
+    })
+  }
+
+  const handleCreateRecurringExpense = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!recurringForm.name.trim() || !recurringForm.default_amount || parseFloat(recurringForm.default_amount) <= 0) {
+      setError('Please provide recurring expense name and a valid amount')
+      return
+    }
+
+    setRecurringSubmitting(true)
+    setError('')
+
+    try {
+      const storeId = getStoreId()
+      if (!storeId) {
+        setError('No store ID found. Please login again.')
+        return
+      }
+
+      const response = await fetch('/api/recurring-expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store_id: storeId,
+          name: recurringForm.name.trim(),
+          category: recurringForm.category,
+          default_amount: parseFloat(recurringForm.default_amount),
+          description: recurringForm.description.trim() || null,
+          is_active: recurringForm.is_active,
+          recurrence_frequency: recurringForm.recurrence_frequency,
+          next_due_date: recurringForm.next_due_date,
+          reminder_days_before: parseInt(recurringForm.reminder_days_before || '0', 10),
+          auto_create: recurringForm.auto_create,
+          default_payment_method: recurringForm.default_payment_method,
+          created_by: userId && userId.includes('-') ? userId : null,
+        }),
+      })
+
+      const result = await response.json()
+      if (!result.success) {
+        setError(result.error || 'Failed to create recurring expense')
+        return
+      }
+
+      resetRecurringForm()
+      setShowRecurringModal(false)
+      await Promise.all([fetchRecurringExpenses(), fetchDueRecurringExpenses()])
+    } catch (err) {
+      setError('Failed to create recurring expense')
+    } finally {
+      setRecurringSubmitting(false)
+    }
+  }
+
+  const handleDeleteRecurringExpense = async (expenseId: number) => {
+    const confirmed = window.confirm('Delete this recurring expense template?')
+    if (!confirmed) return
+
+    try {
+      const response = await fetch(`/api/recurring-expenses?id=${expenseId}`, {
+        method: 'DELETE',
+      })
+      const result = await response.json()
+
+      if (!result.success) {
+        setError(result.error || 'Failed to delete recurring expense')
+        return
+      }
+
+      await Promise.all([fetchRecurringExpenses(), fetchDueRecurringExpenses()])
+    } catch (err) {
+      setError('Failed to delete recurring expense')
     }
   }
 
@@ -528,20 +685,78 @@ export default function ExpensesPage() {
     <div className="animate-fadeIn">
       <div className="flex justify-between items-center mb-5">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Expenses</h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors flex items-center gap-2"
-        >
-          <PlusIcon size={16} />
-          Add Expense
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowRecurringModal(true)}
+            className="px-3 py-2 bg-gray-800 text-white rounded text-sm hover:bg-gray-900 transition-colors flex items-center gap-2"
+          >
+            <CalendarIcon size={16} />
+            Recurring Setup
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors flex items-center gap-2"
+          >
+            <PlusIcon size={16} />
+            Add Expense
+          </button>
+        </div>
       </div>
 
-      {error && !showAddModal && (
+      {error && !showAddModal && !showRecurringModal && (
         <div className="mb-4 p-3 bg-red-50 text-red-600 border border-red-200 rounded text-sm">
           {error}
         </div>
       )}
+
+      {dueRecurringExpenses.length > 0 && (
+        <div className="mb-4 p-3 rounded border border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800">
+          <p className="text-sm font-semibold text-orange-800 dark:text-orange-300 mb-2">Recurring Expense Alerts</p>
+          <div className="space-y-1">
+            {dueRecurringExpenses.slice(0, 6).map((item) => (
+              <p key={`due-${item.id}`} className="text-xs text-orange-700 dark:text-orange-200">
+                {item.name}: due {item.next_due_date || 'unscheduled'}
+                {typeof item.days_until_due === 'number' && ` (${item.days_until_due < 0 ? `${Math.abs(item.days_until_due)} day(s) overdue` : item.days_until_due === 0 ? 'today' : `${item.days_until_due} day(s) left`})`}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mb-4 p-3 rounded border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow dark:shadow-none">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white">Recurring Expense Templates</p>
+          <button
+            onClick={() => setShowRecurringModal(true)}
+            className="text-xs px-2.5 py-1 rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200"
+          >
+            Manage
+          </button>
+        </div>
+
+        {recurringExpenses.length === 0 ? (
+          <p className="text-xs text-gray-500 dark:text-gray-400">No recurring templates configured yet.</p>
+        ) : (
+          <div className="space-y-1">
+            {recurringExpenses.slice(0, 5).map((item) => (
+              <div key={`template-${item.id}`} className="flex items-center justify-between text-xs border-b border-gray-100 dark:border-gray-700 py-1.5">
+                <div>
+                  <p className="text-gray-900 dark:text-white font-medium">{item.name}</p>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    {item.recurrence_frequency} | due {item.next_due_date || 'unscheduled'} | {item.auto_create ? 'auto-create on' : 'reminder only'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDeleteRecurringExpense(item.id)}
+                  className="px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Filters */}
       <div className="mb-4 p-3 rounded border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow dark:shadow-none">
@@ -803,6 +1018,8 @@ export default function ExpensesPage() {
                   setSelectedPredefined(null)
                   setError('')
                 }}
+                aria-label="Close add expense modal"
+                title="Close"
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <XIcon size={20} />
@@ -837,6 +1054,8 @@ export default function ExpensesPage() {
                         }
                       }
                     }}
+                    title="Quick select predefined expense"
+                    aria-label="Quick select predefined expense"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-gray-50 dark:bg-gray-800 dark:text-white"
                   >
                     <option value="">-- Select a predefined expense --</option>
@@ -873,6 +1092,8 @@ export default function ExpensesPage() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
+                  title="Expense category"
+                  aria-label="Expense category"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
@@ -905,6 +1126,8 @@ export default function ExpensesPage() {
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'Digital')}
+                  title="Payment method"
+                  aria-label="Payment method"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 >
                   <option value="Cash">Cash</option>
@@ -921,6 +1144,8 @@ export default function ExpensesPage() {
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
                   max={new Date().toISOString().split('T')[0]}
+                  title="Expense date"
+                  aria-label="Expense date"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 />
               </div>
@@ -962,6 +1187,8 @@ export default function ExpensesPage() {
                   setEditingExpense(null)
                   setError('')
                 }}
+                aria-label="Close edit expense modal"
+                title="Close"
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <XIcon size={20} />
@@ -996,6 +1223,8 @@ export default function ExpensesPage() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
+                  title="Expense category"
+                  aria-label="Expense category"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
@@ -1030,6 +1259,8 @@ export default function ExpensesPage() {
                   value={expenseDate}
                   onChange={(e) => setExpenseDate(e.target.value)}
                   max={new Date().toISOString().split('T')[0]}
+                  title="Expense date"
+                  aria-label="Expense date"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
                 />
               </div>
@@ -1312,6 +1543,217 @@ export default function ExpensesPage() {
                     </>
                   )}
                 </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRecurringModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-2xl w-full p-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recurring Expense Setup</h2>
+              <button
+                onClick={() => {
+                  setShowRecurringModal(false)
+                  setError('')
+                }}
+                aria-label="Close recurring expense modal"
+                title="Close"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <XIcon size={20} />
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
+                <p className="text-red-600">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateRecurringExpense} className="space-y-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Template Name *</label>
+                  <input
+                    type="text"
+                    value={recurringForm.name}
+                    onChange={(e) => setRecurringForm((prev) => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                    placeholder="Monthly Shop Rent"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Category *</label>
+                  <select
+                    value={recurringForm.category}
+                    onChange={(e) => setRecurringForm((prev) => ({ ...prev, category: e.target.value }))}
+                    title="Recurring expense category"
+                    aria-label="Recurring expense category"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                  >
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <option key={`recurring-category-${cat}`} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Amount *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={recurringForm.default_amount}
+                    onChange={(e) => setRecurringForm((prev) => ({ ...prev, default_amount: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Method</label>
+                  <select
+                    value={recurringForm.default_payment_method}
+                    onChange={(e) => setRecurringForm((prev) => ({ ...prev, default_payment_method: e.target.value as 'Cash' | 'Digital' }))}
+                    title="Recurring payment method"
+                    aria-label="Recurring payment method"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                  >
+                    <option value="Cash">Cash</option>
+                    <option value="Digital">Digital</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Frequency *</label>
+                  <select
+                    value={recurringForm.recurrence_frequency}
+                    onChange={(e) => setRecurringForm((prev) => ({ ...prev, recurrence_frequency: e.target.value as 'daily' | 'weekly' | 'monthly' | 'yearly' }))}
+                    title="Recurring frequency"
+                    aria-label="Recurring frequency"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Next Due Date *</label>
+                  <input
+                    type="date"
+                    value={recurringForm.next_due_date}
+                    onChange={(e) => setRecurringForm((prev) => ({ ...prev, next_due_date: e.target.value }))}
+                    title="Next due date"
+                    aria-label="Next due date"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Reminder Days Before</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={recurringForm.reminder_days_before}
+                    onChange={(e) => setRecurringForm((prev) => ({ ...prev, reminder_days_before: e.target.value }))}
+                    title="Reminder days before"
+                    aria-label="Reminder days before"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Description (optional)</label>
+                <textarea
+                  value={recurringForm.description}
+                  onChange={(e) => setRecurringForm((prev) => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                  placeholder="Optional details for this recurring expense"
+                />
+              </div>
+
+              <div className="flex items-center gap-6">
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={recurringForm.auto_create}
+                    onChange={(e) => setRecurringForm((prev) => ({ ...prev, auto_create: e.target.checked }))}
+                    title="Auto-create expense on due date"
+                    aria-label="Auto-create expense on due date"
+                  />
+                  Auto-create expense on due date
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={recurringForm.is_active}
+                    onChange={(e) => setRecurringForm((prev) => ({ ...prev, is_active: e.target.checked }))}
+                    title="Recurring template active"
+                    aria-label="Recurring template active"
+                  />
+                  Active
+                </label>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRecurringModal(false)
+                    setError('')
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
+                  disabled={recurringSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={recurringSubmitting || !recurringForm.name.trim() || !recurringForm.default_amount}
+                  className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded text-sm hover:bg-cyan-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {recurringSubmitting ? 'Saving...' : 'Save Recurring Template'}
+                </button>
+              </div>
+            </form>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Existing Templates</h3>
+              {recurringExpenses.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">No recurring templates yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {recurringExpenses.map((item) => (
+                    <div key={`recurring-row-${item.id}`} className="p-2 rounded border border-gray-200 dark:border-gray-700 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white">{item.name}</p>
+                          <p className="text-gray-500 dark:text-gray-400">
+                            {item.recurrence_frequency} | due {item.next_due_date || 'unscheduled'} | {item.auto_create ? 'auto-create' : 'reminder only'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteRecurringExpense(item.id)}
+                          className="px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
