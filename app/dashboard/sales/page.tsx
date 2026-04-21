@@ -24,9 +24,11 @@ export default function SalesPage() {
   const [cashiers, setCashiers] = useState<any[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [customers, setCustomers] = useState<any[]>([])
+  const [bankAccounts, setBankAccounts] = useState<any[]>([])
   const [selectedCashier, setSelectedCashier] = useState('')
   const [selectedProduct, setSelectedProduct] = useState('')
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
+  const [selectedBankAccount, setSelectedBankAccount] = useState('')
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -78,12 +80,13 @@ export default function SalesPage() {
     fetchCashiers()
     fetchProducts()
     fetchCustomers()
+    fetchBankAccounts()
     fetchReceiptSettings()
   }, [])
 
   useEffect(() => {
     applyFilters()
-  }, [sales, selectedCashier, selectedProduct, selectedPaymentMethod, selectedPaymentStatus, startDate, endDate])
+  }, [sales, selectedCashier, selectedProduct, selectedPaymentMethod, selectedBankAccount, selectedPaymentStatus, startDate, endDate])
 
   const fetchSales = async () => {
     try {
@@ -157,6 +160,21 @@ export default function SalesPage() {
     }
   }
 
+  const fetchBankAccounts = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/bank-accounts?store_id=${storeId}`)
+      const result = await response.json()
+      if (result.success) {
+        setBankAccounts(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch bank accounts')
+    }
+  }
+
   const fetchReceiptSettings = async () => {
     try {
       const storeId = getStoreId()
@@ -201,6 +219,11 @@ export default function SalesPage() {
     // Filter by payment method
     if (selectedPaymentMethod) {
       filtered = filtered.filter(sale => sale.payment_method === selectedPaymentMethod)
+    }
+
+    // Filter by bank account (digital payments only)
+    if (selectedPaymentMethod === 'Digital' && selectedBankAccount) {
+      filtered = filtered.filter(sale => sale.bank_account_name === selectedBankAccount)
     }
 
     // Filter by payment status
@@ -272,6 +295,7 @@ export default function SalesPage() {
     setSelectedCashier('')
     setSelectedProduct('')
     setSelectedPaymentMethod('')
+    setSelectedBankAccount('')
     setSelectedPaymentStatus('')
     setStartDate('')
     setEndDate('')
@@ -387,6 +411,18 @@ export default function SalesPage() {
     }
   }
 
+  const receiptPartialCustomer = receiptSale?.partial_payment_customers?.[0]
+  const receiptCustomerName =
+    (typeof receiptSale?.customer_name === 'string' ? receiptSale.customer_name.trim() : '') ||
+    (typeof receiptPartialCustomer?.customer_name === 'string' ? receiptPartialCustomer.customer_name.trim() : '')
+  const receiptCustomerPhone =
+    (typeof receiptSale?.customer_phone === 'string' ? receiptSale.customer_phone.trim() : '') ||
+    (typeof receiptPartialCustomer?.customer_phone === 'string' ? receiptPartialCustomer.customer_phone.trim() : '')
+  const receiptBankAccount =
+    typeof receiptSale?.bank_account_name === 'string' ? receiptSale.bank_account_name.trim() : ''
+  const showReceiptDigitalCustomer =
+    receiptSale?.payment_method === 'Digital' && (receiptCustomerName || receiptCustomerPhone || receiptBankAccount)
+
   if (loading) {
     return <SalesSkeleton />
   }
@@ -415,7 +451,7 @@ export default function SalesPage() {
         <div className="flex items-center gap-2 mb-4">
           <FunnelIcon size={18} className="text-gray-600 dark:text-gray-400" />
           <h2 className="font-semibold text-sm text-gray-900 dark:text-gray-300">Filters</h2>
-          {(selectedCashier || selectedProduct || selectedPaymentMethod || selectedPaymentStatus || startDate || endDate) && (
+          {(selectedCashier || selectedProduct || selectedPaymentMethod || selectedBankAccount || selectedPaymentStatus || startDate || endDate) && (
             <button
               onClick={clearFilters}
               className="ml-auto text-xs text-red-600 hover:text-red-700"
@@ -425,7 +461,7 @@ export default function SalesPage() {
           )}
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-3">
           {/* Cashier Filter */}
           <div>
             <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-400">Cashier</label>
@@ -465,7 +501,13 @@ export default function SalesPage() {
             <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Payment Method</label>
             <select
               value={selectedPaymentMethod}
-              onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+              onChange={(e) => {
+                const method = e.target.value
+                setSelectedPaymentMethod(method)
+                if (method !== 'Digital') {
+                  setSelectedBankAccount('')
+                }
+              }}
               className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
               <option value="">All Methods</option>
@@ -473,6 +515,27 @@ export default function SalesPage() {
               <option value="Digital">Digital</option>
             </select>
           </div>
+
+          {/* Digital Bank Account Filter */}
+          {selectedPaymentMethod === 'Digital' && (
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Bank Account</label>
+              <select
+                value={selectedBankAccount}
+                onChange={(e) => setSelectedBankAccount(e.target.value)}
+                title="Filter digital sales by bank account"
+                aria-label="Bank account filter"
+                className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="">All Digital Accounts</option>
+                {bankAccounts.map((account) => (
+                  <option key={account.id} value={account.account_name}>
+                    {account.account_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Payment Status Filter */}
           <div>
@@ -547,6 +610,21 @@ export default function SalesPage() {
                     0
                   ) || 0
                   const profit = sale.total_amount - totalCost
+                  const partialPaymentCustomer = sale.partial_payment_customers?.[0]
+                  const digitalCustomerName =
+                    (typeof sale.customer_name === 'string' ? sale.customer_name.trim() : '') ||
+                    (typeof partialPaymentCustomer?.customer_name === 'string'
+                      ? partialPaymentCustomer.customer_name.trim()
+                      : '')
+                  const digitalCustomerPhone =
+                    (typeof sale.customer_phone === 'string' ? sale.customer_phone.trim() : '') ||
+                    (typeof partialPaymentCustomer?.customer_phone === 'string'
+                      ? partialPaymentCustomer.customer_phone.trim()
+                      : '')
+                  const digitalBankAccount =
+                    typeof sale.bank_account_name === 'string' ? sale.bank_account_name.trim() : ''
+                  const showDigitalCustomerDetails =
+                    sale.payment_method === 'Digital' && (digitalCustomerName || digitalCustomerPhone || digitalBankAccount)
 
                   return (
                     <Fragment key={sale.id}>
@@ -728,8 +806,31 @@ export default function SalesPage() {
                                 </div>
                               </div>
 
+                              {/* Digital Payment Customer Info */}
+                              {showDigitalCustomerDetails && (
+                                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded dark:bg-blue-900/20 dark:border-blue-700">
+                                  <p className="font-semibold text-blue-900 dark:text-blue-300 mb-2 text-sm">
+                                    DIGITAL PAYMENT CUSTOMER
+                                  </p>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                                    <div>
+                                      <p className="text-xs text-blue-700 dark:text-blue-400">Customer Name</p>
+                                      <p className="font-medium text-blue-900 dark:text-blue-200">{digitalCustomerName || '-'}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-blue-700 dark:text-blue-400">Customer Number</p>
+                                      <p className="font-medium text-blue-900 dark:text-blue-200">{digitalCustomerPhone || '-'}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-xs text-blue-700 dark:text-blue-400">Bank Account</p>
+                                      <p className="font-medium text-blue-900 dark:text-blue-200">{digitalBankAccount || '-'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Partial Payment Customer Info */}
-                              {sale.payment_status === 'Partial' && (sale as any).partial_payment_customers?.[0] && (
+                              {sale.payment_status === 'Partial' && partialPaymentCustomer && (
                                 <div className="mb-4 p-4 bg-red-600 border-2 border-red-800 rounded">
                                   <div className="flex items-center gap-2 mb-3">
                                     <span className="text-white font-bold">⚠️ PARTIAL PAYMENT CUSTOMER</span>
@@ -737,20 +838,20 @@ export default function SalesPage() {
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                     <div>
                                       <div className="text-red-100 mb-1">Customer Name</div>
-                                      <div className="font-bold text-white">{(sale as any).partial_payment_customers[0].customer_name}</div>
+                                      <div className="font-bold text-white">{partialPaymentCustomer.customer_name}</div>
                                     </div>
                                     <div>
                                       <div className="text-red-100 mb-1">CNIC</div>
-                                      <div className="font-medium text-white">{(sale as any).partial_payment_customers[0].customer_cnic}</div>
+                                      <div className="font-medium text-white">{partialPaymentCustomer.customer_cnic}</div>
                                     </div>
                                     <div>
                                       <div className="text-red-100 mb-1">Phone</div>
-                                      <div className="font-medium text-white">{(sale as any).partial_payment_customers[0].customer_phone}</div>
+                                      <div className="font-medium text-white">{partialPaymentCustomer.customer_phone}</div>
                                     </div>
                                     <div>
                                       <div className="text-red-100 mb-1">Amount Remaining</div>
                                       <div className="font-bold text-white text-lg">
-                                        {formatCurrency((sale as any).partial_payment_customers[0].amount_remaining, 2)}
+                                        {formatCurrency(partialPaymentCustomer.amount_remaining, 2)}
                                       </div>
                                     </div>
                                   </div>
@@ -1219,6 +1320,28 @@ export default function SalesPage() {
                     </p>
                   </div>
                 </div>
+
+                {showReceiptDigitalCustomer && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded dark:bg-blue-900/20 dark:border-blue-700">
+                    <p className="font-semibold text-blue-900 dark:text-blue-300 mb-2 text-sm">
+                      DIGITAL PAYMENT CUSTOMER
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <p className="text-xs text-blue-700 dark:text-blue-400">Name</p>
+                        <p className="font-medium text-blue-900 dark:text-blue-200">{receiptCustomerName || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-blue-700 dark:text-blue-400">Number</p>
+                        <p className="font-medium text-blue-900 dark:text-blue-200">{receiptCustomerPhone || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-blue-700 dark:text-blue-400">Bank Account</p>
+                        <p className="font-medium text-blue-900 dark:text-blue-200">{receiptBankAccount || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Show customer info for partial payments */}
                 {receiptSale.payment_status === 'Partial' && receiptSale.partial_payment_customers && receiptSale.partial_payment_customers.length > 0 && (

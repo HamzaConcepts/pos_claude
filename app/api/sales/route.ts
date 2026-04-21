@@ -290,7 +290,8 @@ export async function POST(request: Request) {
       invoice_total,
       customer_name, // Customer details
       customer_phone,
-      customer_cnic
+      customer_cnic,
+      bank_account_name
     } = body
 
     const fallbackPartialCustomerName =
@@ -305,6 +306,8 @@ export async function POST(request: Request) {
       (typeof customer_name === 'string' ? customer_name.trim() : '') || fallbackPartialCustomerName
     const normalizedCustomerPhone =
       (typeof customer_phone === 'string' ? customer_phone.trim() : '') || fallbackPartialCustomerPhone
+    const normalizedBankAccountName =
+      typeof bank_account_name === 'string' ? bank_account_name.trim() : ''
     const normalizedCashierId = typeof cashier_id === 'string' ? cashier_id.trim() : cashier_id
     const normalizedCashierRefId = typeof cashier_ref_id === 'string' ? cashier_ref_id.trim() : cashier_ref_id
 
@@ -428,6 +431,17 @@ export async function POST(request: Request) {
       )
     }
 
+    if (payment_method === 'Digital' && !normalizedBankAccountName) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Bank account is required for Digital payment',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
+
     const hasInvoiceTotal = invoice_total !== undefined && invoice_total !== null && invoice_total !== ''
     const invoiceTotalValue = hasInvoiceTotal ? parseFloat(String(invoice_total)) : null
 
@@ -457,6 +471,30 @@ export async function POST(request: Request) {
         },
         { status: 404 }
       )
+    }
+
+    if (payment_method === 'Digital') {
+      const { data: matchingBankAccounts, error: bankAccountLookupError } = await supabaseAdmin
+        .from('store_bank_accounts')
+        .select('id')
+        .eq('store_id', parsedStoreId)
+        .eq('account_name', normalizedBankAccountName)
+        .limit(1)
+
+      if (bankAccountLookupError) {
+        throw bankAccountLookupError
+      }
+
+      if (!matchingBankAccounts || matchingBankAccounts.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Selected bank account is not configured for this store',
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        )
+      }
     }
 
     // Fetch product details and calculate total
@@ -775,6 +813,8 @@ export async function POST(request: Request) {
           customer_name: normalizedCustomerName || null,
           customer_phone: normalizedCustomerPhone || null,
           customer_cnic: customer_cnic || null,
+          bank_account_name:
+            payment_method === 'Digital' ? normalizedBankAccountName : null,
         },
       ])
       .select()

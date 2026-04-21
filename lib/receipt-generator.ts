@@ -102,6 +102,16 @@ function calculateDiscountAmount(data: ReceiptData): number {
   return data.discount_value
 }
 
+function resolveCustomerInfo(data: ReceiptData): { name: string; phone: string } {
+  const rawName = data.customer_name || data.partial_customer?.name || ''
+  const rawPhone = data.customer_phone || data.partial_customer?.phone || ''
+
+  return {
+    name: rawName.trim(),
+    phone: rawPhone.trim(),
+  }
+}
+
 /**
  * Load image from URL and return as base64 data URL for jsPDF
  */
@@ -234,22 +244,27 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
   yPos += 5
   doc.text(`Cashier : ${data.cashier_name || 'Unknown'}`, marginLeft, yPos)
   yPos += 5
-  const customerDisplay = data.customer_name || data.partial_customer?.name || '-'
-  doc.text(`Customer name: ${customerDisplay}`, marginLeft, yPos)
+  const customer = resolveCustomerInfo(data)
+  doc.text(`Customer name: ${customer.name || '-'}`, marginLeft, yPos)
   yPos += 5
+  if (data.payment_method === 'Digital') {
+    doc.text(`Customer no: ${customer.phone || '-'}`, marginLeft, yPos)
+    yPos += 5
+  }
 
   drawDivider()
 
-  // Items table with ITEM / QTY / PRICE
+  // Items table with ITEM / QTY / UNIT PRICE / LINE TOTAL
   const tableData = data.items.map((item) => [
     item.name,
     item.quantity.toString(),
     item.unit_price.toFixed(2),
+    item.subtotal.toFixed(2),
   ])
 
   autoTable(doc, {
     startY: yPos,
-    head: [['ITEM', 'QTY', 'PRICE']],
+    head: [['ITEM', 'QTY', 'UNIT PRICE', 'TOTAL']],
     body: tableData,
     margin: { left: marginLeft, right: marginRight },
     headStyles: {
@@ -269,8 +284,9 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
     },
     columnStyles: {
       0: { cellWidth: 'auto', halign: 'left' },
-      1: { cellWidth: 20, halign: 'center' },
+      1: { cellWidth: 16, halign: 'center' },
       2: { cellWidth: 30, halign: 'right' },
+      3: { cellWidth: 30, halign: 'right' },
     },
     theme: 'plain',
     styles: { overflow: 'linebreak' },
@@ -306,6 +322,10 @@ export async function generatePDFReceipt(data: ReceiptData): Promise<jsPDF> {
   doc.setFontSize(10)
   doc.text(`Payment: ${data.payment_method.toUpperCase()}`, marginLeft, yPos)
   yPos += 5
+  if (data.payment_method === 'Digital') {
+    doc.text(`Bank account: ${data.bank_account_name?.trim() || '-'}`, marginLeft, yPos)
+    yPos += 5
+  }
   doc.text('Received:', pageWidth - marginRight - 55, yPos)
   doc.text(data.amount_paid.toFixed(2), pageWidth - marginRight, yPos, { align: 'right' })
   yPos += 5
@@ -391,11 +411,18 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
     <tr>
       <td style="padding: 2px 0; font-size: 11px;">${escapeHTML(item.name)}</td>
       <td style="padding: 2px 0; text-align: center; font-size: 11px; width: 40px;">${item.quantity}</td>
-      <td style="padding: 2px 0; text-align: right; font-size: 11px; width: 72px;">${item.unit_price.toFixed(2)}</td>
+      <td style="padding: 2px 0; text-align: right; font-size: 11px; width: 90px;">${item.unit_price.toFixed(2)} x ${item.quantity}</td>
+      <td style="padding: 2px 0; text-align: right; font-size: 11px; width: 72px; font-weight: bold;">${item.subtotal.toFixed(2)}</td>
     </tr>
   `).join('')
 
-  const customerDisplay = escapeHTML(data.customer_name || data.partial_customer?.name || '-')
+  const customer = resolveCustomerInfo(data)
+  const customerNameDisplay = escapeHTML(customer.name || '-')
+  const customerPhoneDisplay = escapeHTML(customer.phone || '-')
+  const customerDetailsHTML =
+    data.payment_method === 'Digital'
+      ? `<div>Customer name: ${customerNameDisplay}</div><div>Customer no : ${customerPhoneDisplay}</div>`
+      : `<div>Customer name: ${customerNameDisplay}</div>`
 
   return `
 <!DOCTYPE html>
@@ -446,7 +473,7 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
     <div style="font-size: 10.5px; line-height: 1.45; margin-bottom: 6px;">
       <div>Date   : ${formatDate(data.sale_date, 'short')}</div>
       <div>Cashier: ${escapeHTML(data.cashier_name || 'Unknown')}</div>
-      <div>Customer name: ${customerDisplay}</div>
+      ${customerDetailsHTML}
     </div>
 
     <div style="border-top: 1px dashed #000; margin: 6px 0;"></div>
@@ -456,7 +483,8 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
         <tr style="border-bottom: 1px solid #000;">
           <th style="text-align: left; padding: 3px 0;">ITEM</th>
           <th style="text-align: center; padding: 3px 0; width: 40px;">QTY</th>
-          <th style="text-align: right; padding: 3px 0; width: 72px;">PRICE</th>
+          <th style="text-align: right; padding: 3px 0; width: 90px;">UNIT x QTY</th>
+          <th style="text-align: right; padding: 3px 0; width: 72px;">TOTAL</th>
         </tr>
       </thead>
       <tbody>
@@ -489,6 +517,7 @@ export function generateThermalReceiptHTML(data: ReceiptData, options?: ThermalR
 
     <div style="font-size: 10.5px; line-height: 1.45;">
       <div>Payment: ${data.payment_method.toUpperCase()}</div>
+      ${data.payment_method === 'Digital' ? `<div>Bank account: ${escapeHTML(data.bank_account_name?.trim() || '-')}</div>` : ''}
       <div style="display: flex; justify-content: space-between;"><span>Received:</span><span>${data.amount_paid.toFixed(2)}</span></div>
       ${data.payment_status === 'Partial'
         ? `<div style="display: flex; justify-content: space-between;"><span>Amount Due:</span><span>${data.amount_due.toFixed(2)}</span></div>`
@@ -600,6 +629,7 @@ export function saleToReceiptData(sale: any, settings: ReceiptSettings, currency
     customer_name: sale.customer_name,
     customer_phone: sale.customer_phone,
     customer_cnic: sale.customer_cnic,
+    bank_account_name: sale.bank_account_name,
     partial_customer: partialCustomer
       ? {
           name: partialCustomer.customer_name,

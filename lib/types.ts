@@ -165,6 +165,10 @@ export interface Sale {
   notes: string | null
   discount_type: 'percentage' | 'amount' | 'none'
   discount_value: number
+  customer_name?: string | null
+  customer_phone?: string | null
+  customer_cnic?: string | null
+  bank_account_name?: string | null
 }
 
 export interface PartialPaymentCustomer {
@@ -304,6 +308,7 @@ export interface ReceiptData {
   customer_name?: string | null
   customer_phone?: string | null
   customer_cnic?: string | null
+  bank_account_name?: string | null
   // Partial Payment Customer
   partial_customer?: {
     name: string

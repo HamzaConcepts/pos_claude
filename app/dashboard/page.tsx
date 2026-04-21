@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { WarningIcon, TrendUpIcon, CurrencyDollarIcon, ShoppingBagIcon, PackageIcon, ArrowsClockwiseIcon } from '@phosphor-icons/react'
 import Link from 'next/link'
 import type { DashboardStats } from '@/lib/types'
@@ -8,10 +8,13 @@ import { useRouter } from 'next/navigation'
 import { useCurrency } from '@/lib/currency-context'
 import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
 import { useDashboardStats } from '@/hooks/useStoreData'
+import { BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts'
 
 export default function DashboardPage() {
   const { currency, formatCurrency } = useCurrency()
   const router = useRouter()
+  const salesChartContainerRef = useRef<HTMLDivElement | null>(null)
+  const [salesChartSize, setSalesChartSize] = useState({ width: 0, height: 0 })
 
   // SWR-powered data fetching with auto-refresh
   const { data: stats, error: fetchError, isLoading, isValidating, mutate } = useDashboardStats()
@@ -19,6 +22,44 @@ export default function DashboardPage() {
   const handleRefresh = () => {
     mutate()
   }
+
+  useEffect(() => {
+    const container = salesChartContainerRef.current
+    if (!container) return
+
+    const updateChartSize = () => {
+      const width = Math.floor(container.clientWidth)
+      const height = Math.floor(container.clientHeight)
+
+      if (width <= 0 || height <= 0) {
+        return
+      }
+
+      setSalesChartSize((previous) => {
+        if (previous.width === width && previous.height === height) {
+          return previous
+        }
+
+        return { width, height }
+      })
+    }
+
+    updateChartSize()
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const resizeObserver = new ResizeObserver(() => {
+        updateChartSize()
+      })
+
+      resizeObserver.observe(container)
+      return () => resizeObserver.disconnect()
+    }
+
+    window.addEventListener('resize', updateChartSize)
+    return () => {
+      window.removeEventListener('resize', updateChartSize)
+    }
+  }, [])
 
   if (isLoading) {
     return <DashboardSkeleton />
@@ -31,6 +72,17 @@ export default function DashboardPage() {
       </div>
     )
   }
+
+  const salesTrendChartData = stats.salesTrend.map((day: { date: string; revenue: number }) => ({
+    ...day,
+    dayLabel: new Date(day.date).toLocaleDateString('en-PK', {
+      timeZone: 'Asia/Karachi',
+      weekday: 'short',
+    }),
+  }))
+
+  const salesChartWidth = salesChartSize.width > 0 ? salesChartSize.width : 320
+  const salesChartHeight = salesChartSize.height > 0 ? salesChartSize.height : 192
 
   return (
     <>
@@ -174,29 +226,26 @@ export default function DashboardPage() {
         <div className="rounded-lg p-5 transition-colors bg-white shadow-sm dark:bg-[#0f0f0f] dark:dark-shadow">
           <h2 className="text-sm font-semibold mb-4 text-gray-900 dark:text-gray-300">Sales Trend (Last 7 Days)</h2>
           {stats.salesTrend.length > 0 ? (
-            <div className="flex items-end justify-between gap-2 h-48">
-              {stats.salesTrend.map((day: { date: string; revenue: number }) => {
-                const maxRevenue = Math.max(...stats.salesTrend.map((d: { revenue: number }) => d.revenue))
-                const heightPercentage = maxRevenue > 0 ? (day.revenue / maxRevenue) * 100 : 0
-                return (
-                  <div key={day.date} className="flex-1 flex flex-col items-center gap-2">
-                    <div className="relative w-full" style={{ height: `${Math.max(heightPercentage, 5)}%` }}>
-                      <div className="absolute bottom-0 w-full bg-gradient-to-t from-cyan-600 to-cyan-500 rounded-t-lg hover:from-cyan-500 hover:to-cyan-400 transition-all cursor-pointer" style={{ height: '100%' }}>
-                        {day.revenue > 0 && (
-                          <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-[10px] font-semibold whitespace-nowrap">
-                            <span className="text-gray-700 dark:text-gray-300">{formatCurrency(day.revenue, 0)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[10px] font-medium text-gray-600 dark:text-gray-400">
-                        {new Date(day.date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi', weekday: 'short' })}
-                      </p>
-                    </div>
-                  </div>
-                )
-              })}
+            <div ref={salesChartContainerRef} className="h-48 min-w-0">
+              <BarChart
+                width={salesChartWidth}
+                height={salesChartHeight}
+                data={salesTrendChartData}
+                margin={{ top: 14, right: 6, left: 6, bottom: 0 }}
+              >
+                <XAxis
+                  dataKey="dayLabel"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fill: '#6B7280' }}
+                />
+                <YAxis hide />
+                <Tooltip
+                  formatter={(value: number) => [formatCurrency(Number(value), 0), 'Sales']}
+                  cursor={{ fill: 'rgba(8, 145, 178, 0.08)' }}
+                />
+                <Bar dataKey="revenue" fill="#0891b2" radius={[6, 6, 0, 0]} />
+              </BarChart>
             </div>
           ) : (
             <p className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">No sales data available</p>

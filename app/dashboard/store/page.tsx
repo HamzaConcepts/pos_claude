@@ -1390,9 +1390,15 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
   const [loadingCashiers, setLoadingCashiers] = useState(true)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(storeInfo?.logo_url || null)
+  const [bankAccounts, setBankAccounts] = useState<any[]>([])
+  const [bankAccountsLoading, setBankAccountsLoading] = useState(true)
+  const [bankAccountName, setBankAccountName] = useState('')
+  const [bankAccountSaving, setBankAccountSaving] = useState(false)
+  const [deletingBankAccountId, setDeletingBankAccountId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchCashiers()
+    fetchBankAccounts()
   }, [])
 
   // Update state when storeInfo changes
@@ -1422,6 +1428,99 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
       console.error('Error fetching cashiers:', err)
     } finally {
       setLoadingCashiers(false)
+    }
+  }
+
+  const fetchBankAccounts = async () => {
+    try {
+      setBankAccountsLoading(true)
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/bank-accounts?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setBankAccounts(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching bank accounts:', err)
+    } finally {
+      setBankAccountsLoading(false)
+    }
+  }
+
+  const handleAddBankAccount = async () => {
+    const trimmedAccountName = bankAccountName.trim()
+
+    if (!trimmedAccountName) {
+      alert('Bank account name is required')
+      return
+    }
+
+    try {
+      setBankAccountSaving(true)
+      const storeId = getStoreId()
+      if (!storeId) {
+        alert('Store ID not found')
+        return
+      }
+
+      const response = await fetch('/api/bank-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store_id: storeId,
+          account_name: trimmedAccountName,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        alert(result.error || 'Failed to add bank account')
+        return
+      }
+
+      setBankAccountName('')
+      await fetchBankAccounts()
+    } catch (err) {
+      console.error('Error adding bank account:', err)
+      alert('Failed to add bank account')
+    } finally {
+      setBankAccountSaving(false)
+    }
+  }
+
+  const handleDeleteBankAccount = async (bankAccountId: number) => {
+    if (!confirm('Are you sure you want to delete this bank account?')) return
+
+    try {
+      setDeletingBankAccountId(bankAccountId)
+      const storeId = getStoreId()
+      if (!storeId) {
+        alert('Store ID not found')
+        return
+      }
+
+      const response = await fetch(`/api/bank-accounts?id=${bankAccountId}&store_id=${storeId}`, {
+        method: 'DELETE',
+      })
+      const result = await response.json()
+
+      if (!result.success) {
+        alert(result.error || 'Failed to delete bank account')
+        return
+      }
+
+      await fetchBankAccounts()
+    } catch (err) {
+      console.error('Error deleting bank account:', err)
+      alert('Failed to delete bank account')
+    } finally {
+      setDeletingBankAccountId(null)
     }
   }
 
@@ -1691,6 +1790,70 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
         </div>
 
         {/* Receipt Settings Card - Removed: use /dashboard/receipt-settings instead */}
+      </div>
+
+      {/* Bank Accounts Card - Full Width */}
+      <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 p-4 mb-4">
+        <h2 className="text-base font-bold mb-2 flex items-center gap-2 dark:text-white">
+          <CurrencyDollarIcon size={18} />
+          Digital Payment Bank Accounts
+        </h2>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+          These bank accounts appear in POS when payment method is set to Digital.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <input
+            type="text"
+            value={bankAccountName}
+            onChange={(e) => setBankAccountName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleAddBankAccount()
+              }
+            }}
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm dark:bg-gray-800 dark:text-white"
+            placeholder="e.g., Meezan Bank - Main Account"
+            maxLength={100}
+          />
+          <button
+            onClick={handleAddBankAccount}
+            disabled={bankAccountSaving}
+            className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+          >
+            <PlusIcon size={14} />
+            {bankAccountSaving ? 'Adding...' : 'Add'}
+          </button>
+        </div>
+
+        {bankAccountsLoading ? (
+          <div className="text-sm text-gray-500 dark:text-gray-400">Loading bank accounts...</div>
+        ) : bankAccounts.length === 0 ? (
+          <div className="text-sm text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-600 rounded p-3">
+            No bank accounts added yet.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {bankAccounts.map((account) => (
+              <div
+                key={account.id}
+                className="flex items-center justify-between p-3 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111]"
+              >
+                <div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{account.account_name}</p>
+                </div>
+                <button
+                  onClick={() => handleDeleteBankAccount(account.id)}
+                  disabled={deletingBankAccountId === account.id}
+                  className="px-3 py-1.5 text-xs border border-red-300 text-red-600 rounded hover:bg-red-50 disabled:opacity-50"
+                >
+                  {deletingBankAccountId === account.id ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Cashiers Information Card - Full Width */}

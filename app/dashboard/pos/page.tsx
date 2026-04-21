@@ -16,6 +16,13 @@ interface CartItem {
   imei_numbers?: string[]  // For phone products
 }
 
+interface BankAccount {
+  id: number
+  store_id: number
+  account_name: string
+  created_at: string
+}
+
 export default function POSPage() {
   const router = useRouter()
   const { currency, formatCurrency } = useCurrency()
@@ -80,6 +87,9 @@ export default function POSPage() {
 
   // Receipt settings for preview
   const [receiptSettings, setReceiptSettings] = useState<any>(null)
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [bankAccountsLoading, setBankAccountsLoading] = useState(false)
+  const [selectedBankAccount, setSelectedBankAccount] = useState('')
 
   // Barcode scanner detection - scanners type fast and send Enter
   // Auto-select product when barcode is scanned (no confirmation needed)
@@ -152,6 +162,7 @@ export default function POSPage() {
     loadSelectedCashier()
     fetchAllCustomers()
     fetchReceiptSettings()
+    fetchBankAccounts()
   }, [])
 
   const fetchAllCustomers = async () => {
@@ -208,6 +219,27 @@ export default function POSPage() {
       }
     } catch (err) {
       console.error('Failed to fetch receipt settings:', err)
+    }
+  }
+
+  const fetchBankAccounts = async () => {
+    try {
+      setBankAccountsLoading(true)
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/bank-accounts?store_id=${storeId}`, {
+        cache: 'no-store',
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setBankAccounts(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch bank accounts:', err)
+    } finally {
+      setBankAccountsLoading(false)
     }
   }
 
@@ -907,6 +939,24 @@ export default function POSPage() {
         return
       }
 
+      if (paymentMethod === 'Digital' && bankAccounts.length === 0) {
+        setError('No bank account found. Please add one in Store Settings before taking digital payments.')
+        setIsCustomerSectionExpanded(true)
+        setLoading(false)
+        return
+      }
+
+      if (paymentMethod === 'Digital' && !selectedBankAccount) {
+        setError('Please select a bank account for Digital payment')
+        setIsCustomerSectionExpanded(true)
+        requestAnimationFrame(() => {
+          const bankAccountInput = document.getElementById('digital-bank-account-input') as HTMLSelectElement | null
+          bankAccountInput?.focus()
+        })
+        setLoading(false)
+        return
+      }
+
       const storeId = getStoreId()
       if (!storeId) {
         setError('No store ID found. Please login again.')
@@ -978,6 +1028,7 @@ export default function POSPage() {
         customer_name: normalizedCustomerName || null,
         customer_phone: normalizedCustomerPhone || null,
         customer_cnic: customerDetails.cnic.trim() || null,
+        bank_account_name: paymentMethod === 'Digital' ? selectedBankAccount : null,
       }
 
       const response = await fetch('/api/sales', {
@@ -1001,6 +1052,7 @@ export default function POSPage() {
         setPartialPaymentData({ customerName: '', customerPhone: '', invoicePrice: '' })
         setPartialPaymentError('')
         clearCustomer() // Clear customer details
+        setSelectedBankAccount('')
         fetchProducts() // Refresh product stock
         fetchAllCustomers() // Refresh customer list
       } else {
@@ -1138,11 +1190,14 @@ export default function POSPage() {
           </div>
 
           {/* Customer Info */}
-          {(lastSale.customer_name || lastSale.customer_phone) && (
+          {(lastSale.customer_name || lastSale.customer_phone || (lastSale.payment_method === 'Digital' && lastSale.bank_account_name)) && (
             <div className="border-b border-dashed border-black pb-2 mb-2">
               <p className="font-bold">Customer:</p>
               {lastSale.customer_name && <p>{lastSale.customer_name}</p>}
               {lastSale.customer_phone && <p>Ph: {lastSale.customer_phone}</p>}
+              {lastSale.payment_method === 'Digital' && lastSale.bank_account_name && (
+                <p>Bank: {lastSale.bank_account_name}</p>
+              )}
             </div>
           )}
 
@@ -1322,10 +1377,10 @@ export default function POSPage() {
           </div>
 
           {/* Customer Info */}
-          {(lastSale.customer_name || lastSale.customer_phone || lastSale.customer_cnic) && (
+          {(lastSale.customer_name || lastSale.customer_phone || lastSale.customer_cnic || (lastSale.payment_method === 'Digital' && lastSale.bank_account_name)) && (
             <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
               <p className="font-bold mb-2 text-xs text-gray-500 uppercase">Customer</p>
-              <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
                 {lastSale.customer_name && (
                   <div>
                     <p className="text-gray-500 text-xs">Name</p>
@@ -1342,6 +1397,12 @@ export default function POSPage() {
                   <div>
                     <p className="text-gray-500 text-xs">CNIC</p>
                     <p>{lastSale.customer_cnic}</p>
+                  </div>
+                )}
+                {lastSale.payment_method === 'Digital' && lastSale.bank_account_name && (
+                  <div>
+                    <p className="text-gray-500 text-xs">Bank Account</p>
+                    <p>{lastSale.bank_account_name}</p>
                   </div>
                 )}
               </div>
@@ -1627,8 +1688,12 @@ export default function POSPage() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
-                        const phoneInput = document.getElementById('customer-phone-input')
-                        phoneInput?.focus()
+                        const nextInputId =
+                          paymentMethod === 'Digital'
+                            ? 'digital-bank-account-input'
+                            : 'customer-phone-input'
+                        const nextInput = document.getElementById(nextInputId)
+                        nextInput?.focus()
                       }
                     }}
                     className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
@@ -1651,6 +1716,45 @@ export default function POSPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Digital Payment Bank Account */}
+                {paymentMethod === 'Digital' && (
+                  <div>
+                    <label className="block mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Bank Account <span className="text-red-600">*</span>
+                    </label>
+                    <select
+                      id="digital-bank-account-input"
+                      value={selectedBankAccount}
+                      onChange={(e) => setSelectedBankAccount(e.target.value)}
+                      title="Select digital payment bank account"
+                      aria-label="Digital payment bank account"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          const phoneInput = document.getElementById('customer-phone-input')
+                          phoneInput?.focus()
+                        }
+                      }}
+                      className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white"
+                    >
+                      <option value="">Select bank account</option>
+                      {bankAccounts.map((account) => (
+                        <option key={account.id} value={account.account_name}>
+                          {account.account_name}
+                        </option>
+                      ))}
+                    </select>
+                    {bankAccountsLoading && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Loading bank accounts...</p>
+                    )}
+                    {!bankAccountsLoading && bankAccounts.length === 0 && (
+                      <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                        No bank account found. Add one in Store Settings.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Customer Phone */}
                 <div>
@@ -1944,7 +2048,10 @@ export default function POSPage() {
               <label className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => setPaymentMethod('Cash')}
+                  onClick={() => {
+                    setPaymentMethod('Cash')
+                    setSelectedBankAccount('')
+                  }}
                   className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
                     paymentMethod === 'Cash'
                       ? 'bg-cyan-600 text-white border-cyan-600'
