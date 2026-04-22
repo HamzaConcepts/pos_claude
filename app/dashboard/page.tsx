@@ -241,7 +241,7 @@ export default function DashboardPage() {
                 />
                 <YAxis hide />
                 <Tooltip
-                  formatter={(value: number) => [formatCurrency(Number(value), 0), 'Sales']}
+                  formatter={(value) => [formatCurrency(Number(value ?? 0), 0), 'Sales']}
                   cursor={{ fill: 'rgba(8, 145, 178, 0.08)' }}
                 />
                 <Bar dataKey="revenue" fill="#0891b2" radius={[6, 6, 0, 0]} />
