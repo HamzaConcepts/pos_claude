@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         product_id,
         store_id,
         supplier_id: supplier_id || null,
-        batch_number: batchNumber,
+        batch_number: `BAT-${batchNumber}`,
         cost_price,
         selling_price: selling_price || cost_price * 1.2, // Default 20% markup if not provided
         lowest_negotiable_price: lowest_negotiable_price || selling_price || cost_price * 1.1,
@@ -268,7 +268,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// DELETE - Delete a stock batch
+// DELETE - Delete a stock batch and clean up related records
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -281,10 +281,40 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    const parsedBatchId = parseInt(batchId)
+
+    // 1. Delete supplier_khaata_payments linked to supplier_khaata records for this batch
+    const { data: khaataRecords } = await supabaseAdmin
+      .from('supplier_khaata')
+      .select('id')
+      .eq('stock_batch_id', parsedBatchId)
+
+    if (khaataRecords && khaataRecords.length > 0) {
+      const khaataIds = khaataRecords.map(k => k.id)
+      await supabaseAdmin
+        .from('supplier_khaata_payments')
+        .delete()
+        .in('supplier_khaata_id', khaataIds)
+    }
+
+    // 2. Delete supplier_khaata records for this batch
+    await supabaseAdmin
+      .from('supplier_khaata')
+      .delete()
+      .eq('stock_batch_id', parsedBatchId)
+
+    // 3. Delete the expense record created for this batch (reference_id = batch id)
+    await supabaseAdmin
+      .from('expenses')
+      .delete()
+      .eq('reference_id', parsedBatchId)
+      .in('category', ['new_product', 'inventory_restock'])
+
+    // 4. Delete the stock batch itself
     const { error } = await supabaseAdmin
       .from('stock_batches')
       .delete()
-      .eq('id', parseInt(batchId))
+      .eq('id', parsedBatchId)
 
     if (error) {
       console.error('Error deleting batch:', error)
@@ -293,7 +323,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Stock batch deleted successfully'
+      message: 'Stock batch and related records deleted successfully'
     })
   } catch (error: any) {
     console.error('DELETE /api/stock-batches error:', error)

@@ -38,7 +38,7 @@ const deriveStorePrefix = (storeName?: string | null, storeCode?: string | null)
 }
 
 const formatStoreSaleNumber = (prefix: string, sequenceNumber: number): string => {
-  return `${prefix}-${String(sequenceNumber).padStart(3, '0')}`
+  return `INV-${prefix}-${String(sequenceNumber).padStart(4, '0')}`
 }
 
 const resolveCashierName = async (sale: any): Promise<string> => {

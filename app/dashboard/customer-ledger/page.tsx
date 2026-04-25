@@ -590,6 +590,65 @@ export default function CustomerLedgerPage() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && customerToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <TrashIcon size={20} className="text-red-600" />
+              Delete Customer Ledger
+            </h2>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
+                <p className="text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded dark:bg-red-900/20 dark:border-red-700">
+              <p className="text-sm text-red-900 dark:text-red-300 mb-3">
+                Are you sure you want to delete this customer's ledger? This action will:
+              </p>
+              <ul className="text-sm text-red-800 dark:text-red-400 list-disc list-inside space-y-1">
+                <li>Remove all ledger entries for this customer</li>
+                <li>Delete all associated payment records</li>
+                <li>This action cannot be undone</li>
+              </ul>
+            </div>
+
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded text-sm">
+              <div className="mb-2">
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Customer:</span>{' '}
+                <span className="text-gray-900 dark:text-white">{customerToDelete.customer_name}</span>
+              </div>
+              <div>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Remaining Balance:</span>{' '}
+                <span className="text-red-600 font-medium">{formatCurrency(customerToDelete.amount_remaining, 2)}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setCustomerToDelete(null)
+                  setError('')
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors"
+              >
+                Delete Ledger
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Pay Dues Modal */}
       {showPayDuesModal && selectedForPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

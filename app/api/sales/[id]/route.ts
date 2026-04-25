@@ -23,11 +23,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { data: sale, error } = await supabase
+    const { data: sale, error } = await supabaseAdmin
       .from('sales')
       .select(`
         *,
-        users:cashier_id (full_name, username),
         sale_items (
           *,
           products (name, sku)

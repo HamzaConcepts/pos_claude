@@ -2,16 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { 
-  HouseIcon, 
-  ShoppingBagIcon, 
-  PackageIcon, 
-  FileTextIcon, 
-  CurrencyDollarIcon, 
-  TrendUpIcon, 
-  BookOpenIcon, 
-  TruckIcon, 
-  UserGearIcon, 
+import {
+  HouseIcon,
+  ShoppingBagIcon,
+  PackageIcon,
+  FileTextIcon,
+  CurrencyDollarIcon,
+  TrendUpIcon,
+  BookOpenIcon,
+  TruckIcon,
+  UserGearIcon,
   GearIcon,
   XIcon,
   UserIcon,
@@ -133,7 +133,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     setSelectedCashier(cashier)
     localStorage.setItem('selected_cashier', JSON.stringify(cashier))
     setShowCashierDropdown(false)
-    
+
     // Dispatch custom event to notify POS page and other components
     window.dispatchEvent(new CustomEvent('cashierChanged', { detail: { cashier } }))
   }
@@ -155,6 +155,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     { href: '/dashboard/sales', label: 'Sales History', icon: FileTextIcon, permission: 'view_sales' },
     { href: '/dashboard/quotations', label: 'Quotations', icon: ClipboardTextIcon, permission: 'process_sale' },
     { href: '/dashboard/expenses', label: 'Expense Tracker', icon: CurrencyDollarIcon, permission: 'add_expense' },
+    { href: '/dashboard/returns', label: 'Returns', icon: PackageIcon, permission: 'process_sale' },
     { href: '/dashboard/reports', label: 'Reports', icon: TrendUpIcon, permission: 'view_dashboard' },
     { href: '/dashboard/customer-ledger', label: 'Customer Ledger', icon: BookOpenIcon, permission: 'create_user' },
     { href: '/dashboard/supplier-ledger', label: 'Supplier Ledger', icon: TruckIcon, permission: 'create_user' },
@@ -171,20 +172,20 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     sessionStorage.removeItem('store_id')
     sessionStorage.removeItem('user_type')
     sessionStorage.removeItem('user_id')
-    
+
     // Logout from Supabase Auth (for managers)
     await supabase.auth.signOut()
-    
+
     router.push('/login')
   }
 
   const filteredNavItems = navItems.filter(item => {
     // Check if user has permission
     if (!hasPermission(userRole, item.permission)) return false
-    
+
     // If item is managerOnly, only show for Manager role
     if (item.managerOnly && userRole !== 'Manager') return false
-    
+
     return true
   })
 
@@ -251,11 +252,10 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                       <div
                         key={cashier.id}
                         onClick={() => handleCashierSelect(cashier)}
-                        className={`px-3 py-2 cursor-pointer transition-colors ${
-                          selectedCashier?.id === cashier.id 
+                        className={`px-3 py-2 cursor-pointer transition-colors ${selectedCashier?.id === cashier.id
                             ? 'bg-gray-50 dark:bg-gray-700'
                             : 'hover:bg-gray-50 dark:hover:bg-gray-700'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2">
                           <UserIcon size={14} className="text-gray-600 dark:text-gray-400" />
@@ -276,14 +276,14 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
             {filteredNavItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
-              
+
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     className={`
                       flex items-center gap-2.5 px-3 py-2 rounded text-sm font-medium transition-colors relative group
-                      ${isActive 
+                      ${isActive
                         ? 'bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-600/20 dark:text-cyan-400 dark:border-cyan-700'
                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-[#2a2a2a] dark:hover:text-white'
                       }
@@ -291,13 +291,13 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
                     `}
                     title={isCollapsed ? item.label : ''}
                   >
-                    <Icon 
-                      size={20} 
+                    <Icon
+                      size={20}
                       weight={isActive ? 'duotone' : 'regular'}
-                      className={`flex-shrink-0 ${isActive 
+                      className={`flex-shrink-0 ${isActive
                         ? 'text-cyan-600 dark:text-cyan-400'
                         : 'text-gray-500 dark:text-gray-400 dark:group-hover:text-white'
-                      }`} 
+                        }`}
                     />
                     {!isCollapsed && <span>{item.label}</span>}
                   </Link>
