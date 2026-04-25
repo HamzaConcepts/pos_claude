@@ -22,7 +22,8 @@ import {
   ReceiptIcon,
   ShoppingCartIcon,
   ClipboardTextIcon,
-  LifebuoyIcon
+  LifebuoyIcon,
+  ArrowsLeftRightIcon
 } from '@phosphor-icons/react'
 import { useState, useEffect } from 'react'
 import { supabase, hasPermission, type UserRole, getStoreId } from '@/lib/supabase'
@@ -157,6 +158,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
     { href: '/dashboard/reports', label: 'Reports', icon: TrendUpIcon, permission: 'view_dashboard' },
     { href: '/dashboard/customer-ledger', label: 'Customer Ledger', icon: BookOpenIcon, permission: 'create_user' },
     { href: '/dashboard/supplier-ledger', label: 'Supplier Ledger', icon: TruckIcon, permission: 'create_user' },
+    { href: '/dashboard/cash-transfers', label: 'Cash Transfers', icon: ArrowsLeftRightIcon, permission: 'create_user', managerOnly: true },
     { href: '/dashboard/cashiers', label: 'Staff Performance', icon: UserGearIcon, permission: 'create_user', managerOnly: true },
     { href: '/dashboard/receipt-settings', label: 'Receipt Settings', icon: ReceiptIcon, permission: 'create_user', managerOnly: true },
     { href: '/dashboard/support', label: 'Support', icon: LifebuoyIcon, permission: 'process_sale' },

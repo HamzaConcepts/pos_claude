@@ -24,7 +24,12 @@ export async function GET(request: Request) {
 
     let query = supabaseAdmin
       .from('partial_payment_customers')
-      .select('*')
+      .select(`
+        *,
+        sales!partial_payment_customers_sale_id_fkey (
+          sale_description
+        )
+      `)
       .order('created_at', { ascending: false })
 
     if (storeId) {
@@ -32,28 +37,17 @@ export async function GET(request: Request) {
     }
 
     if (searchQuery) {
-      query = query.ilike('customer_name', `%${searchQuery}%`)
+      query = query.or(`customer_name.ilike.%${searchQuery}%,customer_phone.ilike.%${searchQuery}%`)
     }
 
-    // Get unique customers (in case same customer has multiple partial payments)
-    const { data, error } = await query.limit(100)
+    // Return ALL records — the client-side aggregateCustomers() groups them by phone
+    const { data, error } = await query
 
     if (error) throw error
 
-    // Remove duplicates based on customer_name
-    const uniqueCustomers = data?.reduce((acc: any[], current) => {
-      const exists = acc.find(
-        (item) => item.customer_name.toLowerCase() === current.customer_name.toLowerCase()
-      )
-      if (!exists) {
-        acc.push(current)
-      }
-      return acc
-    }, [])
-
     return NextResponse.json({
       success: true,
-      data: uniqueCustomers || [],
+      data: data || [],
     })
   } catch (error: any) {
     return NextResponse.json(

@@ -15,6 +15,300 @@ interface UserData {
   created_at: string
 }
 
+// Investors Tab Component
+function InvestorsTab({ investors, onRefresh }: { investors: Investor[]; onRefresh: () => Promise<void> }) {
+  const [showModal, setShowModal] = useState(false)
+  const [editingInvestor, setEditingInvestor] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
+  const [formData, setFormData] = useState({
+    investor_name: '',
+    invested_amount: '',
+    profit_share_percent: '',
+    notes: '',
+    is_active: true,
+  })
+
+  const totalInvested = investors.reduce((sum, inv) => sum + Number(inv.invested_amount || 0), 0)
+  const averageShare = investors.length > 0
+    ? investors.reduce((sum, inv) => sum + Number(inv.profit_share_percent || 0), 0) / investors.length
+    : 0
+
+  const openCreate = () => {
+    setEditingInvestor(null)
+    setFormData({
+      investor_name: '',
+      invested_amount: '',
+      profit_share_percent: '',
+      notes: '',
+      is_active: true,
+    })
+    setShowModal(true)
+  }
+
+  const openEdit = (investor: any) => {
+    setEditingInvestor(investor)
+    setFormData({
+      investor_name: investor.investor_name || '',
+      invested_amount: String(investor.invested_amount ?? ''),
+      profit_share_percent: String(investor.profit_share_percent ?? ''),
+      notes: investor.notes || '',
+      is_active: Boolean(investor.is_active),
+    })
+    setShowModal(true)
+  }
+
+  const submitInvestor = async () => {
+    try {
+      if (!formData.investor_name.trim()) {
+        alert('Investor name is required')
+        return
+      }
+
+      const amount = Number(formData.invested_amount)
+      const share = Number(formData.profit_share_percent)
+
+      if (!Number.isFinite(amount) || amount < 0) {
+        alert('Invested amount must be a non-negative number')
+        return
+      }
+
+      if (!Number.isFinite(share) || share < 0 || share > 100) {
+        alert('Profit share percent must be between 0 and 100')
+        return
+      }
+
+      const storeId = getStoreId()
+      if (!storeId) {
+        alert('Store ID not found')
+        return
+      }
+
+      setSaving(true)
+
+      const payload = {
+        ...(editingInvestor ? { id: editingInvestor.id } : { store_id: storeId }),
+        investor_name: formData.investor_name.trim(),
+        invested_amount: amount,
+        profit_share_percent: share,
+        notes: formData.notes.trim() || null,
+        is_active: formData.is_active,
+      }
+
+      const response = await fetch('/api/investors', {
+        method: editingInvestor ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const result = await response.json()
+      if (!result.success) {
+        alert(result.error || 'Failed to save investor')
+        return
+      }
+
+      setShowModal(false)
+      await onRefresh()
+    } catch (err: any) {
+      alert(err.message || 'Failed to save investor')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteInvestor = async (id: number) => {
+    if (!confirm('Delete this investor?')) return
+
+    try {
+      const response = await fetch(`/api/investors?id=${id}`, { method: 'DELETE' })
+      const result = await response.json()
+      if (!result.success) {
+        alert(result.error || 'Failed to delete investor')
+        return
+      }
+      await onRefresh()
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete investor')
+    }
+  }
+
+  return (
+    <div className="rounded border p-6 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Investors</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Manage business investors and their profit share configuration.</p>
+        </div>
+        <button
+          onClick={openCreate}
+          className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700"
+        >
+          <PlusIcon size={16} />
+          Add Investor
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+        <div className="p-3 rounded border bg-gray-50 border-gray-200 dark:bg-gray-900/30 dark:border-gray-700">
+          <p className="text-xs text-gray-600 dark:text-gray-400">Total Investors</p>
+          <p className="text-xl font-bold text-gray-900 dark:text-white">{investors.length}</p>
+        </div>
+        <div className="p-3 rounded border bg-gray-50 border-gray-200 dark:bg-gray-900/30 dark:border-gray-700">
+          <p className="text-xs text-gray-600 dark:text-gray-400">Total Invested</p>
+          <p className="text-xl font-bold text-gray-900 dark:text-white">PKR {totalInvested.toLocaleString()}</p>
+        </div>
+        <div className="p-3 rounded border bg-gray-50 border-gray-200 dark:bg-gray-900/30 dark:border-gray-700">
+          <p className="text-xs text-gray-600 dark:text-gray-400">Average Profit Share</p>
+          <p className="text-xl font-bold text-gray-900 dark:text-white">{averageShare.toFixed(2)}%</p>
+        </div>
+      </div>
+
+      {investors.length === 0 ? (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-600 rounded">
+          No investors added yet.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="border-b bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Invested</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Profit Share</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Status</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {investors.map((investor) => (
+                <tr key={investor.id} className="border-b border-gray-100 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-750">
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">
+                    <div className="font-medium">{investor.investor_name}</div>
+                    {investor.notes && <div className="text-xs text-gray-500 dark:text-gray-400">{investor.notes}</div>}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">PKR {Number(investor.invested_amount || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-300">{Number(investor.profit_share_percent || 0).toFixed(2)}%</td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${investor.is_active
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {investor.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => openEdit(investor)} className="p-1.5 rounded text-cyan-600 hover:bg-cyan-100 dark:text-cyan-400 dark:hover:bg-cyan-900/30" title="Edit investor">
+                        <PencilSimpleIcon size={16} />
+                      </button>
+                      <button onClick={() => deleteInvestor(investor.id)} className="p-1.5 rounded text-red-600 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/30" title="Delete investor">
+                        <TrashIcon size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="rounded-lg p-6 max-w-md w-full bg-white dark:bg-gray-800">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{editingInvestor ? 'Edit Investor' : 'Add Investor'}</h3>
+              <button onClick={() => setShowModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="Close investor modal">
+                <XIcon size={20} className="text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Investor Name</label>
+                <input
+                  type="text"
+                  value={formData.investor_name}
+                  onChange={(e) => setFormData({ ...formData, investor_name: e.target.value })}
+                  className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="Enter investor name"
+                  title="Investor name"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Invested Amount</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.invested_amount}
+                  onChange={(e) => setFormData({ ...formData, invested_amount: e.target.value })}
+                  className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="0.00"
+                  title="Invested amount"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Profit Share %</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={formData.profit_share_percent}
+                  onChange={(e) => setFormData({ ...formData, profit_share_percent: e.target.value })}
+                  className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="0 - 100"
+                  title="Profit share percent"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full px-3 py-2 border rounded bg-white border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  rows={3}
+                  placeholder="Optional notes"
+                  title="Investor notes"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={formData.is_active}
+                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                  title="Investor active status"
+                />
+                Active investor
+              </label>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={submitInvestor}
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : (editingInvestor ? 'Update' : 'Create')}
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface JoinRequest {
   id: number
   user_id: string
@@ -50,6 +344,9 @@ interface StoreInfo {
   store_name: string
   currency: string
   logo_url: string | null
+  order_fee_per_order?: number
+  order_fee_enabled?: boolean
+  order_fee_amount_owed?: number
 }
 
 interface Cashier {
@@ -87,6 +384,17 @@ interface SupplierPayment {
   notes: string | null
 }
 
+interface Investor {
+  id: number
+  store_id: number
+  investor_name: string
+  invested_amount: number
+  profit_share_percent: number
+  notes: string | null
+  is_active: boolean
+  created_at: string
+}
+
 export default function StorePage() {
   const [users, setUsers] = useState<UserData[]>([])
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([])
@@ -110,6 +418,7 @@ export default function StorePage() {
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
   const [selectedSupplierForPayment, setSelectedSupplierForPayment] = useState<Supplier | null>(null)
   const [supplierPayments, setSupplierPayments] = useState<SupplierPayment[]>([])
+  const [investors, setInvestors] = useState<Investor[]>([])
   const [editingCashier, setEditingCashier] = useState<Cashier | null>(null)
   const [selectedCategoryForSub, setSelectedCategoryForSub] = useState<number | null>(null)
   
@@ -127,7 +436,7 @@ export default function StorePage() {
   const [teamSubTab, setTeamSubTab] = useState<'users' | 'cashiers'>('users')
   const [productsSubTab, setProductsSubTab] = useState<'categories' | 'initial-stock'>('categories')
   const [partnersSubTab, setPartnersSubTab] = useState<'initial-suppliers' | 'initial-customers'>('initial-suppliers')
-  const [settingsSubTab, setSettingsSubTab] = useState<'info' | 'expenses' | 'withdrawals'>('info')
+  const [settingsSubTab, setSettingsSubTab] = useState<'info' | 'expenses' | 'withdrawals' | 'investors'>('info')
   
   // Owner Withdrawals state
   const [withdrawals, setWithdrawals] = useState<any[]>([])
@@ -154,8 +463,27 @@ export default function StorePage() {
       fetchSuppliers(),
       fetchInitialCustomers(),
       fetchInitialSuppliers(),
-      fetchWithdrawals()
+      fetchWithdrawals(),
+      fetchInvestors()
     ])
+  }
+
+  const fetchInvestors = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/investors?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setInvestors(result.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching investors:', err)
+    }
   }
 
   const fetchStoreInfo = async () => {
@@ -655,6 +983,15 @@ export default function StorePage() {
             }`}>
             Owner Withdrawals
           </button>
+          <button
+            onClick={() => setSettingsSubTab('investors')}
+            className={`px-3 py-1.5 text-sm rounded ${
+              settingsSubTab === 'investors'
+                ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-600 dark:text-white'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
+            }`}>
+            Investors
+          </button>
         </div>
       )}
 
@@ -1052,6 +1389,11 @@ export default function StorePage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Settings Tab - Investors */}
+      {activeTab === 'settings' && settingsSubTab === 'investors' && (
+        <InvestorsTab investors={investors} onRefresh={fetchInvestors} />
       )}
 
       {/* Withdrawal Modal */}
@@ -1729,6 +2071,26 @@ function StoreInfoTab({ storeInfo, onRefresh }: any) {
                 </div>
               )}
               <p className="text-xs text-text-secondary mt-1">Currency used throughout the app</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600 dark:text-gray-400">Super Admin Order Fee</label>
+              <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-mono dark:text-white">
+                    {(storeInfo?.order_fee_per_order || 0).toFixed(2)} {storeInfo?.currency || 'PKR'} / order
+                  </span>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${storeInfo?.order_fee_enabled
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                  }`}>
+                    {storeInfo?.order_fee_enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-text-secondary mt-1">
+                Estimated amount owed: {(storeInfo?.order_fee_amount_owed || 0).toFixed(2)} {storeInfo?.currency || 'PKR'}
+              </p>
             </div>
 
             {/* Store Logo */}

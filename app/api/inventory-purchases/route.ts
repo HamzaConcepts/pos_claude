@@ -43,6 +43,41 @@ export async function GET(request: Request) {
       throw error
     }
 
+    // Build a due map from stock batches and supplier khaata entries.
+    // expense.reference_id points to stock_batches.id for inventory purchases.
+    const stockBatchIds = [...new Set((data || []).map((expense: any) => expense.reference_id).filter(Boolean))]
+    const batchById = new Map<number, any>()
+    const dueByBatchId = new Map<number, { total_amount: number; amount_paid: number; amount_remaining: number }>()
+
+    if (stockBatchIds.length > 0) {
+      const { data: batches, error: batchesError } = await supabaseAdmin
+        .from('stock_batches')
+        .select('id, cost_price, quantity_purchased, amount_paid')
+        .in('id', stockBatchIds)
+
+      if (!batchesError && batches) {
+        batches.forEach((batch: any) => {
+          batchById.set(batch.id, batch)
+        })
+      }
+
+      const { data: supplierKhaataRows, error: khaataError } = await supabaseAdmin
+        .from('supplier_khaata')
+        .select('stock_batch_id, total_amount, amount_paid, amount_remaining')
+        .eq('store_id', parseInt(storeId))
+        .in('stock_batch_id', stockBatchIds)
+
+      if (!khaataError && supplierKhaataRows) {
+        supplierKhaataRows.forEach((row: any) => {
+          dueByBatchId.set(row.stock_batch_id, {
+            total_amount: Number(row.total_amount || 0),
+            amount_paid: Number(row.amount_paid || 0),
+            amount_remaining: Number(row.amount_remaining || 0),
+          })
+        })
+      }
+    }
+
     // Fetch recorder names separately
     if (data && data.length > 0) {
       const managerIds = [...new Set(data.map(e => e.recorded_by).filter(Boolean))]
@@ -81,7 +116,7 @@ export async function GET(request: Request) {
         cashiers?.forEach(c => nameMap.set(`cashier_${c.id}`, c.full_name))
       }
       
-      // Add recorder names to expenses
+      // Add recorder names and due fields to expenses
       data.forEach(expense => {
         if (expense.cashier_ref_id) {
           expense.recorded_by_name = nameMap.get(`cashier_${expense.cashier_ref_id}`) || 'Unknown'
@@ -90,6 +125,18 @@ export async function GET(request: Request) {
         } else if (expense.recorded_by_cashier_id) {
           expense.recorded_by_name = nameMap.get(`cashier_account_${expense.recorded_by_cashier_id}`) || 'Unknown'
         }
+
+        const batchId = expense.reference_id
+        const batch = batchById.get(batchId)
+        const mappedKhaata = dueByBatchId.get(batchId)
+
+        const fallbackTotal = Number(expense.amount || 0)
+        const fallbackPaid = batch ? Number(batch.amount_paid || fallbackTotal) : fallbackTotal
+        const fallbackRemaining = Math.max(0, fallbackTotal - fallbackPaid)
+
+        expense.total_amount = mappedKhaata ? mappedKhaata.total_amount : fallbackTotal
+        expense.amount_paid = mappedKhaata ? mappedKhaata.amount_paid : fallbackPaid
+        expense.amount_remaining = mappedKhaata ? mappedKhaata.amount_remaining : fallbackRemaining
       })
     }
 

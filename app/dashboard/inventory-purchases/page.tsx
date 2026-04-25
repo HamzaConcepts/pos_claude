@@ -11,6 +11,9 @@ interface InventoryPurchase {
   id: number
   description: string
   amount: number
+  total_amount?: number
+  amount_paid?: number
+  amount_remaining?: number
   category: string
   payment_method?: string
   expense_date: string
@@ -208,7 +211,8 @@ export default function InventoryPurchasesPage() {
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Description</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Type</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Recorded By</th>
-                  <th className="px-3 py-2.5 text-right text-sm font-semibold">Amount</th>
+                  <th className="px-3 py-2.5 text-right text-sm font-semibold">Total</th>
+                  <th className="px-3 py-2.5 text-right text-sm font-semibold">Ledger</th>
                   <th className="px-3 py-2.5 text-center text-sm font-semibold">Payment</th>
                 </tr>
               </thead>
@@ -243,7 +247,18 @@ export default function InventoryPurchasesPage() {
                       {purchase.recorded_by_name || 'System'}
                     </td>
                     <td className="px-3 py-2.5 text-sm text-right font-semibold text-blue-600 dark:text-blue-400">
-                      {formatCurrency(purchase.amount, 0)}
+                      {formatCurrency(purchase.total_amount ?? purchase.amount, 0)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      {Number(purchase.amount_remaining || 0) > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">
+                          ⚠ Due {formatCurrency(Number(purchase.amount_remaining || 0), 0)}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300">
+                          Cleared
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${

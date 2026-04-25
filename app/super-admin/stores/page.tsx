@@ -13,6 +13,7 @@ interface Store {
   created_at: string
   owner: { id: string; full_name: string; email: string } | null
   cashier_count: number
+  sales_count: number
 }
 
 async function getApiErrorMessage(res: Response, fallback: string) {
@@ -162,6 +163,7 @@ export default function StoresPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Code</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Owner</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Cashiers</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Sales</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Currency</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Status</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Created</th>
@@ -193,6 +195,11 @@ export default function StoresPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{store.cashier_count}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400">
+                        {store.sales_count.toLocaleString()}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{store.currency}</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${

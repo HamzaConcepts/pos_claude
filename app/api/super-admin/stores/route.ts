@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     // Enrich with manager info and cashier count
     const enriched = await Promise.all(
       (stores || []).map(async (store) => {
-        const [managerRes, cashierCountRes] = await Promise.all([
+        const [managerRes, cashierCountRes, salesCountRes] = await Promise.all([
           supabaseAdmin
             .from('managers')
             .select('id, full_name, email')
@@ -50,12 +50,17 @@ export async function GET(request: Request) {
             .from('cashier_accounts')
             .select('id', { count: 'exact', head: true })
             .eq('store_id', store.id),
+          supabaseAdmin
+            .from('sales')
+            .select('id', { count: 'exact', head: true })
+            .eq('store_id', store.id),
         ])
 
         return {
           ...store,
           owner: managerRes.data || null,
           cashier_count: cashierCountRes.count || 0,
+          sales_count: salesCountRes.count || 0,
         }
       })
     )

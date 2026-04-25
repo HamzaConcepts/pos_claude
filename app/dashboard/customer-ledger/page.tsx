@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { UserCircleIcon, MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, CurrencyDollarIcon } from '@phosphor-icons/react'
+import { Fragment, useEffect, useState } from 'react'
+import { UserCircleIcon, MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, CurrencyDollarIcon, ReceiptIcon } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
 import { getStoreId, isManager, getCashierId } from '@/lib/supabase'
 import { useCurrency } from '@/lib/currency-context'
@@ -73,6 +73,11 @@ export default function CustomerLedgerPage() {
     payment_method: 'Cash',
     notes: ''
   })
+
+  // Payment history per transaction (keyed by partial_payment_customers.id)
+  const [paymentHistoryByTxnId, setPaymentHistoryByTxnId] = useState<Record<number, any[]>>({})
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState<Record<number, boolean>>({})
+  const [expandedTxnIds, setExpandedTxnIds] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     fetchCustomers()
@@ -157,6 +162,32 @@ export default function CustomerLedgerPage() {
       newExpanded.add(phone)
     }
     setExpandedCustomers(newExpanded)
+  }
+
+  const fetchTxnPaymentHistory = async (txnId: number, saleId: number) => {
+    if (paymentHistoryByTxnId[txnId] !== undefined) return
+    try {
+      const storeId = getStoreId()
+      setPaymentHistoryLoading(prev => ({ ...prev, [txnId]: true }))
+      const res = await fetch(`/api/khaata-payments?store_id=${storeId}&sale_id=${saleId}`)
+      const result = await res.json()
+      setPaymentHistoryByTxnId(prev => ({ ...prev, [txnId]: result.success ? result.data : [] }))
+    } catch {
+      setPaymentHistoryByTxnId(prev => ({ ...prev, [txnId]: [] }))
+    } finally {
+      setPaymentHistoryLoading(prev => ({ ...prev, [txnId]: false }))
+    }
+  }
+
+  const toggleTxnExpansion = (txnId: number, saleId: number) => {
+    const next = new Set(expandedTxnIds)
+    if (next.has(txnId)) {
+      next.delete(txnId)
+    } else {
+      next.add(txnId)
+      fetchTxnPaymentHistory(txnId, saleId)
+    }
+    setExpandedTxnIds(next)
   }
 
   const openEditModal = (customer: KhaataCustomer) => {
@@ -394,58 +425,87 @@ export default function CustomerLedgerPage() {
                     </tr>
 
                     {/* Expanded Transactions */}
-                    {isExpanded && customer.transactions.map((transaction) => (
-                      <tr 
-                        key={transaction.id}
-                        className="bg-cyan-50 dark:bg-cyan-900/20 border-t border-cyan-200 dark:border-cyan-800"
-                      >
-                        <td className="px-3 py-2"></td>
-                        <td className="px-3 py-2" colSpan={2}>
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="text-gray-700 dark:text-gray-300 font-medium">
-                              {transaction.sales?.sale_description || `Sale #${transaction.sale_id}`}
-                            </span>
-                            <span className="text-gray-400">•</span>
-                            <span className="text-gray-600 dark:text-gray-400">{new Date(transaction.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
-                            {transaction.notes && (
-                              <>
+                    {isExpanded && customer.transactions.map((transaction) => {
+                      const txnExpanded = expandedTxnIds.has(transaction.id)
+                      const txnPayments = paymentHistoryByTxnId[transaction.id]
+                      const txnLoading = paymentHistoryLoading[transaction.id]
+                      return (
+                        <Fragment key={transaction.id}>
+                          <tr className="bg-cyan-50 dark:bg-cyan-900/20 border-t border-cyan-200 dark:border-cyan-800">
+                            <td className="px-3 py-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); toggleTxnExpansion(transaction.id, transaction.sale_id) }}
+                                className="p-0.5 rounded hover:bg-cyan-200 dark:hover:bg-cyan-800 transition-colors"
+                                title="Toggle payment history"
+                              >
+                                {txnExpanded ? <CaretDownIcon size={14} className="text-cyan-700 dark:text-cyan-300" /> : <ReceiptIcon size={14} className="text-cyan-600 dark:text-cyan-400" />}
+                              </button>
+                            </td>
+                            <td className="px-3 py-2" colSpan={2}>
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="text-gray-700 dark:text-gray-300 font-medium">
+                                  {transaction.sales?.sale_description || `Sale #${transaction.sale_id}`}
+                                </span>
                                 <span className="text-gray-400">•</span>
-                                <span className="text-gray-600 dark:text-gray-400 italic">{transaction.notes}</span>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-right text-sm text-gray-900 dark:text-white">{formatCurrency(transaction.total_amount, 2)}</td>
-                        <td className="px-3 py-2 text-right text-sm text-green-600">{formatCurrency(transaction.amount_paid, 2)}</td>
-                        <td className="px-3 py-2 text-right text-sm font-medium text-orange-600">
-                          {formatCurrency(transaction.amount_remaining, 2)}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex gap-2 justify-center">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                openEditModal(transaction)
-                              }}
-                              className="p-1.5 hover:bg-cyan-100 rounded transition-colors"
-                              title="Edit"
-                            >
-                              <PencilSimpleIcon size={16} />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDeleteCustomer(transaction.id)
-                              }}
-                              className="p-1.5 hover:bg-red-100 rounded transition-colors text-status-error"
-                              title="Delete"
-                            >
-                              <TrashIcon size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                                <span className="text-gray-600 dark:text-gray-400">{new Date(transaction.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
+                                {transaction.notes && (
+                                  <>
+                                    <span className="text-gray-400">•</span>
+                                    <span className="text-gray-600 dark:text-gray-400 italic">{transaction.notes}</span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-right text-sm text-gray-900 dark:text-white">{formatCurrency(transaction.total_amount, 2)}</td>
+                            <td className="px-3 py-2 text-right text-sm text-green-600">{formatCurrency(transaction.amount_paid, 2)}</td>
+                            <td className="px-3 py-2 text-right text-sm font-medium text-orange-600">{formatCurrency(transaction.amount_remaining, 2)}</td>
+                            <td className="px-3 py-2">
+                              <div className="flex gap-2 justify-center">
+                                <button onClick={(e) => { e.stopPropagation(); openEditModal(transaction) }} className="p-1.5 hover:bg-cyan-100 rounded transition-colors" title="Edit"><PencilSimpleIcon size={16} /></button>
+                                <button onClick={(e) => { e.stopPropagation(); handleDeleteCustomer(transaction.id) }} className="p-1.5 hover:bg-red-100 rounded transition-colors text-status-error" title="Delete"><TrashIcon size={16} /></button>
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Nested Payment History */}
+                          {txnExpanded && (
+                            <tr className="border-t border-gray-100 dark:border-gray-700">
+                              <td colSpan={8} className="bg-gray-50 dark:bg-[#111] px-4 py-3">
+                                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Payment History for this transaction</p>
+                                {txnLoading ? (
+                                  <p className="text-xs text-gray-400">Loading...</p>
+                                ) : !txnPayments || txnPayments.length === 0 ? (
+                                  <p className="text-xs text-gray-400 italic">No payments recorded yet.</p>
+                                ) : (
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+                                        <th className="text-left py-1 pr-4 font-medium">Date</th>
+                                        <th className="text-right py-1 pr-4 font-medium">Amount</th>
+                                        <th className="text-left py-1 pr-4 font-medium">Method</th>
+                                        <th className="text-left py-1 font-medium">Notes</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {txnPayments.map((p: any) => (
+                                        <tr key={p.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                          <td className="py-1.5 pr-4 text-gray-700 dark:text-gray-300">
+                                            {new Date(p.payment_date || p.created_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                                          </td>
+                                          <td className="py-1.5 pr-4 text-right font-semibold text-green-600">{formatCurrency(p.payment_amount, 2)}</td>
+                                          <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">{p.payment_method}</td>
+                                          <td className="py-1.5 text-gray-500 dark:text-gray-400 italic">{p.notes || '—'}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
                   </>
                 )
               })}

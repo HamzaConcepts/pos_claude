@@ -611,6 +611,10 @@ export default function SalesPage() {
                   ) || 0
                   const profit = sale.total_amount - totalCost
                   const partialPaymentCustomer = sale.partial_payment_customers?.[0]
+                  const recordedDue = Number(sale.amount_due || 0)
+                  const partialCustomerDue = Number(partialPaymentCustomer?.amount_remaining || 0)
+                  const computedDue = Math.max(0, Number(sale.total_amount || 0) - Number(sale.amount_paid || 0))
+                  const outstandingDue = Math.max(recordedDue, partialCustomerDue, computedDue)
                   const digitalCustomerName =
                     (typeof sale.customer_name === 'string' ? sale.customer_name.trim() : '') ||
                     (typeof partialPaymentCustomer?.customer_name === 'string'
@@ -655,7 +659,14 @@ export default function SalesPage() {
                         </td>
                         <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">{sale.cashier_name || 'Unknown'}</td>
                         <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900 dark:text-gray-300">
-                          {formatCurrency(sale.total_amount, 2)}
+                          <div className="flex flex-col items-end gap-1">
+                            <span>{formatCurrency(sale.total_amount, 2)}</span>
+                            {outstandingDue > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">
+                                ⚠ Due {formatCurrency(outstandingDue, 2)}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300">

@@ -46,6 +46,32 @@ export async function GET(request: NextRequest) {
       .eq('store_id', parseInt(storeId))
       .single()
 
+    let feePerOrder = 0
+    let feeEnabled = false
+    let feeAmountOwed = 0
+
+    const { data: feeSettings, error: feeError } = await supabaseAdmin
+      .from('store_order_fee_settings')
+      .select('fee_per_order, is_active')
+      .eq('store_id', parseInt(storeId))
+      .maybeSingle()
+
+    if (!feeError && feeSettings) {
+      feePerOrder = Number(feeSettings.fee_per_order || 0)
+      feeEnabled = Boolean(feeSettings.is_active)
+
+      const { data: charges, error: chargesError } = await supabaseAdmin
+        .from('store_billing_charges')
+        .select('amount_due')
+        .eq('store_id', parseInt(storeId))
+
+      if (!chargesError && charges) {
+        feeAmountOwed = Number(
+          charges.reduce((sum: number, charge: any) => sum + Number(charge.amount_due || 0), 0).toFixed(2)
+        )
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -57,6 +83,9 @@ export async function GET(request: NextRequest) {
         address: receiptSettings?.business_address || null,
         phone: receiptSettings?.business_phone || null,
         email: receiptSettings?.business_email || null,
+        order_fee_per_order: feePerOrder,
+        order_fee_enabled: feeEnabled,
+        order_fee_amount_owed: feeAmountOwed,
       }
     })
   } catch (error: any) {

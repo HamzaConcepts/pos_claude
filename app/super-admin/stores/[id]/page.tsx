@@ -13,6 +13,11 @@ interface StoreDetail {
   cashierAccounts: { id: number; full_name: string; phone_number: string | null; role: string; is_active: boolean; created_at: string }[]
   cashiers: { id: number; full_name: string; phone_number: string; commission_rate: number; salary: number; is_active: boolean; created_at: string }[]
   joinRequests: { id: number; user_name: string; user_type: string; status: string; requested_at: string }[]
+  billing: {
+    fee_per_order: number
+    is_active: boolean
+  } | null
+  sales_count: number
 }
 
 async function getApiErrorMessage(res: Response, fallback: string) {
@@ -35,6 +40,8 @@ export default function StoreDetailPage() {
   const [saving, setSaving] = useState(false)
   const [editName, setEditName] = useState('')
   const [editCurrency, setEditCurrency] = useState('')
+  const [feePerOrder, setFeePerOrder] = useState('0')
+  const [feeEnabled, setFeeEnabled] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   const fetchStore = async () => {
@@ -53,12 +60,45 @@ export default function StoreDetailPage() {
       setData(json)
       setEditName(json.store.store_name)
       setEditCurrency(json.store.currency)
+      setFeePerOrder(String(json.billing?.fee_per_order ?? 0))
+      setFeeEnabled(Boolean(json.billing?.is_active ?? false))
     } catch (err: any) {
       console.error('Failed to fetch store:', err)
       setError(err?.message || 'Failed to fetch store details')
       setData(null)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const saveBillingSettings = async () => {
+    setActionLoading('billing')
+    try {
+      setError('')
+      const parsedFee = Number(feePerOrder)
+
+      if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+        setError('Fee per order must be a non-negative number')
+        return
+      }
+
+      const res = await fetch(`/api/super-admin/stores/${storeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ fee_per_order: parsedFee, fee_enabled: feeEnabled }),
+      })
+
+      if (!res.ok) {
+        throw new Error(await getApiErrorMessage(res, 'Failed to save billing settings'))
+      }
+
+      await fetchStore()
+    } catch (err: any) {
+      console.error('Failed to save billing settings:', err)
+      setError(err?.message || 'Failed to save billing settings')
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -178,7 +218,8 @@ export default function StoreDetailPage() {
     return <div className="text-center text-gray-500 py-12">Store not found</div>
   }
 
-  const { store, managers, cashierAccounts, cashiers, joinRequests } = data
+  const { store, managers, cashierAccounts, cashiers, joinRequests, billing } = data
+  const salesCount = (data as any).sales_count ?? 0
 
   return (
     <div className="space-y-6">
@@ -197,13 +238,19 @@ export default function StoreDetailPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{store.store_name}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Code: {store.store_code}</p>
         </div>
-        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-          store.is_active
-            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-        }`}>
-          {store.is_active ? 'Active' : 'Inactive'}
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="text-center px-4 py-2 rounded-lg border border-cyan-200 bg-cyan-50 dark:border-cyan-700 dark:bg-cyan-900/20">
+            <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">Total Sales</p>
+            <p className="text-xl font-bold text-cyan-700 dark:text-cyan-300">{salesCount.toLocaleString()}</p>
+          </div>
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+            store.is_active
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+          }`}>
+            {store.is_active ? 'Active' : 'Inactive'}
+          </span>
+        </div>
       </div>
 
       {/* Store Info */}
@@ -255,6 +302,50 @@ export default function StoreDetailPage() {
           >
             <PowerIcon size={16} />
             {store.is_active ? 'Deactivate Store' : 'Activate Store'}
+          </button>
+        </div>
+      </div>
+
+      {/* Order Fee Billing */}
+      <div className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Order Fee Billing</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fee Per Order</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              title="Fee per order"
+              placeholder="0.00"
+              value={feePerOrder}
+              onChange={(e) => setFeePerOrder(e.target.value)}
+              className="w-full px-3 py-2 border rounded text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Billing Status</label>
+            <button
+              type="button"
+              onClick={() => setFeeEnabled((prev) => !prev)}
+              className={`w-full px-3 py-2 border rounded text-sm ${feeEnabled
+                ? 'border-green-300 text-green-700 bg-green-50 dark:border-green-700 dark:text-green-400 dark:bg-green-900/20'
+                : 'border-gray-300 text-gray-700 bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:bg-gray-800'
+              }`}
+            >
+              {feeEnabled ? 'Enabled' : 'Disabled'}
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            onClick={saveBillingSettings}
+            disabled={actionLoading === 'billing'}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded text-sm hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50"
+          >
+            <FloppyDiskIcon size={16} />
+            {actionLoading === 'billing' ? 'Saving...' : 'Save Billing'}
           </button>
         </div>
       </div>

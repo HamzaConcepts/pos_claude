@@ -10,6 +10,7 @@ interface Stats {
   cashierAccounts: { total: number; active: number; inactive: number }
   pendingSignups: number
   pendingJoinRequests: number
+  billing?: { totalOwed: number; billedStores: number }
 }
 
 async function getApiErrorMessage(res: Response, fallback: string) {
@@ -121,6 +122,16 @@ export default function SuperAdminDashboard() {
       href: '/super-admin/stores',
       urgent: false,
     },
+    {
+      title: 'Store Billing Owed',
+      value: Number(stats?.billing?.totalOwed ?? 0),
+      sub: `${stats?.billing?.billedStores ?? 0} stores with fee enabled`,
+      icon: <StorefrontIcon size={24} />,
+      color: 'bg-slate-50 text-slate-700 dark:bg-slate-900/30 dark:text-slate-300',
+      href: '/super-admin/stores',
+      urgent: false,
+      format: (v: number) => v.toFixed(2),
+    },
   ]
 
   return (
@@ -165,7 +176,7 @@ export default function SuperAdminDashboard() {
               <div className={`p-2 rounded-lg ${card.color}`}>{card.icon}</div>
             </div>
             <p className={`text-3xl font-bold ${card.urgent && card.value > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>
-              {card.value}
+              {'format' in card ? (card as any).format(card.value) : card.value}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{card.sub}</p>
           </Link>

@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [storesRes, managersRes, cashierAccountsRes, pendingSignupsRes, pendingJoinRes] = await Promise.all([
+    const [storesRes, managersRes, cashierAccountsRes, pendingSignupsRes, pendingJoinRes, feeSettingsRes, billingChargesRes] = await Promise.all([
       supabaseAdmin.from('stores').select('id, is_active'),
       supabaseAdmin.from('managers').select('id, is_active'),
       supabaseAdmin.from('cashier_accounts').select('id, is_active'),
@@ -24,6 +24,8 @@ export async function GET(request: Request) {
       supabaseAdmin.from('join_requests').select('id').eq('user_type', 'Manager').eq('status', 'pending'),
       // Cashier join-store requests (separate from signup approvals)
       supabaseAdmin.from('join_requests').select('id').eq('user_type', 'Cashier').eq('status', 'pending'),
+      supabaseAdmin.from('store_order_fee_settings').select('store_id, is_active'),
+      supabaseAdmin.from('store_billing_charges').select('store_id, amount_due'),
     ])
 
     const stores = storesRes.data || []
@@ -31,6 +33,13 @@ export async function GET(request: Request) {
     const cashierAccounts = cashierAccountsRes.data || []
     const pendingSignups = pendingSignupsRes.data || []
     const pendingJoinRequests = pendingJoinRes.data || []
+    const feeSettings = feeSettingsRes.data || []
+    const billingCharges = billingChargesRes.data || []
+
+    const billedStores = feeSettings.filter((setting) => setting.is_active).length
+    const totalOwed = Number(
+      billingCharges.reduce((sum, charge) => sum + Number(charge.amount_due || 0), 0).toFixed(2)
+    )
 
     return NextResponse.json({
       stores: {
@@ -50,6 +59,10 @@ export async function GET(request: Request) {
       },
       pendingSignups: pendingSignups.length,
       pendingJoinRequests: pendingJoinRequests.length,
+      billing: {
+        totalOwed,
+        billedStores,
+      },
     }, {
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
