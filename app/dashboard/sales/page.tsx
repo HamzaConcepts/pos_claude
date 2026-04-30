@@ -88,6 +88,9 @@ export default function SalesPage() {
     applyFilters()
   }, [sales, selectedCashier, selectedProduct, selectedPaymentMethod, selectedBankAccount, selectedPaymentStatus, startDate, endDate])
 
+  const normalizePaymentStatus = (status: string) =>
+    status === 'Pending' ? 'Partial' : status
+
   const fetchSales = async () => {
     try {
       setLoading(true)
@@ -228,7 +231,7 @@ export default function SalesPage() {
 
     // Filter by payment status
     if (selectedPaymentStatus) {
-      filtered = filtered.filter(sale => sale.payment_status === selectedPaymentStatus)
+      filtered = filtered.filter(sale => normalizePaymentStatus(sale.payment_status) === selectedPaymentStatus)
     }
 
     // Filter by date range
@@ -247,7 +250,7 @@ export default function SalesPage() {
   const handleEdit = (sale: any) => {
     setEditingSale(sale)
     setEditPaymentMethod(sale.payment_method || 'Cash')
-    setEditPaymentStatus(sale.payment_status || 'Paid')
+    setEditPaymentStatus(sale.payment_status === 'Pending' ? 'Partial' : sale.payment_status || 'Paid')
     setEditNotes(sale.notes || '')
     setShowEditModal(true)
     setEditError('')
@@ -548,7 +551,6 @@ export default function SalesPage() {
               <option value="">All Statuses</option>
               <option value="Paid">Paid</option>
               <option value="Partial">Partial</option>
-              <option value="Pending">Pending</option>
             </select>
           </div>
 
@@ -611,6 +613,7 @@ export default function SalesPage() {
                   ) || 0
                   const profit = sale.total_amount - totalCost
                   const partialPaymentCustomer = sale.partial_payment_customers?.[0]
+                  const normalizedPaymentStatus = normalizePaymentStatus(sale.payment_status)
                   const recordedDue = Number(sale.amount_due || 0)
                   const partialCustomerDue = Number(partialPaymentCustomer?.amount_remaining || 0)
                   const computedDue = Math.max(0, Number(sale.total_amount || 0) - Number(sale.amount_paid || 0))
@@ -635,10 +638,10 @@ export default function SalesPage() {
                       <tr
                         onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
                         className={`cursor-pointer transition-all border-b border-gray-100 dark:border-gray-800 ${
-                          sale.payment_status === 'Partial' 
+                          normalizedPaymentStatus === 'Partial' 
                             ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/30'
                             : 'bg-white hover:bg-gray-50 dark:bg-transparent dark:hover:bg-gray-800/50'
-                        } ${isExpanded && sale.payment_status !== 'Partial' ? 'border-l-4 border-l-cyan-600' : ''}`}
+                        } ${isExpanded && normalizedPaymentStatus !== 'Partial' ? 'border-l-4 border-l-cyan-600' : ''}`}
                       >
                         <td className="px-3 py-2.5 text-sm">
                           <div className="flex items-center gap-2">
@@ -681,15 +684,13 @@ export default function SalesPage() {
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
                           <span
                             className={`inline-block px-2 py-1 rounded text-xs font-medium border ${
-                              sale.payment_status === 'Paid'
+                              normalizedPaymentStatus === 'Paid'
                                 ? 'bg-green-50 text-green-700 border-green-200'
-                                : sale.payment_status === 'Partial'
-                                ? 'bg-red-50 text-red-700 border-red-200'
-                                : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                : 'bg-red-50 text-red-700 border-red-200'
                             }`}
                           >
-                            {sale.payment_status === 'Partial' && '⚠️ '}
-                            {sale.payment_status}
+                            {normalizedPaymentStatus === 'Partial' && '⚠️ '}
+                            {normalizedPaymentStatus}
                           </span>
                         </td>
                         <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
@@ -767,7 +768,7 @@ export default function SalesPage() {
                       {isExpanded && (
                         <tr className="animate-fadeIn">
                           <td colSpan={7} className={
-                            sale.payment_status === 'Partial' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-cyan-50 dark:bg-cyan-900/20'
+                            normalizedPaymentStatus === 'Partial' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-cyan-50 dark:bg-cyan-900/20'
                           }>
                             <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
                               {/* Mobile-only info */}
@@ -802,15 +803,13 @@ export default function SalesPage() {
                                     <span className="ml-2">
                                       <span
                                         className={`inline-block px-2 py-1 rounded text-xs font-medium border ${
-                                          sale.payment_status === 'Paid'
+                                          normalizedPaymentStatus === 'Paid'
                                             ? 'bg-green-50 text-green-700 border-green-200'
-                                            : sale.payment_status === 'Partial'
-                                            ? 'bg-red-50 text-red-700 border-red-200'
-                                            : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                            : 'bg-red-50 text-red-700 border-red-200'
                                         }`}
                                       >
-                                        {sale.payment_status === 'Partial' && '⚠️ '}
-                                        {sale.payment_status}
+                                        {normalizedPaymentStatus === 'Partial' && '⚠️ '}
+                                        {normalizedPaymentStatus}
                                       </span>
                                     </span>
                                   </div>
@@ -841,10 +840,10 @@ export default function SalesPage() {
                               )}
 
                               {/* Partial Payment Customer Info */}
-                              {sale.payment_status === 'Partial' && partialPaymentCustomer && (
+                              {partialPaymentCustomer && (
                                 <div className="mb-4 p-4 bg-red-600 border-2 border-red-800 rounded">
                                   <div className="flex items-center gap-2 mb-3">
-                                    <span className="text-white font-bold">⚠️ PARTIAL PAYMENT CUSTOMER</span>
+                                    <span className="text-white font-bold">⚠️ KHAATA CUSTOMER</span>
                                   </div>
                                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                     <div>
@@ -1083,7 +1082,6 @@ export default function SalesPage() {
                 >
                   <option value="Paid">Paid</option>
                   <option value="Partial">Partial</option>
-                  <option value="Pending">Pending</option>
                 </select>
               </div>
 
@@ -1304,6 +1302,10 @@ export default function SalesPage() {
               </div>
 
               <div className="mb-5 border-t border-b border-gray-200 dark:border-gray-700 py-4">
+                {(() => {
+                  const normalizedReceiptStatus = normalizePaymentStatus(receiptSale.payment_status)
+                  return (
+                    <>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400">Sale Number</p>
@@ -1325,9 +1327,9 @@ export default function SalesPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400">Payment Status</p>
-                    <p className={`font-medium ${receiptSale.payment_status === 'Partial' ? 'text-red-600' : 'text-gray-900'}`}>
-                      {receiptSale.payment_status}
-                      {receiptSale.payment_status === 'Partial' && ' ⚠️'}
+                    <p className={`font-medium ${normalizedReceiptStatus === 'Partial' ? 'text-red-600' : 'text-gray-900'}`}>
+                      {normalizedReceiptStatus}
+                      {normalizedReceiptStatus === 'Partial' && ' ⚠️'}
                     </p>
                   </div>
                 </div>
@@ -1355,7 +1357,7 @@ export default function SalesPage() {
                 )}
 
                 {/* Show customer info for partial payments */}
-                {receiptSale.payment_status === 'Partial' && receiptSale.partial_payment_customers && receiptSale.partial_payment_customers.length > 0 && (
+                {normalizedReceiptStatus === 'Partial' && receiptSale.partial_payment_customers && receiptSale.partial_payment_customers.length > 0 && (
                   <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
                     <p className="font-semibold text-red-900 mb-2 flex items-center gap-2 text-sm">
                       <span>⚠️</span> PARTIAL PAYMENT CUSTOMER
@@ -1378,6 +1380,9 @@ export default function SalesPage() {
                     </div>
                   </div>
                 )}
+                    </>
+                  )
+                })()}
               </div>
 
               <table className="w-full mb-5">
@@ -1438,7 +1443,7 @@ export default function SalesPage() {
                   <span className="text-gray-600 dark:text-gray-400">Amount Paid:</span>
                   <span className="text-gray-900 dark:text-white">{currency} {receiptSale.amount_paid.toFixed(2)}</span>
                 </div>
-                {receiptSale.payment_status === 'Partial' ? (
+                {normalizePaymentStatus(receiptSale.payment_status) === 'Partial' ? (
                   <div className="flex justify-between text-base font-medium text-red-600">
                     <span>Amount Due:</span>
                     <span>{currency} {receiptSale.amount_due.toFixed(2)}</span>
@@ -1451,7 +1456,7 @@ export default function SalesPage() {
                 )}
                 
                 {/* Additional warning for partial payment */}
-                {receiptSale.payment_status === 'Partial' && (
+                {normalizePaymentStatus(receiptSale.payment_status) === 'Partial' && (
                   <div className="mt-4 p-3 bg-red-600 text-white rounded font-semibold text-center text-sm">
                     ⚠️ OUTSTANDING BALANCE DUE ⚠️
                   </div>

@@ -104,11 +104,19 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      const normalizedName = name.trim()
+
+      if (!normalizedName) {
+        setError('Please enter your name, phone number, or email')
+        setLoading(false)
+        return
+      }
+
       // First, check if it's a cashier account (direct database auth)
       // We need to use crypt() function to compare hashed passwords
       const { data: cashierData, error: cashierError } = await supabase
         .rpc('verify_cashier_login', {
-          identifier: name,
+          identifier: normalizedName,
           password_input: password
         })
 
@@ -148,15 +156,15 @@ export default function LoginPage() {
 
       // If not cashier, try manager login with Supabase Auth
       // First check if input looks like an email
-      const isEmail = name.includes('@')
-      let loginEmail = name
+      const isEmail = normalizedName.includes('@')
+      let loginEmail = normalizedName
       
       if (!isEmail) {
         // Use API to look up manager by name or phone (bypasses RLS)
         const response = await fetch('/api/auth/lookup-manager', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifier: name }),
+          body: JSON.stringify({ identifier: normalizedName }),
         })
 
         const result = await response.json()
@@ -167,12 +175,12 @@ export default function LoginPage() {
           return
         }
         
-        loginEmail = result.email
+        loginEmail = result.email.trim()
       }
 
       // Manager login with Supabase Auth using email
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
+        email: loginEmail.trim(),
         password,
       })
 
@@ -288,6 +296,7 @@ export default function LoginPage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={(e) => setName(e.target.value.trim())}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-cyan-600"
               placeholder="Enter your name or phone number"
               required

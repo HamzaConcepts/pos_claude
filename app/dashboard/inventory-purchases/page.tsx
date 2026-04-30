@@ -1,15 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { PackageIcon, TruckIcon, CalendarIcon, CurrencyDollarIcon, ShoppingCartIcon, TrashIcon } from '@phosphor-icons/react'
-import { getStoreId, isManager } from '@/lib/supabase'
+import { PackageIcon, TruckIcon, CalendarIcon, CurrencyDollarIcon, ShoppingCartIcon } from '@phosphor-icons/react'
+import { getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useCurrency } from '@/lib/currency-context'
 import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton'
 
 interface InventoryPurchase {
   id: number
-  reference_id?: number
   description: string
   amount: number
   total_amount?: number
@@ -20,8 +19,6 @@ interface InventoryPurchase {
   expense_date: string
   recorded_by_name?: string
   product_display?: string
-  product_name?: string
-  product_sku?: string
   created_at: string
 }
 
@@ -52,17 +49,7 @@ export default function InventoryPurchasesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Delete modal
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [deletingPurchase, setDeletingPurchase] = useState<InventoryPurchase | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [userIsManager, setUserIsManager] = useState(false)
-
   useEffect(() => {
-    const checkRole = async () => {
-      setUserIsManager(await isManager())
-    }
-    checkRole()
     fetchPurchases()
   }, [])
 
@@ -89,40 +76,6 @@ export default function InventoryPurchasesPage() {
       setError('Failed to fetch inventory purchases')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleDeletePurchase = async () => {
-    if (!deletingPurchase) return
-
-    const batchId = deletingPurchase.reference_id
-    if (!batchId) {
-      setError('Cannot delete: No stock batch linked to this purchase record.')
-      setShowDeleteModal(false)
-      return
-    }
-
-    setIsDeleting(true)
-    setError('')
-
-    try {
-      const response = await fetch(`/api/stock-batches?batch_id=${batchId}`, {
-        method: 'DELETE'
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        setShowDeleteModal(false)
-        setDeletingPurchase(null)
-        fetchPurchases()
-      } else {
-        setError(result.error || 'Failed to delete purchase')
-      }
-    } catch (err) {
-      setError('Failed to delete purchase: ' + (err instanceof Error ? err.message : 'Unknown error'))
-    } finally {
-      setIsDeleting(false)
     }
   }
 
@@ -259,9 +212,6 @@ export default function InventoryPurchasesPage() {
                   <th className="px-3 py-2.5 text-right text-sm font-semibold">Total</th>
                   <th className="px-3 py-2.5 text-right text-sm font-semibold">Ledger</th>
                   <th className="px-3 py-2.5 text-center text-sm font-semibold">Payment</th>
-                  {userIsManager && (
-                    <th className="px-3 py-2.5 text-center text-sm font-semibold">Actions</th>
-                  )}
                 </tr>
               </thead>
               <tbody>
@@ -319,22 +269,6 @@ export default function InventoryPurchasesPage() {
                         {purchase.payment_method || 'N/A'}
                       </span>
                     </td>
-                    {userIsManager && (
-                      <td className="px-3 py-2.5 text-center">
-                        <button
-                          onClick={() => {
-                            setDeletingPurchase(purchase)
-                            setShowDeleteModal(true)
-                            setError('')
-                          }}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                          title="Delete Purchase"
-                        >
-                          <TrashIcon size={14} />
-                          Delete
-                        </button>
-                      </td>
-                    )}
                   </tr>
                 ))}
               </tbody>
@@ -342,79 +276,6 @@ export default function InventoryPurchasesPage() {
           </div>
         )}
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && deletingPurchase && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700 max-w-md w-full p-5">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <TrashIcon size={20} className="text-red-600" />
-              Delete Purchase
-            </h2>
-
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm">
-                <p className="text-red-600">{error}</p>
-              </div>
-            )}
-
-            <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded dark:bg-red-900/20 dark:border-red-700">
-              <p className="text-sm text-red-900 dark:text-red-300 mb-3">
-                Are you sure you want to delete this purchase? This action will:
-              </p>
-              <ul className="text-sm text-red-800 dark:text-red-400 list-disc list-inside space-y-1">
-                <li>Remove the stock batch and reduce product stock</li>
-                <li>Delete the associated expense record</li>
-                <li>Remove any supplier ledger entries for this batch</li>
-                <li>This action cannot be undone</li>
-              </ul>
-            </div>
-
-            <div className="mb-4 p-3 bg-gray-50 dark:bg-[#111] border border-gray-200 dark:border-gray-700 rounded text-sm">
-              <div className="mb-2">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Description:</span>{' '}
-                <span className="text-gray-900 dark:text-white">{deletingPurchase.description}</span>
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Amount:</span>{' '}
-                <span className="text-gray-900 dark:text-white">{formatCurrency(deletingPurchase.total_amount ?? deletingPurchase.amount, 0)}</span>
-              </div>
-              <div>
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
-                <span className="text-gray-900 dark:text-white">
-                  {new Date(deletingPurchase.expense_date).toLocaleDateString('en-PK', {
-                    timeZone: 'Asia/Karachi',
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  })}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowDeleteModal(false)
-                  setDeletingPurchase(null)
-                  setError('')
-                }}
-                disabled={isDeleting}
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeletePurchase}
-                disabled={isDeleting}
-                className="flex-1 px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Purchase'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

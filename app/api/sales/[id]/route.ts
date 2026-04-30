@@ -102,11 +102,11 @@ export async function PUT(
     }
 
     if (payment_status !== undefined) {
-      if (!['Paid', 'Partial', 'Pending'].includes(payment_status)) {
+      if (!['Paid', 'Partial'].includes(payment_status)) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Invalid payment status. Must be Paid, Partial, or Pending.',
+            error: 'Invalid payment status. Must be Paid or Partial.',
             code: 'VALIDATION_ERROR',
           },
           { status: 400 }

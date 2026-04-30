@@ -292,32 +292,35 @@ export default function DashboardPage() {
           <div className="px-4 pb-4">
             {stats.recentSales.length > 0 ? (
               <div className="space-y-2">
-                {stats.recentSales.slice(0, 5).map((sale: any) => (
-                  <div key={sale.id} className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/30 dark:hover:bg-gray-800/40 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-mono text-[10px] font-semibold truncate text-gray-900 dark:text-gray-300">{sale.sale_number || `Sale #${sale.id}`}</p>
-                      <p className="text-[10px] truncate mt-0.5 text-gray-600 dark:text-gray-500">
-                        {new Date(sale.sale_date).toLocaleDateString('en-PK', { 
-                          timeZone: 'Asia/Karachi',
-                          month: 'short', 
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })} · {sale.cashier_name || 'Unknown'}
-                      </p>
+                {stats.recentSales.slice(0, 5).map((sale: any) => {
+                  const normalizedStatus = sale.payment_status === 'Pending' ? 'Partial' : sale.payment_status
+                  return (
+                    <div key={sale.id} className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 dark:bg-gray-800/30 dark:hover:bg-gray-800/40 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-mono text-[10px] font-semibold truncate text-gray-900 dark:text-gray-300">{sale.sale_number || `Sale #${sale.id}`}</p>
+                        <p className="text-[10px] truncate mt-0.5 text-gray-600 dark:text-gray-500">
+                          {new Date(sale.sale_date).toLocaleDateString('en-PK', { 
+                            timeZone: 'Asia/Karachi',
+                            month: 'short', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })} · {sale.cashier_name || 'Unknown'}
+                        </p>
+                      </div>
+                      <div className="text-right ml-3">
+                        <p className="font-bold text-xs text-gray-900 dark:text-gray-300">{formatCurrency(sale.total_amount, 2)}</p>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium mt-0.5 inline-block ${
+                          normalizedStatus === 'Paid' ? 'bg-green-500/20 text-green-600' :
+                          normalizedStatus === 'Partial' ? 'bg-red-500/20 text-red-600' :
+                          'bg-yellow-500/20 text-yellow-600'
+                        }`}>
+                          {normalizedStatus}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right ml-3">
-                      <p className="font-bold text-xs text-gray-900 dark:text-gray-300">{formatCurrency(sale.total_amount, 2)}</p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium mt-0.5 inline-block ${
-                        sale.payment_status === 'Paid' ? 'bg-green-500/20 text-green-600' :
-                        sale.payment_status === 'Partial' ? 'bg-red-500/20 text-red-600' :
-                        'bg-yellow-500/20 text-yellow-600'
-                      }`}>
-                        {sale.payment_status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <p className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">No recent sales</p>

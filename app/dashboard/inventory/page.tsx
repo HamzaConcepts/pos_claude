@@ -4,12 +4,11 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { MagnifyingGlassIcon, PlusIcon, PencilSimpleIcon, TrashIcon, WarningIcon, PackageIcon, ClockCounterClockwiseIcon, CaretDownIcon, CaretUpIcon, PrinterIcon } from '@phosphor-icons/react'
 import type { ProductWithBackwardCompatibility } from '@/lib/types'
 import AddStockModal from '@/components/AddStockModal'
-import ProductModal from '@/components/ProductModal'
 import RestockModal from '@/components/RestockModal'
 import RestockHistoryModal from '@/components/RestockHistoryModal'
-import BatchEditModal from '@/components/BatchEditModal'
 import PrintLabelsModal from '@/components/PrintLabelsModal'
-import { getStoreId } from '@/lib/supabase'
+import InventoryPurchaseEditModal from '@/components/InventoryPurchaseEditModal'
+import { getStoreId, isManager } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { useCurrency } from '@/lib/currency-context'
 import InventorySkeleton from '@/components/skeletons/InventorySkeleton'
@@ -24,6 +23,7 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState<any[]>([])
   const [subcategories, setSubcategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [userIsManager, setUserIsManager] = useState(false)
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
@@ -34,17 +34,14 @@ export default function InventoryPage() {
   // Modals
   const [isAddStockModalOpen, setIsAddStockModalOpen] = useState(false)
   const [isRestockModalOpen, setIsRestockModalOpen] = useState(false)
-  const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
-  const [isBatchEditModalOpen, setIsBatchEditModalOpen] = useState(false)
   const [isPrintLabelsModalOpen, setIsPrintLabelsModalOpen] = useState(false)
   
   // Selected items
-  const [editingProduct, setEditingProduct] = useState<ProductWithBackwardCompatibility | null>(null)
   const [selectedProductForHistory, setSelectedProductForHistory] = useState<ProductWithBackwardCompatibility | null>(null)
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null)
-  const [editingBatch, setEditingBatch] = useState<any | null>(null)
   const [selectedProductForLabels, setSelectedProductForLabels] = useState<ProductWithBackwardCompatibility | null>(null)
+  const [editingInventoryProduct, setEditingInventoryProduct] = useState<ProductWithBackwardCompatibility | null>(null)
   
   // Import
   const [importing, setImporting] = useState(false)
@@ -52,6 +49,11 @@ export default function InventoryPage() {
 
   // Fetch data on mount
   useEffect(() => {
+    const checkRole = async () => {
+      setUserIsManager(await isManager())
+    }
+
+    checkRole()
     fetchProducts()
     fetchCategories()
   }, [])
@@ -167,10 +169,25 @@ export default function InventoryPage() {
     }
   }
 
-  // Edit product
-  const handleEdit = (product: ProductWithBackwardCompatibility) => {
-    setEditingProduct(product)
-    setIsProductModalOpen(true)
+  const handleDeleteBatch = async (batchId: number) => {
+    if (!confirm('Delete this purchase? This will remove the stock batch and adjust totals.')) return
+
+    try {
+      const response = await fetch(`/api/stock-batches?batch_id=${batchId}`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        fetchProducts()
+      } else {
+        alert(result.error || 'Failed to delete purchase')
+      }
+    } catch (err) {
+      console.error('Error deleting purchase batch:', err)
+      alert('Failed to delete purchase')
+    }
   }
 
   // View restock history
@@ -512,26 +529,6 @@ export default function InventoryPage() {
                             >
                               <PrinterIcon size={16} />
                             </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleEdit(product)
-                              }}
-                              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                              title="Edit"
-                            >
-                              <PencilSimpleIcon size={16} />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDelete(product.id)
-                              }}
-                              className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
-                              title="Delete"
-                            >
-                              <TrashIcon size={16} />
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -609,16 +606,15 @@ export default function InventoryPage() {
                                                   {batch.batch_number || 'N/A'}
                                                 </div>
                                               </div>
-                                              <button
-                                                onClick={() => {
-                                                  setEditingBatch(batch)
-                                                  setIsBatchEditModalOpen(true)
-                                                }}
-                                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                                                title="Edit prices"
-                                              >
-                                                <PencilSimpleIcon size={14} />
-                                              </button>
+                                              {userIsManager && (
+                                                <button
+                                                  onClick={() => handleDeleteBatch(batch.id)}
+                                                  className="p-1 hover:bg-red-100 rounded text-red-600 transition-colors"
+                                                  title="Delete purchase"
+                                                >
+                                                  <TrashIcon size={14} />
+                                                </button>
+                                              )}
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                               <div>
@@ -666,13 +662,24 @@ export default function InventoryPage() {
                                     <ClockCounterClockwiseIcon size={16} />
                                     <span>View History</span>
                                   </button>
-                                  <button
-                                    onClick={() => handleEdit(product)}
-                                    className="flex items-center justify-center gap-2 px-3 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors text-sm"
-                                  >
-                                    <PencilSimpleIcon size={16} />
-                                    <span>Edit Product</span>
-                                  </button>
+                                  {userIsManager && (
+                                    <>
+                                      <button
+                                        onClick={() => setEditingInventoryProduct(product)}
+                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors text-sm"
+                                      >
+                                        <PencilSimpleIcon size={16} />
+                                        <span>Edit Inventory</span>
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(product.id)}
+                                        className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+                                      >
+                                        <TrashIcon size={16} />
+                                        <span>Delete Product</span>
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -693,17 +700,6 @@ export default function InventoryPage() {
         <AddStockModal
           onClose={(refresh) => {
             setIsAddStockModalOpen(false)
-            if (refresh) fetchProducts()
-          }}
-        />
-      )}
-
-      {isProductModalOpen && (
-        <ProductModal
-          product={editingProduct}
-          onClose={(refresh) => {
-            setIsProductModalOpen(false)
-            setEditingProduct(null)
             if (refresh) fetchProducts()
           }}
         />
@@ -739,12 +735,11 @@ export default function InventoryPage() {
         />
       )}
 
-      {isBatchEditModalOpen && editingBatch && (
-        <BatchEditModal
-          batch={editingBatch}
+      {editingInventoryProduct && (
+        <InventoryPurchaseEditModal
+          product={editingInventoryProduct}
           onClose={(refresh) => {
-            setIsBatchEditModalOpen(false)
-            setEditingBatch(null)
+            setEditingInventoryProduct(null)
             if (refresh) fetchProducts()
           }}
         />

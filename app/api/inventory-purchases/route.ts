@@ -52,7 +52,19 @@ export async function GET(request: Request) {
     if (stockBatchIds.length > 0) {
       const { data: batches, error: batchesError } = await supabaseAdmin
         .from('stock_batches')
-        .select('id, cost_price, quantity_purchased, amount_paid')
+        .select(`
+          id,
+          product_id,
+          batch_number,
+          cost_price,
+          selling_price,
+          lowest_negotiable_price,
+          quantity_purchased,
+          quantity_remaining,
+          purchase_date,
+          amount_paid,
+          products (id, name, sku, description, low_stock_threshold)
+        `)
         .in('id', stockBatchIds)
 
       if (!batchesError && batches) {
@@ -137,6 +149,27 @@ export async function GET(request: Request) {
         expense.total_amount = mappedKhaata ? mappedKhaata.total_amount : fallbackTotal
         expense.amount_paid = mappedKhaata ? mappedKhaata.amount_paid : fallbackPaid
         expense.amount_remaining = mappedKhaata ? mappedKhaata.amount_remaining : fallbackRemaining
+
+        if (batch) {
+          expense.product_id = batch.product_id
+          expense.batch_number = batch.batch_number
+          expense.cost_price = batch.cost_price
+          expense.selling_price = batch.selling_price
+          expense.lowest_negotiable_price = batch.lowest_negotiable_price
+          expense.quantity_purchased = batch.quantity_purchased
+          expense.quantity_remaining = batch.quantity_remaining
+          expense.batch_purchase_date = batch.purchase_date
+
+          const product = batch.products
+          expense.product_name = product?.name
+          expense.product_sku = product?.sku
+          expense.product_description = product?.description
+          expense.low_stock_threshold = product?.low_stock_threshold
+
+          if (!expense.product_display && product?.name) {
+            expense.product_display = product.sku ? `${product.name} (${product.sku})` : product.name
+          }
+        }
       })
     }
 

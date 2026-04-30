@@ -751,21 +751,9 @@ export async function POST(request: Request) {
     }
 
     const dueAmount = totalAmount - paidAmount
-    const paymentStatus =
-      dueAmount <= 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending'
+    const paymentStatus = dueAmount <= 0 ? 'Paid' : 'Partial'
 
-    // Validate partial payment customer info
-    if (paymentStatus === 'Partial' && !partial_payment_customer) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Customer information required for partial payment',
-          code: 'VALIDATION_ERROR',
-        },
-        { status: 400 }
-      )
-    }
-
+    // Validate partial payment customer info when provided
     if (partial_payment_customer) {
       const { customer_name, customer_phone } = partial_payment_customer
       const partialCustomerName = typeof customer_name === 'string' ? customer_name.trim() : ''
@@ -868,8 +856,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create partial payment customer record if applicable
-    if (paymentStatus === 'Partial' && partial_payment_customer) {
+    // Create partial payment customer record if applicable (including zero paid)
+    if (partial_payment_customer) {
       const { customer_name, customer_phone } = partial_payment_customer
       const partialCustomerName = typeof customer_name === 'string' ? customer_name.trim() : ''
       const partialCustomerPhone = typeof customer_phone === 'string' ? customer_phone.trim() : ''
