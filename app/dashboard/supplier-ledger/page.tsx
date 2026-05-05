@@ -38,6 +38,43 @@ interface SupplierKhaata {
   }
 }
 
+interface SupplierBatch {
+  id: number
+  supplier_id: number | null
+  supplier_name?: string | null
+  supplier_phone?: string | null
+  cost_price: number
+  quantity_purchased: number
+  amount_paid?: number | null
+  purchase_date: string
+  batch_number?: string | null
+  products?: {
+    id: number
+    name: string
+    sku: string
+  }
+  suppliers?: {
+    id: number
+    supplier_name: string
+    phone_number: string
+  }
+}
+
+interface SupplierPurchaseRecord {
+  id: number
+  supplier_id: number
+  supplier_name: string
+  supplier_phone: string
+  total_amount: number
+  amount_paid: number
+  amount_remaining: number
+  purchase_date: string
+  batch_number: string | null
+  product_name: string
+  product_sku: string
+  khaata_record?: SupplierKhaata | null
+}
+
 interface AggregatedSupplier {
   supplier_name: string
   supplier_phone: string
@@ -45,7 +82,7 @@ interface AggregatedSupplier {
   total_amount: number
   amount_paid: number
   amount_remaining: number
-  transactions: SupplierKhaata[]
+  transactions: SupplierPurchaseRecord[]
 }
 
 interface InitialSupplier {
@@ -87,9 +124,20 @@ interface SupplierPaymentHistory {
   }
 }
 
+interface SupplierInfo {
+  id: number
+  supplier_name: string
+  phone_number: string
+  email?: string | null
+  address?: string | null
+  contact_person?: string | null
+}
+
 export default function SupplierKhaataPage() {
   const { currency, formatCurrency } = useCurrency()
   const [suppliers, setSuppliers] = useState<SupplierKhaata[]>([])
+  const [supplierBatches, setSupplierBatches] = useState<SupplierBatch[]>([])
+  const [supplierDirectory, setSupplierDirectory] = useState<SupplierInfo[]>([])
   const [initialSuppliers, setInitialSuppliers] = useState<InitialSupplier[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -119,6 +167,8 @@ export default function SupplierKhaataPage() {
   useEffect(() => {
     resolvePaymentRecorder()
     fetchSuppliers()
+    fetchSupplierBatches()
+    fetchSupplierDirectory()
     fetchInitialSuppliers()
   }, [])
 
@@ -205,6 +255,38 @@ export default function SupplierKhaataPage() {
     }
   }
 
+  const fetchSupplierBatches = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/stock-batches?store_id=${storeId}&include_depleted=true`)
+      const result = await response.json()
+
+      if (result.success) {
+        setSupplierBatches(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch supplier batches:', err)
+    }
+  }
+
+  const fetchSupplierDirectory = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/suppliers?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setSupplierDirectory(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch supplier directory:', err)
+    }
+  }
+
   const fetchInitialSuppliers = async () => {
     try {
       const storeId = getStoreId()
@@ -223,33 +305,123 @@ export default function SupplierKhaataPage() {
 
   // Aggregate suppliers by supplier_id
   const aggregateSuppliers = (): AggregatedSupplier[] => {
-    const grouped = new Map<number, SupplierKhaata[]>()
-    
-    suppliers.forEach(record => {
-      const key = record.supplier_id
-      if (!grouped.has(key)) {
-        grouped.set(key, [])
+    const grouped = new Map<number, AggregatedSupplier>()
+    const khaataByBatchId = new Map<number, SupplierKhaata>()
+    const batchIdSet = new Set<number>()
+
+    suppliers.forEach((record) => {
+      if (record.stock_batch_id) {
+        khaataByBatchId.set(record.stock_batch_id, record)
       }
-      grouped.get(key)!.push(record)
     })
 
-    return Array.from(grouped.values()).map(transactions => {
-      const totalAmount = transactions.reduce((sum, t) => sum + t.total_amount, 0)
-      const amountPaid = transactions.reduce((sum, t) => sum + t.amount_paid, 0)
-      const amountRemaining = transactions.reduce((sum, t) => sum + t.amount_remaining, 0)
+    supplierBatches.forEach((batch) => {
+      if (batch.id) {
+        batchIdSet.add(batch.id)
+      }
 
-      return {
-        supplier_id: transactions[0].supplier_id,
-        supplier_name: transactions[0].supplier_name,
-        supplier_phone: transactions[0].supplier_phone,
+      const supplierId = batch.supplier_id ?? batch.suppliers?.id
+      if (!supplierId) return
+
+      const supplierName = batch.suppliers?.supplier_name || batch.supplier_name || 'Unknown Supplier'
+      const supplierPhone = batch.suppliers?.phone_number || batch.supplier_phone || ''
+      const totalAmount = Number(batch.cost_price || 0) * Number(batch.quantity_purchased || 0)
+      const khaataRecord = batch.id ? khaataByBatchId.get(batch.id) : null
+      const amountPaid = khaataRecord
+        ? Number(khaataRecord.amount_paid || 0)
+        : totalAmount
+      const amountRemaining = khaataRecord
+        ? Number(khaataRecord.amount_remaining || 0)
+        : 0
+
+      const transaction: SupplierPurchaseRecord = {
+        id: batch.id,
+        supplier_id: supplierId,
+        supplier_name: supplierName,
+        supplier_phone: supplierPhone,
         total_amount: totalAmount,
         amount_paid: amountPaid,
         amount_remaining: amountRemaining,
-        transactions: transactions.sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
+        purchase_date: batch.purchase_date,
+        batch_number: batch.batch_number || null,
+        product_name: batch.products?.name || 'Unknown Product',
+        product_sku: batch.products?.sku || 'N/A',
+        khaata_record: khaataRecord,
       }
-    }).sort((a, b) => b.amount_remaining - a.amount_remaining)
+
+      const existing = grouped.get(supplierId)
+      if (existing) {
+        existing.total_amount += totalAmount
+        existing.amount_paid += amountPaid
+        existing.amount_remaining += amountRemaining
+        existing.transactions.push(transaction)
+      } else {
+        grouped.set(supplierId, {
+          supplier_id: supplierId,
+          supplier_name: supplierName,
+          supplier_phone: supplierPhone,
+          total_amount: totalAmount,
+          amount_paid: amountPaid,
+          amount_remaining: amountRemaining,
+          transactions: [transaction],
+        })
+      }
+    })
+
+    suppliers.forEach((record) => {
+      if (record.stock_batch_id && batchIdSet.has(record.stock_batch_id)) {
+        return
+      }
+
+      const supplierId = record.supplier_id
+      const supplierName = record.supplier_name || 'Unknown Supplier'
+      const supplierPhone = record.supplier_phone || ''
+      const totalAmount = Number(record.total_amount || 0)
+      const amountPaid = Number(record.amount_paid || 0)
+      const amountRemaining = Number(record.amount_remaining || 0)
+
+      const transaction: SupplierPurchaseRecord = {
+        id: record.stock_batch_id || record.id,
+        supplier_id: supplierId,
+        supplier_name: supplierName,
+        supplier_phone: supplierPhone,
+        total_amount: totalAmount,
+        amount_paid: amountPaid,
+        amount_remaining: amountRemaining,
+        purchase_date: record.stock_batches?.purchase_date || record.created_at,
+        batch_number: record.stock_batches?.batch_number || null,
+        product_name: record.stock_batches?.products?.name || 'Unknown Product',
+        product_sku: record.stock_batches?.products?.sku || 'N/A',
+        khaata_record: record,
+      }
+
+      const existing = grouped.get(supplierId)
+      if (existing) {
+        existing.total_amount += totalAmount
+        existing.amount_paid += amountPaid
+        existing.amount_remaining += amountRemaining
+        existing.transactions.push(transaction)
+      } else {
+        grouped.set(supplierId, {
+          supplier_id: supplierId,
+          supplier_name: supplierName,
+          supplier_phone: supplierPhone,
+          total_amount: totalAmount,
+          amount_paid: amountPaid,
+          amount_remaining: amountRemaining,
+          transactions: [transaction],
+        })
+      }
+    })
+
+    return Array.from(grouped.values())
+      .map((supplier) => ({
+        ...supplier,
+        transactions: supplier.transactions.sort((a, b) =>
+          new Date(b.purchase_date).getTime() - new Date(a.purchase_date).getTime()
+        ),
+      }))
+      .sort((a, b) => b.amount_remaining - a.amount_remaining)
   }
 
   const toggleSupplierExpansion = (supplierId: number) => {
@@ -454,7 +626,7 @@ export default function SupplierKhaataPage() {
                   <th className="px-4 py-3 text-right font-semibold text-sm">Total Amount</th>
                   <th className="px-4 py-3 text-right font-semibold text-sm">Amount Paid</th>
                   <th className="px-4 py-3 text-right font-semibold text-sm">Remaining</th>
-                  <th className="px-4 py-3 text-center font-semibold text-sm">Transactions</th>
+                  <th className="px-4 py-3 text-center font-semibold text-sm">Purchases</th>
                   <th className="px-4 py-3 text-center font-semibold text-sm"></th>
                 </tr>
               </thead>
@@ -512,14 +684,17 @@ export default function SupplierKhaataPage() {
                         >
                           <td className="px-4 py-2 pl-10 text-sm">
                             <div className="font-medium text-gray-900 dark:text-white">
-                              {record.stock_batches?.products?.name || 'Unknown Product'}
+                              {record.product_name}
                             </div>
                             <div className="text-xs text-gray-600 dark:text-gray-400">
-                              Batch: {record.stock_batches?.batch_number || 'N/A'}
+                              Batch: {record.batch_number || 'N/A'}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Supplier: {record.supplier_name}
                             </div>
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
-                            {new Date(record.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
+                            {new Date(record.purchase_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
                           </td>
                           <td className="px-4 py-2 text-right text-sm text-gray-900 dark:text-white">
                             {formatCurrency(record.total_amount, 0)}
@@ -531,33 +706,35 @@ export default function SupplierKhaataPage() {
                             {formatCurrency(record.amount_remaining, 0)}
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
-                            {record.notes && (
-                              <div className="text-xs italic">{record.notes}</div>
+                            {record.khaata_record?.notes && (
+                              <div className="text-xs italic">{record.khaata_record.notes}</div>
                             )}
                           </td>
                           <td className="px-4 py-2">
-                            <div className="flex gap-2 justify-center">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleEdit(record)
-                                }}
-                                className="p-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors"
-                                title="Edit Payment"
-                              >
-                                <PencilSimpleIcon className="text-gray-700 dark:text-gray-300" size={14} />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleDelete(record)
-                                }}
-                                className="p-1.5 border border-red-300 text-red-600 rounded hover:bg-red-50 transition-colors"
-                                title="Delete"
-                              >
-                                <TrashIcon size={14} />
-                              </button>
-                            </div>
+                            {record.khaata_record && (
+                              <div className="flex gap-2 justify-center">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleEdit(record.khaata_record as SupplierKhaata)
+                                  }}
+                                  className="p-1.5 border border-gray-300 dark:border-gray-600 rounded hover:bg-cyan-100 dark:hover:bg-cyan-900/30 transition-colors"
+                                  title="Edit Payment"
+                                >
+                                  <PencilSimpleIcon className="text-gray-700 dark:text-gray-300" size={14} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete(record.khaata_record as SupplierKhaata)
+                                  }}
+                                  className="p-1.5 border border-red-300 text-red-600 rounded hover:bg-red-50 transition-colors"
+                                  title="Delete"
+                                >
+                                  <TrashIcon size={14} />
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -655,6 +832,58 @@ export default function SupplierKhaataPage() {
             </table>
           </div>
         )}
+
+      {/* Suppliers Directory */}
+      <div className="mt-8">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Suppliers</h2>
+          <p className="text-xs text-gray-600 dark:text-gray-400">Supplier contacts stored for this shop</p>
+        </div>
+
+        {supplierDirectory.length === 0 ? (
+          <div className="text-center py-8 border border-gray-200 dark:border-gray-700 rounded">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">No suppliers found</p>
+          </div>
+        ) : (
+          <div className="border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Supplier Name</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Phone</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Contact</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Email</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Address</th>
+                </tr>
+              </thead>
+              <tbody>
+                {supplierDirectory.map((supplier) => (
+                  <tr
+                    key={supplier.id}
+                    className="border-b bg-white border-gray-100 hover:bg-gray-50 dark:bg-gray-900 dark:border-gray-700 dark:hover:bg-gray-800"
+                  >
+                    <td className="px-3 py-2.5 text-sm font-medium text-gray-900 dark:text-white">
+                      {supplier.supplier_name}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300">
+                      {supplier.phone_number || '-'}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300">
+                      {supplier.contact_person || '-'}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300">
+                      {supplier.email || '-'}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300">
+                      {supplier.address || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Initial Suppliers Section */}
       {initialSuppliers.length > 0 && (

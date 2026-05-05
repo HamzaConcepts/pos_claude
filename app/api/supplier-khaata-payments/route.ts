@@ -15,6 +15,8 @@ const supabaseAdmin = createClient(
   }
 )
 
+const roundToTwo = (value: number): number => Math.round(value * 100) / 100
+
 // GET - Fetch payment history for a supplier
 export async function GET(request: Request) {
   try {
@@ -133,7 +135,7 @@ export async function POST(request: Request) {
 
     const parsedStoreId = parseInt(String(store_id), 10)
     const parsedSupplierId = parseInt(String(supplier_id), 10)
-    const parsedPaymentAmount = parseFloat(String(payment_amount))
+    const parsedPaymentAmount = roundToTwo(parseFloat(String(payment_amount)))
     const parsedCashierId = cashier_id ? parseInt(String(cashier_id), 10) : null
     const normalizedPaymentMethod = payment_method === 'Cash' ? 'Cash' : payment_method === 'Digital' ? 'Digital' : null
     const hasManagerRecorder = typeof recorded_by === 'string' && recorded_by.trim().length > 0
@@ -177,7 +179,7 @@ export async function POST(request: Request) {
     }
 
     // Calculate total remaining balance
-    const totalRemaining = transactions.reduce((sum, t) => sum + t.amount_remaining, 0)
+    const totalRemaining = roundToTwo(transactions.reduce((sum, t) => sum + Number(t.amount_remaining || 0), 0))
 
     // Check if payment exceeds remaining amount
     if (parsedPaymentAmount > totalRemaining) {
@@ -196,11 +198,11 @@ export async function POST(request: Request) {
     for (const transaction of transactions) {
       if (remainingPayment <= 0) break
 
-      const amountToApply = Math.min(remainingPayment, transaction.amount_remaining)
-      const newAmountPaid = transaction.amount_paid + amountToApply
-      const newAmountRemaining = transaction.amount_remaining - amountToApply
+      const amountToApply = roundToTwo(Math.min(remainingPayment, Number(transaction.amount_remaining || 0)))
+      const newAmountPaid = roundToTwo(Number(transaction.amount_paid || 0) + amountToApply)
+      const newAmountRemaining = roundToTwo(Math.max(0, Number(transaction.amount_remaining || 0) - amountToApply))
       const supplierRemainingBeforeForLine = supplierRemainingBefore
-      const supplierRemainingAfter = Math.max(0, supplierRemainingBeforeForLine - amountToApply)
+      const supplierRemainingAfter = roundToTwo(Math.max(0, supplierRemainingBeforeForLine - amountToApply))
 
       // Update this transaction
       const { error: updateError } = await supabaseAdmin
@@ -249,7 +251,7 @@ export async function POST(request: Request) {
         )
       }
 
-      remainingPayment -= amountToApply
+      remainingPayment = roundToTwo(remainingPayment - amountToApply)
       supplierRemainingBefore = supplierRemainingAfter
       updates.push({
         transaction_id: transaction.id,

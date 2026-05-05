@@ -91,6 +91,44 @@ export default function SalesPage() {
   const normalizePaymentStatus = (status: string) =>
     status === 'Pending' ? 'Partial' : status
 
+  const getDisplayPaymentStatus = (sale: any, ledgerCustomer?: any) => {
+    if (ledgerCustomer) {
+      const remaining = Number(ledgerCustomer.amount_remaining || 0)
+      return remaining <= 0.01 ? 'Paid' : 'Partial'
+    }
+
+    const totalAmount = Number(sale.total_amount || 0)
+    const amountPaid = Number(sale.amount_paid || 0)
+    const amountDue = Number.isFinite(Number(sale.amount_due))
+      ? Number(sale.amount_due)
+      : Math.max(0, totalAmount - amountPaid)
+
+    if (sale.payment_status === 'Paid' || amountPaid >= totalAmount || amountDue <= 0) {
+      return 'Paid'
+    }
+
+    return normalizePaymentStatus(sale.payment_status || 'Paid')
+  }
+
+  const getLedgerAmounts = (sale: any, ledgerCustomer?: any) => {
+    const amountPaid = ledgerCustomer
+      ? Number(ledgerCustomer.amount_paid || 0)
+      : Number(sale.amount_paid || 0)
+    const totalAmount = Number(sale.total_amount || 0)
+    const fallbackDue = Math.max(0, totalAmount - amountPaid)
+    const amountDue = Number.isFinite(Number(sale.amount_due))
+      ? Number(sale.amount_due)
+      : fallbackDue
+    const amountRemaining = ledgerCustomer
+      ? Number(ledgerCustomer.amount_remaining || 0)
+      : Math.max(0, amountDue, fallbackDue)
+
+    return {
+      amountPaid,
+      amountRemaining,
+    }
+  }
+
   const fetchSales = async () => {
     try {
       setLoading(true)
@@ -231,7 +269,9 @@ export default function SalesPage() {
 
     // Filter by payment status
     if (selectedPaymentStatus) {
-      filtered = filtered.filter(sale => normalizePaymentStatus(sale.payment_status) === selectedPaymentStatus)
+      filtered = filtered.filter(sale =>
+        getDisplayPaymentStatus(sale, sale.partial_payment_customers?.[0]) === selectedPaymentStatus
+      )
     }
 
     // Filter by date range
@@ -601,7 +641,6 @@ export default function SalesPage() {
                   <th className="px-3 py-3 text-right text-xs font-semibold text-gray-700 dark:text-gray-400">Total</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold hidden md:table-cell text-gray-700 dark:text-gray-400">Payment</th>
                   <th className="px-3 py-3 text-center text-xs font-semibold hidden md:table-cell text-gray-700 dark:text-gray-400">Status</th>
-                  <th className="px-3 py-3 text-center text-xs font-semibold text-gray-700 dark:text-gray-400">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -613,11 +652,11 @@ export default function SalesPage() {
                   ) || 0
                   const profit = sale.total_amount - totalCost
                   const partialPaymentCustomer = sale.partial_payment_customers?.[0]
-                  const normalizedPaymentStatus = normalizePaymentStatus(sale.payment_status)
-                  const recordedDue = Number(sale.amount_due || 0)
-                  const partialCustomerDue = Number(partialPaymentCustomer?.amount_remaining || 0)
-                  const computedDue = Math.max(0, Number(sale.total_amount || 0) - Number(sale.amount_paid || 0))
-                  const outstandingDue = Math.max(recordedDue, partialCustomerDue, computedDue)
+                  const displayPaymentStatus = getDisplayPaymentStatus(sale, partialPaymentCustomer)
+                  const ledgerAmounts = getLedgerAmounts(sale, partialPaymentCustomer)
+                  const outstandingDue = displayPaymentStatus === 'Paid'
+                    ? 0
+                    : Math.max(0, ledgerAmounts.amountRemaining)
                   const digitalCustomerName =
                     (typeof sale.customer_name === 'string' ? sale.customer_name.trim() : '') ||
                     (typeof partialPaymentCustomer?.customer_name === 'string'
@@ -632,16 +671,18 @@ export default function SalesPage() {
                     typeof sale.bank_account_name === 'string' ? sale.bank_account_name.trim() : ''
                   const showDigitalCustomerDetails =
                     sale.payment_method === 'Digital' && (digitalCustomerName || digitalCustomerPhone || digitalBankAccount)
+                  const partialRemaining = Number(partialPaymentCustomer?.amount_remaining || 0)
+                  const isKhaataCleared = Boolean(partialPaymentCustomer) && partialRemaining <= 0.01
 
                   return (
                     <Fragment key={sale.id}>
                       <tr
                         onClick={() => setExpandedSaleId(isExpanded ? null : sale.id)}
                         className={`cursor-pointer transition-all border-b border-gray-100 dark:border-gray-800 ${
-                          normalizedPaymentStatus === 'Partial' 
+                          displayPaymentStatus === 'Partial' 
                             ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/30'
                             : 'bg-white hover:bg-gray-50 dark:bg-transparent dark:hover:bg-gray-800/50'
-                        } ${isExpanded && normalizedPaymentStatus !== 'Partial' ? 'border-l-4 border-l-cyan-600' : ''}`}
+                        } ${isExpanded && displayPaymentStatus !== 'Partial' ? 'border-l-4 border-l-cyan-600' : ''}`}
                       >
                         <td className="px-3 py-2.5 text-sm">
                           <div className="flex items-center gap-2">
@@ -684,91 +725,20 @@ export default function SalesPage() {
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
                           <span
                             className={`inline-block px-2 py-1 rounded text-xs font-medium border ${
-                              normalizedPaymentStatus === 'Paid'
+                              displayPaymentStatus === 'Paid'
                                 ? 'bg-green-50 text-green-700 border-green-200'
                                 : 'bg-red-50 text-red-700 border-red-200'
                             }`}
                           >
-                            {normalizedPaymentStatus === 'Partial' && '⚠️ '}
-                            {normalizedPaymentStatus}
+                            {displayPaymentStatus === 'Partial' && '⚠️ '}
+                            {displayPaymentStatus}
                           </span>
-                        </td>
-                        <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleEdit(sale)
-                              }}
-                              className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors"
-                              title="Edit Sale"
-                            >
-                              <PencilSimpleIcon size={14} />
-                              Edit
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleShowReceipt(sale)
-                              }}
-                              className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-                              title="Show Receipt"
-                            >
-                              <FileTextIcon size={14} />
-                              Receipt
-                            </button>
-                            <div onClick={(e) => e.stopPropagation()}>
-                              <PrintReceiptButton
-                                sale={sale}
-                                settings={receiptSettings || undefined}
-                                currency={currency}
-                                variant="small"
-                              />
-                            </div>
-                            {/* Manager only: Delete button */}
-                            {userIsManager && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setDeletingSale(sale)
-                                  setShowDeleteModal(true)
-                                }}
-                                className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                                title="Delete Sale"
-                              >
-                                <TrashIcon size={14} />
-                                Delete
-                              </button>
-                            )}
-                            {/* Cashier only: Mark for Review button */}
-                            {userIsCashier && !sale.marked_for_review && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setReviewingSale(sale)
-                                  setShowReviewModal(true)
-                                }}
-                                className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
-                                title="Mark for Review"
-                              >
-                                <WarningCircleIcon size={14} />
-                                Review
-                              </button>
-                            )}
-                            {/* Show indicator if already marked for review */}
-                            {sale.marked_for_review && (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 border border-yellow-300 rounded">
-                                <WarningCircleIcon size={14} />
-                                Marked
-                              </span>
-                            )}
-                          </div>
                         </td>
                       </tr>
                       {isExpanded && (
                         <tr className="animate-fadeIn">
-                          <td colSpan={7} className={
-                            normalizedPaymentStatus === 'Partial' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-cyan-50 dark:bg-cyan-900/20'
+                          <td colSpan={6} className={
+                            displayPaymentStatus === 'Partial' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-cyan-50 dark:bg-cyan-900/20'
                           }>
                             <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
                               {/* Mobile-only info */}
@@ -803,16 +773,76 @@ export default function SalesPage() {
                                     <span className="ml-2">
                                       <span
                                         className={`inline-block px-2 py-1 rounded text-xs font-medium border ${
-                                          normalizedPaymentStatus === 'Paid'
+                                          displayPaymentStatus === 'Paid'
                                             ? 'bg-green-50 text-green-700 border-green-200'
                                             : 'bg-red-50 text-red-700 border-red-200'
                                         }`}
                                       >
-                                        {normalizedPaymentStatus === 'Partial' && '⚠️ '}
-                                        {normalizedPaymentStatus}
+                                        {displayPaymentStatus === 'Partial' && '⚠️ '}
+                                        {displayPaymentStatus}
                                       </span>
                                     </span>
                                   </div>
+                                </div>
+                              </div>
+
+                              <div className="mb-4">
+                                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Actions</p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    onClick={() => handleEdit(sale)}
+                                    className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-cyan-600 text-white rounded hover:bg-cyan-700 transition-colors"
+                                    title="Edit Sale"
+                                  >
+                                    <PencilSimpleIcon size={14} />
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleShowReceipt(sale)}
+                                    className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                                    title="Show Receipt"
+                                  >
+                                    <FileTextIcon size={14} />
+                                    Receipt
+                                  </button>
+                                  <PrintReceiptButton
+                                    sale={sale}
+                                    settings={receiptSettings || undefined}
+                                    currency={currency}
+                                    variant="small"
+                                  />
+                                  {userIsManager && (
+                                    <button
+                                      onClick={() => {
+                                        setDeletingSale(sale)
+                                        setShowDeleteModal(true)
+                                      }}
+                                      className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                                      title="Delete Sale"
+                                    >
+                                      <TrashIcon size={14} />
+                                      Delete
+                                    </button>
+                                  )}
+                                  {userIsCashier && !sale.marked_for_review && (
+                                    <button
+                                      onClick={() => {
+                                        setReviewingSale(sale)
+                                        setShowReviewModal(true)
+                                      }}
+                                      className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
+                                      title="Mark for Review"
+                                    >
+                                      <WarningCircleIcon size={14} />
+                                      Review
+                                    </button>
+                                  )}
+                                  {sale.marked_for_review && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 border border-yellow-300 rounded">
+                                      <WarningCircleIcon size={14} />
+                                      Marked
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
@@ -840,7 +870,7 @@ export default function SalesPage() {
                               )}
 
                               {/* Partial Payment Customer Info */}
-                              {partialPaymentCustomer && (
+                              {partialPaymentCustomer && !isKhaataCleared && (
                                 <div className="mb-4 p-4 bg-red-600 border-2 border-red-800 rounded">
                                   <div className="flex items-center gap-2 mb-3">
                                     <span className="text-white font-bold">⚠️ KHAATA CUSTOMER</span>
@@ -861,12 +891,40 @@ export default function SalesPage() {
                                     <div>
                                       <div className="text-red-100 mb-1">Amount Remaining</div>
                                       <div className="font-bold text-white text-lg">
-                                        {formatCurrency(partialPaymentCustomer.amount_remaining, 2)}
+                                        {formatCurrency(partialRemaining, 2)}
                                       </div>
                                     </div>
                                   </div>
                                   <div className="mt-3 p-2 bg-red-800 text-white rounded font-bold text-center">
                                     OUTSTANDING BALANCE DUE
+                                  </div>
+                                </div>
+                              )}
+                              {partialPaymentCustomer && isKhaataCleared && (
+                                <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <span className="text-emerald-700 font-bold">KHAATA CLEARED</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                    <div>
+                                      <div className="text-emerald-700 mb-1">Customer Name</div>
+                                      <div className="font-semibold text-emerald-900">{partialPaymentCustomer.customer_name}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-emerald-700 mb-1">CNIC</div>
+                                      <div className="font-medium text-emerald-900">{partialPaymentCustomer.customer_cnic}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-emerald-700 mb-1">Phone</div>
+                                      <div className="font-medium text-emerald-900">{partialPaymentCustomer.customer_phone}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-emerald-700 mb-1">Amount Remaining</div>
+                                      <div className="font-bold text-emerald-900 text-lg">{formatCurrency(0, 2)}</div>
+                                    </div>
+                                  </div>
+                                  <div className="mt-3 p-2 bg-emerald-100 text-emerald-800 rounded font-bold text-center">
+                                    BALANCE SETTLED
                                   </div>
                                 </div>
                               )}
@@ -892,7 +950,7 @@ export default function SalesPage() {
                                 </div>
                                 <div className="p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-[#1a1a1a]">
                                   <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Amount Paid</div>
-                                  <div className="font-semibold text-sm text-gray-900 dark:text-white">{formatCurrency(sale.amount_paid || 0, 2)}</div>
+                                  <div className="font-semibold text-sm text-gray-900 dark:text-white">{formatCurrency(ledgerAmounts.amountPaid || 0, 2)}</div>
                                 </div>
                                 <div className="p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-[#1a1a1a]">
                                   <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Profit</div>

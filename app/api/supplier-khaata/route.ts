@@ -15,6 +15,8 @@ const supabaseAdmin = createClient(
   }
 )
 
+const roundToTwo = (value: number): number => Math.round(value * 100) / 100
+
 // GET - Fetch all supplier khaata records for a store
 export async function GET(request: NextRequest) {
   try {
@@ -66,9 +68,31 @@ export async function GET(request: NextRequest) {
       throw error
     }
 
+    const filteredRecords = (records || []).filter((record: any) => {
+      const parsedBatchId = Number.parseInt(String(record.stock_batch_id || ''), 10)
+      if (!Number.isInteger(parsedBatchId) || parsedBatchId <= 0) {
+        return true
+      }
+
+      return Boolean(record.stock_batches?.id)
+    })
+
+    const normalizedRecords = filteredRecords.map((record: any) => {
+      const totalAmount = roundToTwo(Number(record.total_amount || 0))
+      const amountPaid = roundToTwo(Number(record.amount_paid || 0))
+      const amountRemaining = roundToTwo(Math.max(0, totalAmount - amountPaid))
+
+      return {
+        ...record,
+        total_amount: totalAmount,
+        amount_paid: amountPaid,
+        amount_remaining: amountRemaining,
+      }
+    })
+
     return NextResponse.json({
       success: true,
-      data: records || []
+      data: normalizedRecords
     })
   } catch (error: any) {
     console.error('GET /api/supplier-khaata error:', error)
@@ -179,10 +203,10 @@ export async function PATCH(request: NextRequest) {
 
     // Calculate new amounts
     const newAmountPaid = amount_paid !== undefined 
-      ? parseFloat(amount_paid.toString())
-      : currentRecord.amount_paid
+      ? roundToTwo(parseFloat(amount_paid.toString()))
+      : roundToTwo(Number(currentRecord.amount_paid || 0))
     
-    const newAmountRemaining = currentRecord.total_amount - newAmountPaid
+    const newAmountRemaining = roundToTwo(Math.max(0, Number(currentRecord.total_amount || 0) - newAmountPaid))
 
     if (newAmountRemaining < 0) {
       return NextResponse.json(

@@ -22,6 +22,21 @@ export async function GET(request: Request) {
     const searchQuery = searchParams.get('search')
     const storeId = searchParams.get('store_id')
 
+    if (!storeId) {
+      return NextResponse.json(
+        { success: false, error: 'Store ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const parsedStoreId = parseInt(storeId)
+    if (Number.isNaN(parsedStoreId)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid store ID' },
+        { status: 400 }
+      )
+    }
+
     let query = supabaseAdmin
       .from('partial_payment_customers')
       .select(`
@@ -32,9 +47,7 @@ export async function GET(request: Request) {
       `)
       .order('created_at', { ascending: false })
 
-    if (storeId) {
-      query = query.eq('store_id', parseInt(storeId))
-    }
+    query = query.eq('store_id', parsedStoreId)
 
     if (searchQuery) {
       query = query.or(`customer_name.ilike.%${searchQuery}%,customer_phone.ilike.%${searchQuery}%`)

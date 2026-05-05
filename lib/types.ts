@@ -73,6 +73,13 @@ export interface StockBatch {
   product_id: number
   store_id: number
   supplier_id: number | null
+  supplier_name?: string | null
+  supplier_phone?: string | null
+  suppliers?: {
+    id: number
+    supplier_name: string
+    phone_number: string
+  }
   batch_number: string | null
   purchase_date: string
   cost_price: number

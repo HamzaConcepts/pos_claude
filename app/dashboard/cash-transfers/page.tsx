@@ -137,9 +137,7 @@ export default function CashTransfersPage() {
 
         // 2. Immediate Stock Payments (Recorded at time of purchase)
         // We only count the 'amount_paid' portion if it was Cash
-        // Note: reference_id in expenses table points to stock_batches.id
-        // However, the api/expenses/route.ts doesn't return batch details.
-        // We'll fetch them from inventory-purchases which already does the mapping.
+        // We'll fetch them from inventory-purchases which is batch-driven.
         const invRes = await fetch(`/api/inventory-purchases?store_id=${storeId}`)
         const invResult = await invRes.json()
         if (invResult.success) {

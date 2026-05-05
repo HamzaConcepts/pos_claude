@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { XIcon, MagnifyingGlassIcon } from '@phosphor-icons/react'
 import type { ProductWithBackwardCompatibility, Supplier } from '@/lib/types'
-import { getStoreId } from '@/lib/supabase'
+import { getCashierId, getManagerId, getStoreId } from '@/lib/supabase'
 
 interface RestockModalProps {
   onClose: (refresh: boolean) => void
@@ -326,6 +326,16 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
         supplier_name: formData.supplier_name || 'Unknown',
         supplier_phone: formData.supplier_phone || '',
         payment_method: formData.payment_method, // Payment method (Cash/Digital)
+        recorded_by: null as string | null,
+        recorded_by_cashier_id: null as number | null,
+      }
+
+      const managerId = await getManagerId()
+      const cashierId = getCashierId()
+      if (managerId) {
+        batchPayload.recorded_by = managerId
+      } else if (cashierId) {
+        batchPayload.recorded_by_cashier_id = cashierId
       }
 
       const batchResponse = await fetch('/api/stock-batches', {

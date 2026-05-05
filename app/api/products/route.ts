@@ -123,7 +123,9 @@ export async function GET(request: Request) {
             quantity_remaining,
             quantity_purchased,
             purchase_date,
-            is_depleted
+            is_depleted,
+            supplier_id,
+            suppliers (id, supplier_name, phone_number)
           )
         `)
         .eq('store_id', parseInt(storeId))
@@ -193,7 +195,9 @@ export async function GET(request: Request) {
               quantity_remaining,
               quantity_purchased,
               purchase_date,
-              is_depleted
+              is_depleted,
+              supplier_id,
+              suppliers (id, supplier_name, phone_number)
             )
           )
         `)
@@ -273,7 +277,9 @@ export async function GET(request: Request) {
           quantity_remaining,
           quantity_purchased,
           purchase_date,
-          is_depleted
+          is_depleted,
+          supplier_id,
+          suppliers (id, supplier_name, phone_number)
         )
       `)
       .eq('store_id', parseInt(storeId))
@@ -302,12 +308,48 @@ export async function GET(request: Request) {
     }
 
     // Transform data to match expected structure
+    const allBatchSupplierIds = new Set<number>()
+    products?.forEach((product: any) => {
+      (product.stock_batches || []).forEach((batch: any) => {
+        const parsedSupplierId = Number.parseInt(String(batch?.supplier_id || ''), 10)
+        if (Number.isInteger(parsedSupplierId) && parsedSupplierId > 0) {
+          allBatchSupplierIds.add(parsedSupplierId)
+        }
+      })
+    })
+
+    const supplierNameById = new Map<number, { supplier_name: string | null; supplier_phone: string | null }>()
+    if (allBatchSupplierIds.size > 0) {
+      const { data: suppliersData } = await supabaseAdmin
+        .from('suppliers')
+        .select('id, supplier_name, phone_number')
+        .eq('store_id', parseInt(storeId))
+        .in('id', Array.from(allBatchSupplierIds))
+
+      suppliersData?.forEach((supplier: any) => {
+        supplierNameById.set(supplier.id, {
+          supplier_name: supplier.supplier_name || null,
+          supplier_phone: supplier.phone_number || null,
+        })
+      })
+    }
+
     const transformedProducts = products?.map((product: any) => {
       // Get aggregated stock data
       const aggStock = product.aggregated_stock?.[0] || null
       
       // Get all batches for history (including depleted)
-      const allBatches = product.stock_batches || []
+      const allBatches = (product.stock_batches || []).map((batch: any) => {
+        const supplierInfo = batch?.supplier_id
+          ? supplierNameById.get(batch.supplier_id)
+          : undefined
+
+        return {
+          ...batch,
+          supplier_name: supplierInfo?.supplier_name ?? batch?.supplier_name ?? null,
+          supplier_phone: supplierInfo?.supplier_phone ?? batch?.supplier_phone ?? null,
+        }
+      })
 
       return {
         id: product.id,

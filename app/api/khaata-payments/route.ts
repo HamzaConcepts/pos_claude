@@ -161,6 +161,16 @@ export async function POST(request: Request) {
           store_id: parseInt(store_id)
         })
 
+      await supabaseAdmin
+        .from('sales')
+        .update({
+          amount_paid: newAmountPaid,
+          amount_due: Math.max(0, newAmountRemaining),
+          payment_status: newAmountRemaining <= 0.01 ? 'Paid' : 'Partial',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', transaction.sale_id)
+
       remainingPayment -= amountToApply
       updates.push({
         transaction_id: transaction.id,

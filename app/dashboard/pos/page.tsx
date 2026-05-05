@@ -838,9 +838,15 @@ export default function POSPage() {
 
   const fetchExistingCustomers = async (searchQuery: string) => {
     try {
-      const url = searchQuery
-        ? `/api/partial-payment-customers?search=${encodeURIComponent(searchQuery)}`
-        : '/api/partial-payment-customers'
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const params = new URLSearchParams({ store_id: storeId.toString() })
+      if (searchQuery) {
+        params.set('search', searchQuery)
+      }
+
+      const url = `/api/partial-payment-customers?${params.toString()}`
       
       const response = await fetch(url)
       const result = await response.json()

@@ -384,6 +384,8 @@ export default function InventoryPage() {
           <select
             value={categoryFilter}
             onChange={(e) => handleCategoryChange(e.target.value)}
+            title="Filter by category"
+            aria-label="Category filter"
             className="px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white"
           >
             <option value="">All Categories</option>
@@ -397,6 +399,8 @@ export default function InventoryPage() {
             value={subcategoryFilter}
             onChange={(e) => setSubcategoryFilter(e.target.value)}
             disabled={!categoryFilter || subcategories.length === 0}
+            title="Filter by subcategory"
+            aria-label="Subcategory filter"
             className={`px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 ${
               !categoryFilter || subcategories.length === 0 
                 ? 'opacity-50 cursor-not-allowed' 
@@ -617,6 +621,17 @@ export default function InventoryPage() {
                                               )}
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
+                                              <div>
+                                                <span className="text-gray-600 dark:text-gray-400">Supplier:</span>
+                                                <div className="font-medium text-gray-900 dark:text-white">
+                                                  {batch.supplier_name || batch.suppliers?.supplier_name || 'Unknown'}
+                                                </div>
+                                                {batch.supplier_phone || batch.suppliers?.phone_number ? (
+                                                  <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                                                    {batch.supplier_phone || batch.suppliers?.phone_number}
+                                                  </div>
+                                                ) : null}
+                                              </div>
                                               <div>
                                                 <span className="text-gray-600 dark:text-gray-400">Date:</span>
                                                 <div className="font-medium text-gray-900 dark:text-white">

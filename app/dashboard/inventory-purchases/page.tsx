@@ -19,6 +19,7 @@ interface InventoryPurchase {
   expense_date: string
   recorded_by_name?: string
   product_display?: string
+  supplier_name?: string | null
   created_at: string
 }
 
@@ -27,6 +28,7 @@ const formatCategory = (category: string): string => {
   const categoryMap: Record<string, string> = {
     'new_product': 'New Product',
     'inventory_restock': 'Restock',
+    'initial_stock': 'Initial Stock',
   }
   return categoryMap[category] || category
 }
@@ -39,6 +41,9 @@ const getCategoryStyle = (category: string): string => {
   if (category === 'inventory_restock') {
     return 'bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-400'
   }
+  if (category === 'initial_stock') {
+    return 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
+  }
   return 'bg-gray-100 border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
 }
 
@@ -48,6 +53,9 @@ export default function InventoryPurchasesPage() {
   const [purchases, setPurchases] = useState<InventoryPurchase[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [paymentFilter, setPaymentFilter] = useState('')
 
   useEffect(() => {
     fetchPurchases()
@@ -79,18 +87,33 @@ export default function InventoryPurchasesPage() {
     }
   }
 
+  const filteredPurchases = purchases.filter((purchase) => {
+    const search = searchTerm.trim().toLowerCase()
+    const matchesSearch = !search || [
+      purchase.description,
+      purchase.product_display,
+      purchase.supplier_name,
+    ].some((value) => typeof value === 'string' && value.toLowerCase().includes(search))
+
+    const matchesCategory = !categoryFilter || purchase.category === categoryFilter
+    const paymentValue = purchase.payment_method || 'Unknown'
+    const matchesPayment = !paymentFilter || paymentValue === paymentFilter
+
+    return matchesSearch && matchesCategory && matchesPayment
+  })
+
   const calculateStats = () => {
     const today = new Date()
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const startOfYear = new Date(today.getFullYear(), 0, 1)
 
-    const todayPurchases = purchases.filter(p => 
+    const todayPurchases = filteredPurchases.filter(p => 
       new Date(p.expense_date).toDateString() === today.toDateString()
     )
-    const monthPurchases = purchases.filter(p => 
+    const monthPurchases = filteredPurchases.filter(p => 
       new Date(p.expense_date) >= startOfMonth
     )
-    const yearPurchases = purchases.filter(p => 
+    const yearPurchases = filteredPurchases.filter(p => 
       new Date(p.expense_date) >= startOfYear
     )
 
@@ -98,7 +121,7 @@ export default function InventoryPurchasesPage() {
       today: todayPurchases.reduce((sum, p) => sum + p.amount, 0),
       month: monthPurchases.reduce((sum, p) => sum + p.amount, 0),
       year: yearPurchases.reduce((sum, p) => sum + p.amount, 0),
-      total: purchases.reduce((sum, p) => sum + p.amount, 0)
+      total: filteredPurchases.reduce((sum, p) => sum + p.amount, 0)
     }
   }
 
@@ -187,6 +210,46 @@ export default function InventoryPurchasesPage() {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="mb-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Search</label>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search product or supplier..."
+            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-[#0f0f0f] dark:border-gray-600 dark:text-white"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-[#0f0f0f] dark:border-gray-600 dark:text-white"
+          >
+            <option value="">All Types</option>
+            <option value="new_product">New Product</option>
+            <option value="inventory_restock">Restock</option>
+            <option value="initial_stock">Initial Stock</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Payment</label>
+          <select
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-[#0f0f0f] dark:border-gray-600 dark:text-white"
+          >
+            <option value="">All Payments</option>
+            <option value="Cash">Cash</option>
+            <option value="Digital">Digital</option>
+            <option value="Unknown">Unknown</option>
+          </select>
+        </div>
+      </div>
+
       {/* Purchases List */}
       <div className="rounded border overflow-hidden bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
         <div className="p-4 border-b bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600">
@@ -196,7 +259,7 @@ export default function InventoryPurchasesPage() {
           </p>
         </div>
         
-        {purchases.length === 0 ? (
+        {filteredPurchases.length === 0 ? (
           <div className="p-6 text-center text-gray-500 text-sm">
             No inventory purchases yet. Add stock in the Products page to see entries here.
           </div>
@@ -208,6 +271,7 @@ export default function InventoryPurchasesPage() {
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Date</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Description</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Type</th>
+                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Supplier</th>
                   <th className="px-3 py-2.5 text-left text-sm font-semibold">Recorded By</th>
                   <th className="px-3 py-2.5 text-right text-sm font-semibold">Total</th>
                   <th className="px-3 py-2.5 text-right text-sm font-semibold">Ledger</th>
@@ -215,7 +279,7 @@ export default function InventoryPurchasesPage() {
                 </tr>
               </thead>
               <tbody>
-                {purchases.map((purchase) => (
+                {filteredPurchases.map((purchase) => (
                   <tr
                     key={purchase.id}
                     className="border-b border-gray-100 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-[#0f0f0f] dark:hover:bg-gray-800"
@@ -229,17 +293,17 @@ export default function InventoryPurchasesPage() {
                       })}
                     </td>
                     <td className="px-3 py-2.5 text-sm">
-                      <div className="text-gray-900 dark:text-gray-300">{purchase.description}</div>
-                      {purchase.product_display && (
-                        <div className="text-xs mt-0.5 text-gray-500">
-                          Product: {purchase.product_display}
-                        </div>
-                      )}
+                      <div className="text-gray-900 dark:text-gray-300">
+                        {purchase.product_display || purchase.description}
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 text-sm">
                       <span className={`inline-block px-2 py-1 border rounded text-xs ${getCategoryStyle(purchase.category)}`}>
                         {formatCategory(purchase.category)}
                       </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">
+                      {purchase.supplier_name || '-'}
                     </td>
                     <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">
                       {purchase.recorded_by_name || 'System'}

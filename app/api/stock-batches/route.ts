@@ -88,6 +88,8 @@ export async function POST(request: NextRequest) {
       supplier_name = '',
       supplier_phone = '',
       payment_method = 'Cash', // Payment method: Cash or Digital
+      recorded_by,
+      recorded_by_cashier_id,
     } = body
 
     // Validation
@@ -187,6 +189,21 @@ export async function POST(request: NextRequest) {
       .select('*')
       .eq('product_id', product_id)
       .single()
+
+    if (batch?.id) {
+      const { error: recordError } = await supabaseAdmin
+        .from('inventory_purchase_records')
+        .insert({
+          stock_batch_id: batch.id,
+          store_id,
+          recorded_by: recorded_by || null,
+          recorded_by_cashier_id: recorded_by_cashier_id || null,
+        })
+
+      if (recordError && recordError.code !== '42P01') {
+        console.error('Error creating inventory purchase record:', recordError)
+      }
+    }
 
     return NextResponse.json({
       success: true,

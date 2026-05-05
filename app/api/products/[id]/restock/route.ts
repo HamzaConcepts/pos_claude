@@ -28,6 +28,8 @@ export async function POST(
       lowest_negotiable_price,
       quantity_purchased,
       supplier_id,
+      recorded_by,
+      recorded_by_cashier_id,
     } = body
 
     // Validation
@@ -105,13 +107,28 @@ export async function POST(
         quantity_purchased,
         quantity_remaining: quantity_purchased,
         is_depleted: false,
-        purchase_date: new Date().toISOString()
+        purchase_date: new Date().toISOString(),
       })
       .select()
       .single()
 
     if (batchInsertError) {
       throw batchInsertError
+    }
+
+    if (batch?.id) {
+      const { error: recordError } = await supabaseAdmin
+        .from('inventory_purchase_records')
+        .insert({
+          stock_batch_id: batch.id,
+          store_id: product.store_id,
+          recorded_by: recorded_by || null,
+          recorded_by_cashier_id: recorded_by_cashier_id || null,
+        })
+
+      if (recordError && recordError.code !== '42P01') {
+        console.error('Error creating inventory purchase record:', recordError)
+      }
     }
 
     return NextResponse.json({
