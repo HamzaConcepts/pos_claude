@@ -1,12 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { FileTextIcon, DownloadSimpleIcon, CalendarIcon, FunnelIcon, CaretDownIcon, CaretUpIcon, TrendUpIcon, TrendDownIcon, CurrencyDollarIcon, CreditCardIcon } from '@phosphor-icons/react'
-import { getStoreId } from '@/lib/supabase'
-import { getPurchasedQuantity, getRemainingQuantity } from '@/lib/stock-quantities'
+import { useEffect, useState } from 'react'
+import {
+  CaretDownIcon,
+  CaretUpIcon,
+  DownloadSimpleIcon,
+  FileTextIcon,
+  TrendDownIcon,
+  TrendUpIcon,
+} from '@phosphor-icons/react'
 import { useDarkMode } from '@/hooks/useDarkMode'
 import { getPKTDate } from '@/lib/date-utils'
 import { useCurrency } from '@/lib/currency-context'
+import { getStoreId } from '@/lib/supabase'
+import { getPurchasedQuantity, getRemainingQuantity } from '@/lib/stock-quantities'
 import { SummaryReport } from '@/components/reports/SummaryReport'
 import { SalesReport } from '@/components/reports/SalesReport'
 import { ExpensesReport } from '@/components/reports/ExpensesReport'
@@ -268,9 +275,9 @@ export default function ReportsPage() {
   }
 
   const generateSalesCSV = (data: any) => {
-    let csv = 'Date,Sale ID,Cashier,Total,Payment Method,Status\n'
+    let csv = 'Date,Sale ID,Cashier,Total,Payment Method,Status,Cash Paid,Digital Paid\n'
     data.sales?.forEach((sale: any) => {
-      csv += `${new Date(sale.sale_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })},${sale.id},${sale.cashier_name || 'N/A'},${sale.total_amount},${sale.payment_method},${sale.payment_status}\n`
+      csv += `${new Date(sale.sale_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })},${sale.id},${sale.cashier_name || 'N/A'},${sale.total_amount},${sale.payment_method},${sale.payment_status},${sale.cash_paid ?? ''},${sale.digital_paid ?? ''}\n`
     })
     return csv
   }
@@ -505,7 +512,8 @@ export default function ReportsPage() {
                 {[
                   { label: 'All', value: '' },
                   { label: 'Cash', value: 'Cash' },
-                  { label: 'Digital', value: 'Digital' }
+                  { label: 'Digital', value: 'Digital' },
+                  { label: 'Mixed', value: 'Mixed' }
                 ].map(option => (
                   <button
                     key={option.label}

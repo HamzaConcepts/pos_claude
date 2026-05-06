@@ -111,12 +111,28 @@ export default function CashTransfersPage() {
 
       if (salesResult.success) {
         const sales = salesResult.data || []
-        const cashTotal = sales
-          .filter((s: any) => s.payment_method === 'Cash')
-          .reduce((sum: number, s: any) => sum + Number(s.amount_paid || s.total_amount || 0), 0)
-        const digitalTotal = sales
-          .filter((s: any) => s.payment_method === 'Digital')
-          .reduce((sum: number, s: any) => sum + Number(s.amount_paid || s.total_amount || 0), 0)
+        const cashTotal = sales.reduce((sum: number, sale: any) => {
+          if (Array.isArray(sale.payments) && sale.payments.length > 0) {
+            return sum + sale.payments
+              .filter((payment: any) => payment.payment_method === 'Cash')
+              .reduce((inner: number, payment: any) => inner + Number(payment.amount || 0), 0)
+          }
+
+          return sale.payment_method === 'Cash'
+            ? sum + Number(sale.amount_paid || sale.total_amount || 0)
+            : sum
+        }, 0)
+        const digitalTotal = sales.reduce((sum: number, sale: any) => {
+          if (Array.isArray(sale.payments) && sale.payments.length > 0) {
+            return sum + sale.payments
+              .filter((payment: any) => payment.payment_method === 'Digital')
+              .reduce((inner: number, payment: any) => inner + Number(payment.amount || 0), 0)
+          }
+
+          return sale.payment_method === 'Digital'
+            ? sum + Number(sale.amount_paid || sale.total_amount || 0)
+            : sum
+        }, 0)
         setCashSalesTotal(cashTotal)
         setDigitalSalesTotal(digitalTotal)
       }
@@ -142,9 +158,15 @@ export default function CashTransfersPage() {
         const invResult = await invRes.json()
         if (invResult.success) {
           const invPayments = invResult.data || []
-          const cashInv = invPayments
-            .filter((p: any) => p.payment_method === 'Cash' || !p.payment_method)
-            .reduce((sum: number, p: any) => sum + Number(p.amount_paid || 0), 0)
+          const cashInv = invPayments.reduce((sum: number, purchase: any) => {
+            if (purchase.cash_paid !== undefined && purchase.cash_paid !== null) {
+              return sum + Number(purchase.cash_paid || 0)
+            }
+
+            return purchase.payment_method === 'Cash' || !purchase.payment_method
+              ? sum + Number(purchase.amount_paid || 0)
+              : sum
+          }, 0)
           setCashStockPayments(cashInv)
         }
       }

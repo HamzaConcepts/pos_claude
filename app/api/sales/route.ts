@@ -278,7 +278,8 @@ export async function POST(request: Request) {
     const { 
       items, 
       sale_description, 
-      payment_method, 
+      payment_method,
+      payments,
       amount_paid, 
       notes, 
       cashier_id,
@@ -374,6 +375,73 @@ export async function POST(request: Request) {
       cashierRefIdForSale = parsedCashierRef
     }
 
+    const paymentSplits = Array.isArray(payments) ? payments : []
+    let cashPaid = 0
+    let digitalPaid = 0
+    let splitBankAccountName = ''
+    let hasPaymentSplits = false
+
+    for (const payment of paymentSplits) {
+      const method = payment?.payment_method || payment?.method
+      const amount = Number(payment?.amount)
+
+      if (!method) continue
+
+      if (!['Cash', 'Digital'].includes(method)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid payment method in split payments',
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        )
+      }
+
+      if (!Number.isFinite(amount) || amount < 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid payment amount in split payments',
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        )
+      }
+
+      if (amount <= 0) continue
+
+      hasPaymentSplits = true
+
+      if (method === 'Cash') {
+        cashPaid += amount
+      } else {
+        digitalPaid += amount
+        const bankName = typeof payment?.bank_account_name === 'string'
+          ? payment.bank_account_name.trim()
+          : ''
+
+        if (bankName) {
+          if (splitBankAccountName && splitBankAccountName !== bankName) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: 'Only one bank account can be used for digital split payments',
+                code: 'VALIDATION_ERROR',
+              },
+              { status: 400 }
+            )
+          }
+          splitBankAccountName = bankName
+        }
+      }
+    }
+
+    const normalizedPaymentMethod =
+      typeof payment_method === 'string' && ['Cash', 'Digital', 'Mixed'].includes(payment_method)
+        ? payment_method
+        : null
+
     // Validation
     if (!items || items.length === 0) {
       return NextResponse.json(
@@ -409,7 +477,7 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!payment_method || !['Cash', 'Digital'].includes(payment_method)) {
+    if (!hasPaymentSplits && (!normalizedPaymentMethod || normalizedPaymentMethod === 'Mixed')) {
       return NextResponse.json(
         {
           success: false,
@@ -420,7 +488,9 @@ export async function POST(request: Request) {
       )
     }
 
-    if (payment_method === 'Digital' && !normalizedCustomerName) {
+    const requiresDigitalDetails = digitalPaid > 0 || normalizedPaymentMethod === 'Digital'
+
+    if (requiresDigitalDetails && !normalizedCustomerName) {
       return NextResponse.json(
         {
           success: false,
@@ -431,7 +501,9 @@ export async function POST(request: Request) {
       )
     }
 
-    if (payment_method === 'Digital' && !normalizedBankAccountName) {
+    const resolvedBankAccountName = splitBankAccountName || normalizedBankAccountName
+
+    if (requiresDigitalDetails && !resolvedBankAccountName) {
       return NextResponse.json(
         {
           success: false,
@@ -473,12 +545,12 @@ export async function POST(request: Request) {
       )
     }
 
-    if (payment_method === 'Digital') {
+    if (requiresDigitalDetails) {
       const { data: matchingBankAccounts, error: bankAccountLookupError } = await supabaseAdmin
         .from('store_bank_accounts')
         .select('id')
         .eq('store_id', parsedStoreId)
-        .eq('account_name', normalizedBankAccountName)
+        .eq('account_name', resolvedBankAccountName)
         .limit(1)
 
       if (bankAccountLookupError) {
@@ -737,7 +809,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const paidAmount = Number(amount_paid) || 0
+    const paidAmount = roundToTwo(
+      hasPaymentSplits ? cashPaid + digitalPaid : Number(amount_paid) || 0
+    )
 
     if (invoiceTotalValue !== null && paidAmount > totalAmount) {
       return NextResponse.json(
@@ -752,6 +826,17 @@ export async function POST(request: Request) {
 
     const dueAmount = totalAmount - paidAmount
     const paymentStatus = dueAmount <= 0 ? 'Paid' : 'Partial'
+    let salePaymentMethod = normalizedPaymentMethod || 'Cash'
+
+    if (hasPaymentSplits) {
+      if (cashPaid > 0 && digitalPaid > 0) {
+        salePaymentMethod = 'Mixed'
+      } else if (digitalPaid > 0) {
+        salePaymentMethod = 'Digital'
+      } else if (cashPaid > 0) {
+        salePaymentMethod = 'Cash'
+      }
+    }
 
     // Validate partial payment customer info when provided
     if (partial_payment_customer) {
@@ -790,7 +875,7 @@ export async function POST(request: Request) {
           cashier_id: cashierIdForSale, // Only UUID (managers), null for cashier accounts
           cashier_ref_id: cashierRefIdForSale, // Reference to selected cashier
           total_amount: totalAmount,
-          payment_method,
+          payment_method: salePaymentMethod,
           payment_status: paymentStatus,
           amount_paid: paidAmount,
           amount_due: dueAmount > 0 ? dueAmount : 0,
@@ -802,7 +887,9 @@ export async function POST(request: Request) {
           customer_phone: normalizedCustomerPhone || null,
           customer_cnic: customer_cnic || null,
           bank_account_name:
-            payment_method === 'Digital' ? normalizedBankAccountName : null,
+            salePaymentMethod === 'Digital' || salePaymentMethod === 'Mixed'
+              ? resolvedBankAccountName
+              : null,
         },
       ])
       .select()
@@ -825,31 +912,48 @@ export async function POST(request: Request) {
 
     sale.sale_number = formattedSaleNumber
 
-    // Create payment record (track all payments)
-    if (paidAmount > 0) {
-      const paymentData: any = {
+    // Create payment record(s) (track all payments)
+    const paymentRows: any[] = []
+
+    if (hasPaymentSplits) {
+      if (cashPaid > 0) {
+        paymentRows.push({
+          sale_id: sale.id,
+          amount: cashPaid,
+          payment_method: 'Cash',
+          bank_account_name: null,
+        })
+      }
+
+      if (digitalPaid > 0) {
+        paymentRows.push({
+          sale_id: sale.id,
+          amount: digitalPaid,
+          payment_method: 'Digital',
+          bank_account_name: resolvedBankAccountName,
+        })
+      }
+    } else if (paidAmount > 0) {
+      paymentRows.push({
         sale_id: sale.id,
         amount: paidAmount,
-        payment_method,
+        payment_method: salePaymentMethod,
+        bank_account_name: salePaymentMethod === 'Digital' ? resolvedBankAccountName : null,
+      })
+    }
+
+    if (paymentRows.length > 0) {
+      const recordedByRows = paymentRows.map((row) => ({
+        ...row,
         payment_date: getPKTNow(), // Use PKT timezone
         store_id: parsedStoreId,
-      }
-      
-      // The constraint requires EXACTLY ONE of manager_id or cashier_id to be set
-      // Set based on the authenticated user type (determined at the start)
-      if (isManagerUser) {
-        // User is a manager - set manager_id (UUID)
-        paymentData.manager_id = paymentRecorderId
-        paymentData.cashier_id = null
-      } else {
-        // User is a cashier account - set cashier_id (integer)
-        paymentData.manager_id = null
-        paymentData.cashier_id = paymentRecorderId
-      }
-      
+        manager_id: isManagerUser ? paymentRecorderId : null,
+        cashier_id: isManagerUser ? null : paymentRecorderId,
+      }))
+
       const { error: paymentError } = await supabaseAdmin
         .from('payments')
-        .insert([paymentData])
+        .insert(recordedByRows)
 
       if (paymentError) {
         throw paymentError

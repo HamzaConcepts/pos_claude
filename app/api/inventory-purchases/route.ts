@@ -50,7 +50,9 @@ export async function GET(request: Request) {
         recorded_by_name,
         total_amount,
         amount_paid,
-        amount_remaining
+        amount_remaining,
+        cash_paid,
+        digital_paid
       `)
       .eq('store_id', parseInt(storeId))
       .order('purchase_date', { ascending: false })
@@ -85,6 +87,8 @@ export async function GET(request: Request) {
         const totalAmount = Number(row.total_amount || 0)
         const amountPaid = Number(row.amount_paid || 0)
         const amountRemaining = Number(row.amount_remaining || 0)
+        const cashPaid = Number(row.cash_paid || 0)
+        const digitalPaid = Number(row.digital_paid || 0)
 
         const earliest = earliestBatchByProduct.get(Number(row.product_id))
         const isFirstBatch = Boolean(earliest && earliest.id === row.id)
@@ -108,6 +112,8 @@ export async function GET(request: Request) {
           total_amount: totalAmount,
           amount_paid: amountPaid,
           amount_remaining: amountRemaining,
+          cash_paid: cashPaid,
+          digital_paid: digitalPaid,
           category,
           payment_method: row.payment_method || null,
           expense_date: row.purchase_date,

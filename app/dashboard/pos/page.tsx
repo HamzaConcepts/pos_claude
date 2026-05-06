@@ -34,6 +34,9 @@ export default function POSPage() {
   const [priceInputs, setPriceInputs] = useState<Record<number, string>>({})
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
   const [amountPaid, setAmountPaid] = useState('')
+  const [isSplitPayment, setIsSplitPayment] = useState(false)
+  const [cashPaid, setCashPaid] = useState('')
+  const [digitalPaid, setDigitalPaid] = useState('')
   const [saleDescription, setSaleDescription] = useState('')
   const [loading, setLoading] = useState(false)
   const [showReceipt, setShowReceipt] = useState(false)
@@ -724,6 +727,9 @@ export default function POSPage() {
     if (confirm('Clear all items from cart?')) {
       setCart([])
       setAmountPaid('')
+      setCashPaid('')
+      setDigitalPaid('')
+      setIsSplitPayment(false)
       setSaleDescription('')
       setError('')
     }
@@ -742,9 +748,49 @@ export default function POSPage() {
     }, 0)
   }
 
+  const parseAmountValue = (value: string) => {
+    const parsed = Number.parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const getPaidTotal = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(cashPaid) + parseAmountValue(digitalPaid)
+    }
+
+    return parseAmountValue(amountPaid)
+  }
+
+  const getSplitPaymentMethod = () => {
+    if (!isSplitPayment) {
+      return paymentMethod
+    }
+
+    const cashAmount = parseAmountValue(cashPaid)
+    const digitalAmount = parseAmountValue(digitalPaid)
+
+    if (cashAmount > 0 && digitalAmount > 0) {
+      return 'Mixed'
+    }
+
+    if (digitalAmount > 0) {
+      return 'Digital'
+    }
+
+    return 'Cash'
+  }
+
+  const hasDigitalPayment = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(digitalPaid) > 0
+    }
+
+    return paymentMethod === 'Digital'
+  }
+
   const calculateChange = () => {
     const total = calculateTotal()
-    const paid = parseFloat(amountPaid) || 0
+    const paid = getPaidTotal()
     return paid - total
   }
 
@@ -781,7 +827,7 @@ export default function POSPage() {
 
     const total = calculateTotal()
     const lowestNegotiable = calculateLowestNegotiable()
-    const paid = parseFloat(amountPaid) || 0
+    const paid = getPaidTotal()
 
     // If entered amount >= total: confirm payment
     if (paid >= total) {
@@ -815,7 +861,7 @@ export default function POSPage() {
 
   const handleApplyDiscount = async () => {
     const total = calculateTotal()
-    const paid = parseFloat(amountPaid) || 0
+    const paid = getPaidTotal()
     const discountAmount = total - paid
     
     // Process sale with automatic discount
@@ -889,7 +935,7 @@ export default function POSPage() {
   const handlePartialPaymentCancel = () => {
     setShowPartialPaymentConfirm(false)
     const total = calculateTotal()
-    const paid = parseFloat(amountPaid) || 0
+    const paid = getPaidTotal()
     setError(`Insufficient payment. Total: ${formatCurrency(total, 2)}, Paid: ${formatCurrency(paid, 2)}`)
   }
 
@@ -901,7 +947,7 @@ export default function POSPage() {
     setLoading(true)
 
     try {
-      const paid = parseFloat(amountPaid) || 0
+      const paid = getPaidTotal()
       let finalDescription = saleDescription.trim()
       const fallbackPartialCustomerName =
         typeof partialPaymentCustomer?.customer_name === 'string'
@@ -934,7 +980,17 @@ export default function POSPage() {
         return
       }
 
-      if (paymentMethod === 'Digital' && !normalizedCustomerName) {
+      const digitalAmount = parseAmountValue(digitalPaid)
+      const cashAmount = parseAmountValue(cashPaid)
+      const requiresDigital = hasDigitalPayment()
+
+      if (isSplitPayment && cashAmount === 0 && digitalAmount === 0) {
+        setError('Enter a cash or digital amount for split payment')
+        setLoading(false)
+        return
+      }
+
+      if (requiresDigital && !normalizedCustomerName) {
         setError('Customer name is required for Digital payment')
         setIsCustomerSectionExpanded(true)
         requestAnimationFrame(() => {
@@ -945,14 +1001,14 @@ export default function POSPage() {
         return
       }
 
-      if (paymentMethod === 'Digital' && bankAccounts.length === 0) {
+      if (requiresDigital && bankAccounts.length === 0) {
         setError('No bank account found. Please add one in Store Settings before taking digital payments.')
         setIsCustomerSectionExpanded(true)
         setLoading(false)
         return
       }
 
-      if (paymentMethod === 'Digital' && !selectedBankAccount) {
+      if (requiresDigital && !selectedBankAccount) {
         setError('Please select a bank account for Digital payment')
         setIsCustomerSectionExpanded(true)
         requestAnimationFrame(() => {
@@ -1009,6 +1065,22 @@ export default function POSPage() {
         return
       }
       
+      const paymentMethodForSale = isSplitPayment ? getSplitPaymentMethod() : paymentMethod
+      const paymentSplits = isSplitPayment
+        ? [
+            cashAmount > 0
+              ? { payment_method: 'Cash', amount: cashAmount }
+              : null,
+            digitalAmount > 0
+              ? {
+                  payment_method: 'Digital',
+                  amount: digitalAmount,
+                  bank_account_name: selectedBankAccount,
+                }
+              : null,
+          ].filter(Boolean)
+        : null
+
       const saleData = {
         items: cart.map((item) => ({
           product_id: item.product.id,
@@ -1017,8 +1089,9 @@ export default function POSPage() {
           imei_numbers: item.imei_numbers || [], // Include IMEI numbers
         })),
         sale_description: finalDescription,
-        payment_method: paymentMethod,
+        payment_method: paymentMethodForSale,
         amount_paid: paid,
+        payments: paymentSplits && paymentSplits.length > 0 ? paymentSplits : undefined,
         // If manager is making sale, send their UUID. If cashier, send null and use cashier_ref_id
         cashier_id: isManager ? resolvedManagerId : null,
         // Manager: don't use sidebar selection, always null so manager's name shows
@@ -1034,7 +1107,7 @@ export default function POSPage() {
         customer_name: normalizedCustomerName || null,
         customer_phone: normalizedCustomerPhone || null,
         customer_cnic: customerDetails.cnic.trim() || null,
-        bank_account_name: paymentMethod === 'Digital' ? selectedBankAccount : null,
+        bank_account_name: requiresDigital ? selectedBankAccount : null,
       }
 
       const response = await fetch('/api/sales', {
@@ -1052,6 +1125,9 @@ export default function POSPage() {
         setShowReceipt(true)
         setCart([])
         setAmountPaid('')
+        setCashPaid('')
+        setDigitalPaid('')
+        setIsSplitPayment(false)
         setSaleDescription('')
         setShowPartialPaymentConfirm(false)
         setShowPartialPaymentModal(false)
@@ -1106,7 +1182,7 @@ export default function POSPage() {
       return
     }
 
-    const paidAmount = parseFloat(amountPaid) || 0
+    const paidAmount = getPaidTotal()
     if (invoicePriceNum < paidAmount) {
       setPartialPaymentError(`Invoice price (Rs. ${invoicePriceNum.toFixed(2)}) cannot be less than amount paid (Rs. ${paidAmount.toFixed(2)})`)
       return
@@ -1196,12 +1272,12 @@ export default function POSPage() {
           </div>
 
           {/* Customer Info */}
-          {(lastSale.customer_name || lastSale.customer_phone || (lastSale.payment_method === 'Digital' && lastSale.bank_account_name)) && (
+          {(lastSale.customer_name || lastSale.customer_phone || ((lastSale.payment_method === 'Digital' || lastSale.payment_method === 'Mixed') && lastSale.bank_account_name)) && (
             <div className="border-b border-dashed border-black pb-2 mb-2">
               <p className="font-bold">Customer:</p>
               {lastSale.customer_name && <p>{lastSale.customer_name}</p>}
               {lastSale.customer_phone && <p>Ph: {lastSale.customer_phone}</p>}
-              {lastSale.payment_method === 'Digital' && lastSale.bank_account_name && (
+              {(lastSale.payment_method === 'Digital' || lastSale.payment_method === 'Mixed') && lastSale.bank_account_name && (
                 <p>Bank: {lastSale.bank_account_name}</p>
               )}
             </div>
@@ -1383,7 +1459,7 @@ export default function POSPage() {
           </div>
 
           {/* Customer Info */}
-          {(lastSale.customer_name || lastSale.customer_phone || lastSale.customer_cnic || (lastSale.payment_method === 'Digital' && lastSale.bank_account_name)) && (
+          {(lastSale.customer_name || lastSale.customer_phone || lastSale.customer_cnic || ((lastSale.payment_method === 'Digital' || lastSale.payment_method === 'Mixed') && lastSale.bank_account_name)) && (
             <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
               <p className="font-bold mb-2 text-xs text-gray-500 uppercase">Customer</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
@@ -1405,7 +1481,7 @@ export default function POSPage() {
                     <p>{lastSale.customer_cnic}</p>
                   </div>
                 )}
-                {lastSale.payment_method === 'Digital' && lastSale.bank_account_name && (
+                {(lastSale.payment_method === 'Digital' || lastSale.payment_method === 'Mixed') && lastSale.bank_account_name && (
                   <div>
                     <p className="text-gray-500 text-xs">Bank Account</p>
                     <p>{lastSale.bank_account_name}</p>
@@ -1653,7 +1729,7 @@ export default function POSPage() {
             >
               <div className="text-left">
                 <h2 className="text-base font-bold text-gray-900 dark:text-white">
-                  Customer Details {paymentMethod === 'Digital' ? '(Required for Digital Payment)' : '(Optional)'}
+                  Customer Details {hasDigitalPayment() ? '(Required for Digital Payment)' : '(Optional)'}
                   {(customerDetails.name || customerDetails.phone) && (
                     <span className="ml-2 text-cyan-600 text-sm font-normal">
                       • {customerDetails.name || customerDetails.phone}
@@ -1679,7 +1755,7 @@ export default function POSPage() {
                 {/* Customer Search/Name */}
                 <div className="relative" ref={customerSearchRef}>
                   <label className="block mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">
-                    Customer Name {paymentMethod === 'Digital' && <span className="text-red-600">*</span>}
+                    Customer Name {hasDigitalPayment() && <span className="text-red-600">*</span>}
                   </label>
                   <input
                     id="customer-name-input"
@@ -1694,10 +1770,9 @@ export default function POSPage() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
-                        const nextInputId =
-                          paymentMethod === 'Digital'
-                            ? 'digital-bank-account-input'
-                            : 'customer-phone-input'
+                        const nextInputId = hasDigitalPayment()
+                          ? 'digital-bank-account-input'
+                          : 'customer-phone-input'
                         const nextInput = document.getElementById(nextInputId)
                         nextInput?.focus()
                       }
@@ -1724,7 +1799,7 @@ export default function POSPage() {
                 </div>
 
                 {/* Digital Payment Bank Account */}
-                {paymentMethod === 'Digital' && (
+                {hasDigitalPayment() && (
                   <div>
                     <label className="block mb-1 text-xs font-medium text-gray-700 dark:text-gray-300">
                       Bank Account <span className="text-red-600">*</span>
@@ -2050,57 +2125,115 @@ export default function POSPage() {
               <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(total, 2)}</p>
             </div>
 
-            <div className="mb-4">
-              <label className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => {
-                    setPaymentMethod('Cash')
-                    setSelectedBankAccount('')
-                  }}
-                  className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
-                    paymentMethod === 'Cash'
-                      ? 'bg-cyan-600 text-white border-cyan-600'
-                      : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:hover:bg-[#2a2a2a] dark:text-gray-300'
-                  }`}
-                >
-                  Cash
-                </button>
-                <button
-                  onClick={() => {
-                    setPaymentMethod('Digital')
-                    setIsCustomerSectionExpanded(true)
-                    requestAnimationFrame(() => {
-                      const customerNameInput = document.getElementById('customer-name-input') as HTMLInputElement | null
-                      customerNameInput?.focus()
-                    })
-                  }}
-                  className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
-                    paymentMethod === 'Digital'
-                      ? 'bg-cyan-600 text-white border-cyan-600'
-                      : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:hover:bg-[#2a2a2a] dark:text-gray-300'
-                  }`}
-                >
-                  Digital
-                </button>
-              </div>
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Split Payment</span>
+              <button
+                onClick={() => {
+                  setIsSplitPayment((prev) => !prev)
+                  setAmountPaid('')
+                  setCashPaid('')
+                  setDigitalPaid('')
+                }}
+                className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                  isSplitPayment
+                    ? 'bg-cyan-600 text-white border-cyan-600'
+                    : 'bg-white border-gray-300 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300'
+                }`}
+              >
+                {isSplitPayment ? 'On' : 'Off'}
+              </button>
             </div>
 
-            <div className="mb-4">
-              <label htmlFor="amountPaid" className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
-                Amount Paid
-              </label>
-              <input
-                id="amountPaid"
-                type="number"
-                step="0.01"
-                min="0"
-                value={amountPaid}
-                onChange={(e) => setAmountPaid(e.target.value)}
-                className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
-                placeholder="0.00"
-              />
-            </div>
+            {!isSplitPayment ? (
+              <div className="mb-4">
+                <label className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setPaymentMethod('Cash')
+                      setSelectedBankAccount('')
+                    }}
+                    className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
+                      paymentMethod === 'Cash'
+                        ? 'bg-cyan-600 text-white border-cyan-600'
+                        : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:hover:bg-[#2a2a2a] dark:text-gray-300'
+                    }`}
+                  >
+                    Cash
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPaymentMethod('Digital')
+                      setIsCustomerSectionExpanded(true)
+                      requestAnimationFrame(() => {
+                        const customerNameInput = document.getElementById('customer-name-input') as HTMLInputElement | null
+                        customerNameInput?.focus()
+                      })
+                    }}
+                    className={`px-4 py-2.5 rounded-lg border transition-colors font-medium ${
+                      paymentMethod === 'Digital'
+                        ? 'bg-cyan-600 text-white border-cyan-600'
+                        : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:hover:bg-[#2a2a2a] dark:text-gray-300'
+                    }`}
+                  >
+                    Digital
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <label className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">Split Amounts</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label htmlFor="cashPaid" className="block mb-1 text-[11px] text-gray-500 dark:text-gray-400">Cash</label>
+                    <input
+                      id="cashPaid"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={cashPaid}
+                      onChange={(e) => setCashPaid(e.target.value)}
+                      className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="digitalPaid" className="block mb-1 text-[11px] text-gray-500 dark:text-gray-400">Digital</label>
+                    <input
+                      id="digitalPaid"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={digitalPaid}
+                      onChange={(e) => setDigitalPaid(e.target.value)}
+                      className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Total Paid: {formatCurrency(getPaidTotal(), 2)}
+                </p>
+              </div>
+            )}
+
+            {!isSplitPayment && (
+              <div className="mb-4">
+                <label htmlFor="amountPaid" className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Amount Paid
+                </label>
+                <input
+                  id="amountPaid"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={amountPaid}
+                  onChange={(e) => setAmountPaid(e.target.value)}
+                  className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
+                  placeholder="0.00"
+                />
+              </div>
+            )}
 
             <div className="mb-4">
               <label htmlFor="saleDescription" className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -2121,7 +2254,7 @@ export default function POSPage() {
               )}
             </div>
 
-            {amountPaid && parseFloat(amountPaid) >= total && (
+            {getPaidTotal() >= total && getPaidTotal() > 0 && (
               <div className="mb-4 p-4 border rounded-lg bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800">
                 <p className="text-xs mb-1 font-medium text-gray-600 dark:text-gray-300">Change</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(change, 2)}</p>
@@ -2130,11 +2263,14 @@ export default function POSPage() {
 
             {/* Dynamic buttons based on payment amount */}
             {(() => {
-              const paid = parseFloat(amountPaid) || 0
+              const paid = getPaidTotal()
               const lowestNegotiable = calculateLowestNegotiable()
+              const hasInputAmount = isSplitPayment
+                ? cashPaid.trim() !== '' || digitalPaid.trim() !== ''
+                : Boolean(amountPaid)
 
               // If no amount entered or cart is empty, show default button
-              if (!amountPaid || cart.length === 0) {
+              if (!hasInputAmount || cart.length === 0) {
                 return (
                   <button
                     onClick={handleProcessSale}
@@ -2231,13 +2367,13 @@ export default function POSPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(parseFloat(amountPaid) || 0, 2)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(getPaidTotal(), 2)}</span>
                 </div>
                 <div className="border-t border-gray-300 pt-2 mt-2"></div>
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-900">Remaining Amount:</span>
                   <span className="font-bold text-lg text-orange-600">
-                    {formatCurrency(calculateTotal() - (parseFloat(amountPaid) || 0), 2)}
+                    {formatCurrency(calculateTotal() - getPaidTotal(), 2)}
                   </span>
                 </div>
               </div>
@@ -2303,7 +2439,7 @@ export default function POSPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(parseFloat(amountPaid) || 0, 2)}</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(getPaidTotal(), 2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Invoice Price:</span>
@@ -2315,7 +2451,7 @@ export default function POSPage() {
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-900">Amount Due:</span>
                   <span className="font-bold text-lg text-gray-900">
-                    {formatCurrency((parseFloat(partialPaymentData.invoicePrice) || calculateTotal()) - (parseFloat(amountPaid) || 0), 2)}
+                    {formatCurrency((parseFloat(partialPaymentData.invoicePrice) || calculateTotal()) - getPaidTotal(), 2)}
                   </span>
                 </div>
               </div>

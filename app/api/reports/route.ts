@@ -115,15 +115,38 @@ async function generateSalesReport(storeId: string, filters: any) {
       query = query.eq('cashier_ref_id', cashierRefId)
     }
   }
-  if (filters.paymentMethod) {
-    query = query.eq('payment_method', filters.paymentMethod)
-  }
-
   const { data: sales, error } = await query
 
   if (error) throw error
 
   const salesRows = sales || []
+  const saleIds = salesRows.map((sale: any) => sale.id).filter((id: any) => Number.isInteger(id))
+  const paymentTotals = new Map<number, { cash: number; digital: number }>()
+
+  if (saleIds.length > 0) {
+    const { data: paymentRows, error: paymentError } = await supabaseAdmin
+      .from('payments')
+      .select('sale_id, amount, payment_method')
+      .in('sale_id', saleIds)
+
+    if (paymentError) throw paymentError
+
+    ;(paymentRows || []).forEach((payment: any) => {
+      if (!Number.isInteger(payment.sale_id)) return
+      if (payment.payment_method !== 'Cash' && payment.payment_method !== 'Digital') return
+
+      const current = paymentTotals.get(payment.sale_id) || { cash: 0, digital: 0 }
+      const amount = toSafeNumber(payment.amount)
+
+      if (payment.payment_method === 'Cash') {
+        current.cash += amount
+      } else {
+        current.digital += amount
+      }
+
+      paymentTotals.set(payment.sale_id, current)
+    })
+  }
   const cashierRefIds = [...new Set(salesRows.map((sale: any) => sale.cashier_ref_id).filter((id: any) => Number.isInteger(id)))]
   const managerIds = [...new Set(salesRows.map((sale: any) => sale.cashier_id).filter((id: any) => typeof id === 'string' && id.trim().length > 0))]
 
@@ -156,28 +179,76 @@ async function generateSalesReport(storeId: string, filters: any) {
     })
   }
 
-  const enrichedSales = salesRows.map((sale: any) => {
+  let enrichedSales = salesRows.map((sale: any) => {
     const cashierName = sale.cashier_name
       || (Number.isInteger(sale.cashier_ref_id) ? cashierNameMap.get(sale.cashier_ref_id) : null)
       || (typeof sale.cashier_id === 'string' ? managerNameMap.get(sale.cashier_id) : null)
       || null
 
+    const totals = paymentTotals.get(sale.id)
+    const cashPaid = totals?.cash || 0
+    const digitalPaid = totals?.digital || 0
+
     return {
       ...sale,
       cashier_name: cashierName,
+      cash_paid: cashPaid,
+      digital_paid: digitalPaid,
     }
   })
+
+  if (filters.paymentMethod) {
+    enrichedSales = enrichedSales.filter((sale: any) => {
+      const cashPaid = toSafeNumber(sale.cash_paid)
+      const digitalPaid = toSafeNumber(sale.digital_paid)
+
+      if (filters.paymentMethod === 'Cash') {
+        return cashPaid > 0 || (cashPaid === 0 && digitalPaid === 0 && sale.payment_method === 'Cash')
+      }
+
+      if (filters.paymentMethod === 'Digital') {
+        return digitalPaid > 0 || (cashPaid === 0 && digitalPaid === 0 && sale.payment_method === 'Digital')
+      }
+
+      if (filters.paymentMethod === 'Mixed') {
+        return cashPaid > 0 && digitalPaid > 0
+      }
+
+      return sale.payment_method === filters.paymentMethod
+    })
+  }
 
   // Calculate statistics
   const totalSales = enrichedSales.length || 0
   const totalRevenue = enrichedSales.reduce((sum, sale) => sum + toSafeNumber(sale.total_amount), 0)
-  const totalCash = enrichedSales
-    .filter((sale: any) => sale.payment_method === 'Cash')
-    .reduce((sum: number, sale: any) => sum + getReceivedAmount(sale), 0)
-  const totalDigital = enrichedSales
-    .filter((sale: any) => sale.payment_method === 'Digital')
-    .reduce((sum: number, sale: any) => sum + getReceivedAmount(sale), 0)
-  const totalReceived = enrichedSales.reduce((sum, sale) => sum + getReceivedAmount(sale), 0)
+  const totalCash = enrichedSales.reduce((sum: number, sale: any) => {
+    const cashPaid = toSafeNumber(sale.cash_paid)
+    const digitalPaid = toSafeNumber(sale.digital_paid)
+
+    if (cashPaid > 0 || digitalPaid > 0) {
+      return sum + cashPaid
+    }
+
+    return sale.payment_method === 'Cash' ? sum + getReceivedAmount(sale) : sum
+  }, 0)
+  const totalDigital = enrichedSales.reduce((sum: number, sale: any) => {
+    const cashPaid = toSafeNumber(sale.cash_paid)
+    const digitalPaid = toSafeNumber(sale.digital_paid)
+
+    if (cashPaid > 0 || digitalPaid > 0) {
+      return sum + digitalPaid
+    }
+
+    return sale.payment_method === 'Digital' ? sum + getReceivedAmount(sale) : sum
+  }, 0)
+  const totalReceived = enrichedSales.reduce((sum: number, sale: any) => {
+    const cashPaid = toSafeNumber(sale.cash_paid)
+    const digitalPaid = toSafeNumber(sale.digital_paid)
+    if (cashPaid > 0 || digitalPaid > 0) {
+      return sum + cashPaid + digitalPaid
+    }
+    return sum + getReceivedAmount(sale)
+  }, 0)
   const avgOrderValue = totalSales > 0 ? totalRevenue / totalSales : 0
 
   // Group by period if specified

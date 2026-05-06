@@ -88,6 +88,8 @@ export async function POST(request: NextRequest) {
       supplier_name = '',
       supplier_phone = '',
       payment_method = 'Cash', // Payment method: Cash or Digital
+      payments,
+      bank_account_name,
       recorded_by,
       recorded_by_cashier_id,
     } = body
@@ -114,8 +116,99 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Ensure payment_method is always valid (default to 'Cash' if undefined/null)
-    const validPaymentMethod = payment_method || 'Cash'
+    const normalizedBankAccountName =
+      typeof bank_account_name === 'string' ? bank_account_name.trim() : ''
+    const paymentSplits = Array.isArray(payments) ? payments : []
+    let cashPaid = 0
+    let digitalPaid = 0
+    let splitBankAccountName = ''
+    let hasPaymentSplits = false
+
+    for (const payment of paymentSplits) {
+      const method = payment?.payment_method || payment?.method
+      const amount = Number(payment?.amount)
+
+      if (!method) continue
+
+      if (!['Cash', 'Digital'].includes(method)) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid payment method in split payments' },
+          { status: 400 }
+        )
+      }
+
+      if (!Number.isFinite(amount) || amount < 0) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid payment amount in split payments' },
+          { status: 400 }
+        )
+      }
+
+      if (amount <= 0) continue
+
+      hasPaymentSplits = true
+
+      if (method === 'Cash') {
+        cashPaid += amount
+      } else {
+        digitalPaid += amount
+        const bankName = typeof payment?.bank_account_name === 'string'
+          ? payment.bank_account_name.trim()
+          : ''
+
+        if (bankName) {
+          if (splitBankAccountName && splitBankAccountName !== bankName) {
+            return NextResponse.json(
+              { success: false, error: 'Only one bank account can be used for digital split payments' },
+              { status: 400 }
+            )
+          }
+          splitBankAccountName = bankName
+        }
+      }
+    }
+
+    const normalizedPaymentMethod =
+      typeof payment_method === 'string' && ['Cash', 'Digital', 'Mixed'].includes(payment_method)
+        ? payment_method
+        : 'Cash'
+
+    if (!hasPaymentSplits && normalizedPaymentMethod === 'Mixed') {
+      return NextResponse.json(
+        { success: false, error: 'Invalid payment method' },
+        { status: 400 }
+      )
+    }
+
+    const requiresDigitalDetails = digitalPaid > 0 || normalizedPaymentMethod === 'Digital'
+    const resolvedBankAccountName = splitBankAccountName || normalizedBankAccountName
+
+    if (requiresDigitalDetails && !resolvedBankAccountName) {
+      return NextResponse.json(
+        { success: false, error: 'Bank account is required for Digital payment' },
+        { status: 400 }
+      )
+    }
+
+    if (requiresDigitalDetails) {
+      const { data: matchingBankAccounts, error: bankAccountLookupError } = await supabaseAdmin
+        .from('store_bank_accounts')
+        .select('id')
+        .eq('store_id', store_id)
+        .eq('account_name', resolvedBankAccountName)
+        .limit(1)
+
+      if (bankAccountLookupError) {
+        throw bankAccountLookupError
+      }
+
+      if (!matchingBankAccounts || matchingBankAccounts.length === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Selected bank account is not configured for this store' },
+          { status: 400 }
+        )
+      }
+    }
 
     // Generate batch number
     const { data: batchNumber, error: batchError } = await supabaseAdmin
@@ -131,7 +224,28 @@ export async function POST(request: NextRequest) {
 
     // Create stock batch
     const totalAmount = cost_price * quantity_purchased
-    const paidAmount = parseFloat(amount_paid.toString()) || 0
+    const paidAmount = hasPaymentSplits
+      ? cashPaid + digitalPaid
+      : parseFloat(amount_paid.toString()) || 0
+
+    if (paidAmount < 0 || paidAmount > totalAmount) {
+      return NextResponse.json(
+        { success: false, error: 'Amount paid cannot exceed total amount' },
+        { status: 400 }
+      )
+    }
+
+    let batchPaymentMethod = normalizedPaymentMethod
+
+    if (hasPaymentSplits) {
+      if (cashPaid > 0 && digitalPaid > 0) {
+        batchPaymentMethod = 'Mixed'
+      } else if (digitalPaid > 0) {
+        batchPaymentMethod = 'Digital'
+      } else if (cashPaid > 0) {
+        batchPaymentMethod = 'Cash'
+      }
+    }
     
     const { data: batch, error } = await supabaseAdmin
       .from('stock_batches')
@@ -148,7 +262,7 @@ export async function POST(request: NextRequest) {
         is_depleted: false,
         is_initial_stock, // Mark as initial stock (won't create expense via trigger)
         purchase_date: new Date().toISOString(),
-        payment_method: validPaymentMethod, // Store payment method (validated)
+        payment_method: batchPaymentMethod, // Store payment method (validated)
         amount_paid: paidAmount, // Amount actually paid to supplier
       })
       .select()
@@ -202,6 +316,56 @@ export async function POST(request: NextRequest) {
 
       if (recordError && recordError.code !== '42P01') {
         console.error('Error creating inventory purchase record:', recordError)
+      }
+    }
+
+    if (batch?.id && paidAmount > 0) {
+      const paymentRows: any[] = []
+
+      if (hasPaymentSplits) {
+        if (cashPaid > 0) {
+          paymentRows.push({
+            stock_batch_id: batch.id,
+            store_id,
+            payment_method: 'Cash',
+            amount: cashPaid,
+            bank_account_name: null,
+            recorded_by: recorded_by || null,
+            recorded_by_cashier_id: recorded_by_cashier_id || null,
+          })
+        }
+
+        if (digitalPaid > 0) {
+          paymentRows.push({
+            stock_batch_id: batch.id,
+            store_id,
+            payment_method: 'Digital',
+            amount: digitalPaid,
+            bank_account_name: resolvedBankAccountName,
+            recorded_by: recorded_by || null,
+            recorded_by_cashier_id: recorded_by_cashier_id || null,
+          })
+        }
+      } else {
+        paymentRows.push({
+          stock_batch_id: batch.id,
+          store_id,
+          payment_method: batchPaymentMethod,
+          amount: paidAmount,
+          bank_account_name: batchPaymentMethod === 'Digital' ? resolvedBankAccountName : null,
+          recorded_by: recorded_by || null,
+          recorded_by_cashier_id: recorded_by_cashier_id || null,
+        })
+      }
+
+      if (paymentRows.length > 0) {
+        const { error: paymentError } = await supabaseAdmin
+          .from('inventory_purchase_payments')
+          .insert(paymentRows)
+
+        if (paymentError) {
+          console.error('Error creating inventory purchase payments:', paymentError)
+        }
       }
     }
 

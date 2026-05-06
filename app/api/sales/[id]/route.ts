@@ -88,11 +88,11 @@ export async function PUT(
     const updateData: any = {}
     
     if (payment_method !== undefined) {
-      if (!['Cash', 'Digital'].includes(payment_method)) {
+      if (!['Cash', 'Digital', 'Mixed'].includes(payment_method)) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Invalid payment method. Must be Cash or Digital.',
+            error: 'Invalid payment method. Must be Cash, Digital, or Mixed.',
             code: 'VALIDATION_ERROR',
           },
           { status: 400 }

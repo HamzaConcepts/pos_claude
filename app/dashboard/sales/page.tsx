@@ -129,6 +129,46 @@ export default function SalesPage() {
     }
   }
 
+  const getPaymentBreakdown = (sale: any) => {
+    let cashPaid = 0
+    let digitalPaid = 0
+
+    if (Array.isArray(sale.payments) && sale.payments.length > 0) {
+      sale.payments.forEach((payment: any) => {
+        const amount = Number(payment.amount || 0)
+        if (payment.payment_method === 'Cash') {
+          cashPaid += amount
+        } else if (payment.payment_method === 'Digital') {
+          digitalPaid += amount
+        }
+      })
+    } else if (sale.payment_method === 'Digital') {
+      digitalPaid = Number(sale.amount_paid || sale.total_amount || 0)
+    } else if (sale.payment_method === 'Cash') {
+      cashPaid = Number(sale.amount_paid || sale.total_amount || 0)
+    }
+
+    return { cashPaid, digitalPaid }
+  }
+
+  const getDisplayPaymentMethod = (sale: any) => {
+    const { cashPaid, digitalPaid } = getPaymentBreakdown(sale)
+
+    if (cashPaid > 0 && digitalPaid > 0) {
+      return 'Mixed'
+    }
+
+    if (digitalPaid > 0) {
+      return 'Digital'
+    }
+
+    if (cashPaid > 0) {
+      return 'Cash'
+    }
+
+    return sale.payment_method || 'Cash'
+  }
+
   const fetchSales = async () => {
     try {
       setLoading(true)
@@ -142,6 +182,7 @@ export default function SalesPage() {
 
       const response = await fetch(`/api/sales?store_id=${storeId}`)
       const result = await response.json()
+
 
       if (result.success) {
         setSales(result.data)
@@ -259,11 +300,27 @@ export default function SalesPage() {
 
     // Filter by payment method
     if (selectedPaymentMethod) {
-      filtered = filtered.filter(sale => sale.payment_method === selectedPaymentMethod)
+      filtered = filtered.filter(sale => {
+        const { cashPaid, digitalPaid } = getPaymentBreakdown(sale)
+
+        if (selectedPaymentMethod === 'Mixed') {
+          return cashPaid > 0 && digitalPaid > 0
+        }
+
+        if (selectedPaymentMethod === 'Cash') {
+          return cashPaid > 0 || (cashPaid === 0 && digitalPaid === 0 && sale.payment_method === 'Cash')
+        }
+
+        if (selectedPaymentMethod === 'Digital') {
+          return digitalPaid > 0 || (cashPaid === 0 && digitalPaid === 0 && sale.payment_method === 'Digital')
+        }
+
+        return sale.payment_method === selectedPaymentMethod
+      })
     }
 
-    // Filter by bank account (digital payments only)
-    if (selectedPaymentMethod === 'Digital' && selectedBankAccount) {
+    // Filter by bank account (digital or mixed payments only)
+    if ((selectedPaymentMethod === 'Digital' || selectedPaymentMethod === 'Mixed') && selectedBankAccount) {
       filtered = filtered.filter(sale => sale.bank_account_name === selectedBankAccount)
     }
 
@@ -289,7 +346,7 @@ export default function SalesPage() {
 
   const handleEdit = (sale: any) => {
     setEditingSale(sale)
-    setEditPaymentMethod(sale.payment_method || 'Cash')
+    setEditPaymentMethod(getDisplayPaymentMethod(sale) || 'Cash')
     setEditPaymentStatus(sale.payment_status === 'Pending' ? 'Partial' : sale.payment_status || 'Paid')
     setEditNotes(sale.notes || '')
     setShowEditModal(true)
@@ -464,7 +521,8 @@ export default function SalesPage() {
   const receiptBankAccount =
     typeof receiptSale?.bank_account_name === 'string' ? receiptSale.bank_account_name.trim() : ''
   const showReceiptDigitalCustomer =
-    receiptSale?.payment_method === 'Digital' && (receiptCustomerName || receiptCustomerPhone || receiptBankAccount)
+    (receiptSale?.payment_method === 'Digital' || receiptSale?.payment_method === 'Mixed')
+      && (receiptCustomerName || receiptCustomerPhone || receiptBankAccount)
 
   if (loading) {
     return <SalesSkeleton />
@@ -509,6 +567,7 @@ export default function SalesPage() {
           <div>
             <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-400">Cashier</label>
             <select
+              title="Filter by cashier"
               value={selectedCashier}
               onChange={(e) => setSelectedCashier(e.target.value)}
               className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300"
@@ -526,6 +585,7 @@ export default function SalesPage() {
           <div>
             <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Product</label>
             <select
+              title="Filter by product"
               value={selectedProduct}
               onChange={(e) => setSelectedProduct(e.target.value)}
               className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -543,11 +603,12 @@ export default function SalesPage() {
           <div>
             <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Payment Method</label>
             <select
+              title="Filter by payment method"
               value={selectedPaymentMethod}
               onChange={(e) => {
                 const method = e.target.value
                 setSelectedPaymentMethod(method)
-                if (method !== 'Digital') {
+                if (method !== 'Digital' && method !== 'Mixed') {
                   setSelectedBankAccount('')
                 }
               }}
@@ -556,11 +617,12 @@ export default function SalesPage() {
               <option value="">All Methods</option>
               <option value="Cash">Cash</option>
               <option value="Digital">Digital</option>
+              <option value="Mixed">Mixed</option>
             </select>
           </div>
 
           {/* Digital Bank Account Filter */}
-          {selectedPaymentMethod === 'Digital' && (
+          {(selectedPaymentMethod === 'Digital' || selectedPaymentMethod === 'Mixed') && (
             <div>
               <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Bank Account</label>
               <select
@@ -584,6 +646,7 @@ export default function SalesPage() {
           <div>
             <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Payment Status</label>
             <select
+              title="Filter by payment status"
               value={selectedPaymentStatus}
               onChange={(e) => setSelectedPaymentStatus(e.target.value)}
               className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -598,6 +661,7 @@ export default function SalesPage() {
           <div>
             <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-400">Start Date</label>
             <input
+              title="Start date"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -609,6 +673,7 @@ export default function SalesPage() {
           <div>
             <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-400">End Date</label>
             <input
+              title="End date"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -669,8 +734,31 @@ export default function SalesPage() {
                       : '')
                   const digitalBankAccount =
                     typeof sale.bank_account_name === 'string' ? sale.bank_account_name.trim() : ''
+                  const digitalPaymentBankAccounts = (() => {
+                    const accounts = new Set<string>()
+
+                    if (digitalBankAccount) {
+                      accounts.add(digitalBankAccount)
+                    }
+
+                    if (Array.isArray(sale.payments)) {
+                      sale.payments.forEach((payment: any) => {
+                        if (payment.payment_method === 'Digital' && typeof payment.bank_account_name === 'string') {
+                          const bankName = payment.bank_account_name.trim()
+                          if (bankName) {
+                            accounts.add(bankName)
+                          }
+                        }
+                      })
+                    }
+
+                    return Array.from(accounts)
+                  })()
+                  const paymentBreakdown = getPaymentBreakdown(sale)
+                  const paymentDisplayMethod = getDisplayPaymentMethod(sale)
                   const showDigitalCustomerDetails =
-                    sale.payment_method === 'Digital' && (digitalCustomerName || digitalCustomerPhone || digitalBankAccount)
+                    paymentBreakdown.digitalPaid > 0
+                    && (digitalCustomerName || digitalCustomerPhone || digitalBankAccount || digitalPaymentBankAccounts.length > 0)
                   const partialRemaining = Number(partialPaymentCustomer?.amount_remaining || 0)
                   const isKhaataCleared = Boolean(partialPaymentCustomer) && partialRemaining <= 0.01
 
@@ -714,12 +802,17 @@ export default function SalesPage() {
                         </td>
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-700 dark:text-gray-300">
-                            {sale.payment_method === 'Cash' ? (
+                            {paymentDisplayMethod === 'Cash' ? (
                               <CurrencyDollarIcon size={14} />
-                            ) : (
+                            ) : paymentDisplayMethod === 'Digital' ? (
                               <CreditCardIcon size={14} />
+                            ) : (
+                              <span className="inline-flex items-center gap-1">
+                                <CurrencyDollarIcon size={14} />
+                                <CreditCardIcon size={14} />
+                              </span>
                             )}
-                            {sale.payment_method}
+                            {paymentDisplayMethod}
                           </span>
                         </td>
                         <td className="px-3 py-2.5 text-center hidden md:table-cell">
@@ -760,12 +853,17 @@ export default function SalesPage() {
                                   <div>
                                     <span className="text-gray-600 dark:text-gray-400">Payment:</span>
                                     <span className="ml-2 inline-flex items-center gap-1 text-gray-900 dark:text-white">
-                                      {sale.payment_method === 'Cash' ? (
+                                      {paymentDisplayMethod === 'Cash' ? (
                                         <CurrencyDollarIcon size={12} />
-                                      ) : (
+                                      ) : paymentDisplayMethod === 'Digital' ? (
                                         <CreditCardIcon size={12} />
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1">
+                                          <CurrencyDollarIcon size={12} />
+                                          <CreditCardIcon size={12} />
+                                        </span>
                                       )}
-                                      {sale.payment_method}
+                                      {paymentDisplayMethod}
                                     </span>
                                   </div>
                                   <div>
@@ -863,7 +961,9 @@ export default function SalesPage() {
                                     </div>
                                     <div>
                                       <p className="text-xs text-blue-700 dark:text-blue-400">Bank Account</p>
-                                      <p className="font-medium text-blue-900 dark:text-blue-200">{digitalBankAccount || '-'}</p>
+                                      <p className="font-medium text-blue-900 dark:text-blue-200">
+                                        {digitalPaymentBankAccounts.join(', ') || digitalBankAccount || '-'}
+                                      </p>
                                     </div>
                                   </div>
                                 </div>
@@ -1080,6 +1180,8 @@ export default function SalesPage() {
                   setEditingSale(null)
                   setEditError('')
                 }}
+                title="Close edit modal"
+                aria-label="Close edit modal"
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <XIcon size={20} />
@@ -1120,12 +1222,14 @@ export default function SalesPage() {
                   Payment Method <span className="text-red-600">*</span>
                 </label>
                 <select
+                  title="Edit payment method"
                   value={editPaymentMethod}
                   onChange={(e) => setEditPaymentMethod(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
                   <option value="Cash">Cash</option>
                   <option value="Digital">Digital</option>
+                    <option value="Mixed">Mixed</option>
                 </select>
               </div>
 
@@ -1134,6 +1238,7 @@ export default function SalesPage() {
                   Payment Status <span className="text-red-600">*</span>
                 </label>
                 <select
+                  title="Edit payment status"
                   value={editPaymentStatus}
                   onChange={(e) => setEditPaymentStatus(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -1204,6 +1309,7 @@ export default function SalesPage() {
                   Period Type <span className="text-red-600">*</span>
                 </label>
                 <select
+                  title="Report period"
                   value={pdfPeriod}
                   onChange={(e) => setPdfPeriod(e.target.value as 'day' | 'month' | 'year')}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
@@ -1218,6 +1324,7 @@ export default function SalesPage() {
                   {pdfPeriod === 'day' ? 'Select Date' : pdfPeriod === 'month' ? 'Select Month' : 'Select Year'} <span className="text-red-600">*</span>
                 </label>
                 <input
+                  title="Report date"
                   type={pdfPeriod === 'year' ? 'number' : pdfPeriod === 'month' ? 'month' : 'date'}
                   value={pdfPeriod === 'year' ? new Date(pdfDate).getFullYear() : pdfDate}
                   onChange={(e) => {
@@ -1242,6 +1349,7 @@ export default function SalesPage() {
                     Cashier Name
                   </label>
                   <select
+                    title="Filter by cashier"
                     value={pdfCashierId}
                     onChange={(e) => setPdfCashierId(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
@@ -1266,6 +1374,7 @@ export default function SalesPage() {
                     Customer Name
                   </label>
                   <select
+                    title="Filter by customer"
                     value={pdfCustomerId}
                     onChange={(e) => setPdfCustomerId(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
@@ -1333,6 +1442,8 @@ export default function SalesPage() {
                   setShowReceiptModal(false)
                   setReceiptSale(null)
                 }}
+                title="Close receipt"
+                aria-label="Close receipt"
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               >
                 <XIcon size={20} />

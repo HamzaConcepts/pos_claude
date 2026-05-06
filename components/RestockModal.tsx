@@ -10,6 +10,12 @@ interface RestockModalProps {
   isInitialStock?: boolean // Flag to mark stock as initial (not counted as expense)
 }
 
+interface BankAccount {
+  id: number
+  store_id: number
+  account_name: string
+}
+
 export default function RestockModal({ onClose, isInitialStock = false }: RestockModalProps) {
   const [allProducts, setAllProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -34,11 +40,18 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
   const [error, setError] = useState('')
   const [searching, setSearching] = useState(true)
   const [userRole, setUserRole] = useState<string>('')
+  const [isSplitPayment, setIsSplitPayment] = useState(false)
+  const [cashPaid, setCashPaid] = useState('')
+  const [digitalPaid, setDigitalPaid] = useState('')
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [bankAccountsLoading, setBankAccountsLoading] = useState(false)
+  const [selectedBankAccount, setSelectedBankAccount] = useState('')
 
   useEffect(() => {
     fetchAllProducts()
     fetchSuppliers()
     checkUserRole()
+    fetchBankAccounts()
   }, [])
 
   const checkUserRole = () => {
@@ -91,6 +104,25 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
       }
     } catch (err) {
       console.error('Error fetching suppliers:', err)
+    }
+  }
+
+  const fetchBankAccounts = async () => {
+    try {
+      setBankAccountsLoading(true)
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/bank-accounts?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setBankAccounts(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch bank accounts:', err)
+    } finally {
+      setBankAccountsLoading(false)
     }
   }
 
@@ -153,6 +185,10 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
       payment_method: 'Cash',
       imei_numbers: initialIMEIs,
     })
+    setIsSplitPayment(false)
+    setCashPaid('')
+    setDigitalPaid('')
+    setSelectedBankAccount('')
     setSearchTerm('')
   }
 
@@ -176,6 +212,46 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
     const newIMEIs = [...formData.imei_numbers]
     newIMEIs[index] = value
     setFormData({ ...formData, imei_numbers: newIMEIs })
+  }
+
+  const parseAmountValue = (value: string) => {
+    const parsed = Number.parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const getPaidTotal = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(cashPaid) + parseAmountValue(digitalPaid)
+    }
+
+    return parseAmountValue(formData.amount_paid)
+  }
+
+  const hasDigitalPayment = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(digitalPaid) > 0
+    }
+
+    return formData.payment_method === 'Digital'
+  }
+
+  const getSplitPaymentMethod = () => {
+    if (!isSplitPayment) {
+      return formData.payment_method
+    }
+
+    const cashAmount = parseAmountValue(cashPaid)
+    const digitalAmount = parseAmountValue(digitalPaid)
+
+    if (cashAmount > 0 && digitalAmount > 0) {
+      return 'Mixed'
+    }
+
+    if (digitalAmount > 0) {
+      return 'Digital'
+    }
+
+    return 'Cash'
   }
 
   const addIMEIField = () => {
@@ -240,16 +316,41 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
       }
 
       // Validate payment amount
-      const amountPaid = parseFloat(formData.amount_paid || '0')
-      if (isNaN(amountPaid) || amountPaid < 0) {
+      const amountPaid = getPaidTotal()
+      const totalAmount = costPrice * quantity
+
+      if (!isSplitPayment && formData.amount_paid.trim().length === 0) {
         setError('Amount paid must be a positive number')
         setLoading(false)
         return
       }
 
-      const totalAmount = costPrice * quantity
+      if (isSplitPayment && amountPaid === 0) {
+        setError('Please enter cash or digital payment amount')
+        setLoading(false)
+        return
+      }
+
+      if (Number.isNaN(amountPaid) || amountPaid < 0) {
+        setError('Amount paid must be a positive number')
+        setLoading(false)
+        return
+      }
+
       if (amountPaid > totalAmount) {
         setError('Amount paid cannot exceed total amount')
+        setLoading(false)
+        return
+      }
+
+      if (hasDigitalPayment() && bankAccounts.length === 0) {
+        setError('No bank account found. Please add one in Store Settings before taking digital payments.')
+        setLoading(false)
+        return
+      }
+
+      if (hasDigitalPayment() && !selectedBankAccount) {
+        setError('Please select a bank account for Digital payment')
         setLoading(false)
         return
       }
@@ -311,6 +412,24 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
       }
       
       // Create stock batch (API will update product prices automatically)
+      const cashAmount = parseAmountValue(cashPaid)
+      const digitalAmount = parseAmountValue(digitalPaid)
+      const paymentMethodForBatch = getSplitPaymentMethod()
+      const paymentSplits = isSplitPayment
+        ? [
+            cashAmount > 0
+              ? { payment_method: 'Cash', amount: cashAmount }
+              : null,
+            digitalAmount > 0
+              ? {
+                  payment_method: 'Digital',
+                  amount: digitalAmount,
+                  bank_account_name: selectedBankAccount,
+                }
+              : null,
+          ].filter(Boolean)
+        : null
+
       const batchPayload = {
         product_id: selectedProduct!.id,
         store_id: storeId,
@@ -322,10 +441,12 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
         is_initial_stock: isInitialStock, // Mark as initial stock if adding from Store tab
         
         // Payment tracking for supplier khaata
-        amount_paid: parseFloat(formData.amount_paid || '0'),
+        amount_paid: amountPaid,
         supplier_name: formData.supplier_name || 'Unknown',
         supplier_phone: formData.supplier_phone || '',
-        payment_method: formData.payment_method, // Payment method (Cash/Digital)
+        payment_method: paymentMethodForBatch, // Payment method (Cash/Digital/Mixed)
+        payments: paymentSplits && paymentSplits.length > 0 ? paymentSplits : undefined,
+        bank_account_name: hasDigitalPayment() ? selectedBankAccount : null,
         recorded_by: null as string | null,
         recorded_by_cashier_id: null as number | null,
       }
@@ -405,6 +526,8 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
           </div>
           <button
             onClick={() => onClose(false)}
+            title="Close restock"
+            aria-label="Close restock"
             className="p-1 rounded transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             <XIcon size={24} />
@@ -588,66 +711,155 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                     />
                   </div>
 
-                  {/* Amount Paid to Supplier */}
-                  <div>
-                    <label htmlFor="amount_paid" className="block mb-2 font-medium dark:text-gray-300">
-                      Amount Paid to Supplier *
-                    </label>
-                    <input
-                      id="amount_paid"
-                      name="amount_paid"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.amount_paid}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
-                      required
-                    />
-                    {formData.cost_price && formData.quantity_added && (
-                      <p className="mt-1 text-xs text-text-secondary">
-                        Total: Rs. {(parseFloat(formData.cost_price) * parseInt(formData.quantity_added)).toLocaleString()}
-                      </p>
-                    )}
+                  <div className="md:col-span-2 flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Split Payment</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsSplitPayment((prev) => !prev)
+                        setCashPaid('')
+                        setDigitalPaid('')
+                        setFormData({ ...formData, amount_paid: '' })
+                        setSelectedBankAccount('')
+                      }}
+                      className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                        isSplitPayment
+                          ? 'bg-cyan-600 text-white border-cyan-600'
+                          : 'bg-white border-gray-300 text-gray-700 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'
+                      }`}
+                    >
+                      {isSplitPayment ? 'On' : 'Off'}
+                    </button>
                   </div>
 
-                  {/* Payment Method */}
-                  <div>
-                    <label htmlFor="payment_method" className="block mb-2 font-medium dark:text-gray-300">
-                      Payment Method *
-                    </label>
-                    <select
-                      id="payment_method"
-                      name="payment_method"
-                      value={formData.payment_method}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
-                      required
-                    >
-                      <option value="Cash">Cash</option>
-                      <option value="Digital">Digital (Bank Transfer)</option>
-                    </select>
-                    <p className="mt-1 text-xs text-text-secondary">
-                      How are you paying the supplier?
-                    </p>
-                  </div>
+                  {!isSplitPayment ? (
+                    <>
+                      {/* Amount Paid to Supplier */}
+                      <div>
+                        <label htmlFor="amount_paid" className="block mb-2 font-medium dark:text-gray-300">
+                          Amount Paid to Supplier *
+                        </label>
+                        <input
+                          id="amount_paid"
+                          name="amount_paid"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.amount_paid}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
+                          required
+                        />
+                        {formData.cost_price && formData.quantity_added && (
+                          <p className="mt-1 text-xs text-text-secondary">
+                            Total: Rs. {(parseFloat(formData.cost_price) * parseInt(formData.quantity_added)).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Payment Method */}
+                      <div>
+                        <label htmlFor="payment_method" className="block mb-2 font-medium dark:text-gray-300">
+                          Payment Method *
+                        </label>
+                        <select
+                          id="payment_method"
+                          name="payment_method"
+                          value={formData.payment_method}
+                          onChange={(e) => {
+                            const nextMethod = e.target.value
+                            setFormData({ ...formData, payment_method: nextMethod })
+                            if (nextMethod !== 'Digital') {
+                              setSelectedBankAccount('')
+                            }
+                          }}
+                          className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
+                          required
+                        >
+                          <option value="Cash">Cash</option>
+                          <option value="Digital">Digital (Bank Transfer)</option>
+                        </select>
+                        <p className="mt-1 text-xs text-text-secondary">
+                          How are you paying the supplier?
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label htmlFor="cash_paid" className="block mb-2 font-medium dark:text-gray-300">
+                          Cash Paid *
+                        </label>
+                        <input
+                          id="cash_paid"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={cashPaid}
+                          onChange={(e) => setCashPaid(e.target.value)}
+                          className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="digital_paid" className="block mb-2 font-medium dark:text-gray-300">
+                          Digital Paid *
+                        </label>
+                        <input
+                          id="digital_paid"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={digitalPaid}
+                          onChange={(e) => setDigitalPaid(e.target.value)}
+                          className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {hasDigitalPayment() && (
+                    <div className="md:col-span-2">
+                      <label htmlFor="bank_account" className="block mb-2 font-medium dark:text-gray-300">
+                        Bank Account *
+                      </label>
+                      <select
+                        id="bank_account"
+                        value={selectedBankAccount}
+                        onChange={(e) => setSelectedBankAccount(e.target.value)}
+                        className="w-full px-3 py-2 border-2 rounded focus:outline-none focus:ring-2 border-black focus:ring-black dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:focus:ring-gray-500"
+                      >
+                        <option value="">Select bank account</option>
+                        {bankAccounts.map((account) => (
+                          <option key={account.id} value={account.account_name}>
+                            {account.account_name}
+                          </option>
+                        ))}
+                      </select>
+                      {bankAccountsLoading && (
+                        <p className="mt-1 text-xs text-text-secondary">Loading bank accounts...</p>
+                      )}
+                      {!bankAccountsLoading && bankAccounts.length === 0 && (
+                        <p className="mt-1 text-xs text-amber-600">No bank account found. Add one in Store Settings.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Payment Status Indicator */}
-                {formData.amount_paid && formData.cost_price && formData.quantity_added && (
+                {formData.cost_price && formData.quantity_added && (
                   <div className="mt-4">
-                    {parseFloat(formData.amount_paid) < (parseFloat(formData.cost_price) * parseInt(formData.quantity_added)) ? (
+                    {getPaidTotal() < (parseFloat(formData.cost_price) * parseInt(formData.quantity_added)) ? (
                       <div className="p-3 bg-yellow-50 rounded border border-yellow-300">
                         <p className="text-sm text-yellow-800">
                           <strong>Remaining:</strong> Rs. {(
-                            (parseFloat(formData.cost_price) * parseInt(formData.quantity_added)) - parseFloat(formData.amount_paid)
+                            (parseFloat(formData.cost_price) * parseInt(formData.quantity_added)) - getPaidTotal()
                           ).toLocaleString()}
                         </p>
                         <p className="text-xs text-yellow-700 mt-1">
                           This will be tracked in Supplier Khaata
                         </p>
                       </div>
-                    ) : parseFloat(formData.amount_paid) === (parseFloat(formData.cost_price) * parseInt(formData.quantity_added)) ? (
+                    ) : getPaidTotal() === (parseFloat(formData.cost_price) * parseInt(formData.quantity_added)) ? (
                       <div className="p-3 bg-green-50 rounded border border-green-300">
                         <p className="text-sm text-green-800">
                           ✓ Full payment made
@@ -767,6 +979,8 @@ export default function RestockModal({ onClose, isInitialStock = false }: Restoc
                             <button
                               type="button"
                               onClick={() => removeIMEIField(index)}
+                              title={`Remove IMEI #${index + 1}`}
+                              aria-label={`Remove IMEI #${index + 1}`}
                               className="px-3 py-2 border rounded-lg transition-colors border-red-300 text-red-500 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-900/30"
                             >
                               <XIcon size={16} />

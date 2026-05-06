@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     // Today's sales
     const { data: todaySales } = await supabaseAdmin
       .from('sales')
-      .select('total_amount')
+      .select('id, total_amount')
       .eq('store_id', parseInt(storeId))
       .gte('sale_date', startOfToday.toISOString())
 
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     // Monthly sales
     const { data: monthlySales } = await supabaseAdmin
       .from('sales')
-      .select('total_amount, sale_date')
+      .select('id, total_amount, sale_date')
       .eq('store_id', parseInt(storeId))
       .gte('sale_date', startOfMonth.toISOString())
 
@@ -101,6 +101,37 @@ export async function GET(request: Request) {
       .order('sale_date', { ascending: false })
       .limit(10)
 
+    const todaySaleIds = (todaySales || []).map((sale: any) => sale.id).filter((id: any) => Number.isInteger(id))
+    const monthlySaleIds = (monthlySales || []).map((sale: any) => sale.id).filter((id: any) => Number.isInteger(id))
+    const recentSaleIds = (recentSales || []).map((sale: any) => sale.id).filter((id: any) => Number.isInteger(id))
+    const allSaleIds = Array.from(new Set([...todaySaleIds, ...monthlySaleIds, ...recentSaleIds]))
+    const paymentTotals = new Map<number, { cash: number; digital: number }>()
+
+    if (allSaleIds.length > 0) {
+      const { data: paymentRows, error: paymentError } = await supabaseAdmin
+        .from('payments')
+        .select('sale_id, amount, payment_method')
+        .in('sale_id', allSaleIds)
+
+      if (paymentError) throw paymentError
+
+      ;(paymentRows || []).forEach((payment: any) => {
+        if (!Number.isInteger(payment.sale_id)) return
+        if (payment.payment_method !== 'Cash' && payment.payment_method !== 'Digital') return
+
+        const current = paymentTotals.get(payment.sale_id) || { cash: 0, digital: 0 }
+        const amount = Number(payment.amount) || 0
+
+        if (payment.payment_method === 'Cash') {
+          current.cash += amount
+        } else {
+          current.digital += amount
+        }
+
+        paymentTotals.set(payment.sale_id, current)
+      })
+    }
+
     // Fetch cashier names for recent sales
     if (recentSales && recentSales.length > 0) {
       const cashierIds = [...new Set(recentSales.map(s => s.cashier_id).filter(Boolean))]
@@ -135,10 +166,18 @@ export async function GET(request: Request) {
         // Add cashier names to sales
         recentSales.forEach(sale => {
           if (sale.cashier_id) {
-            (sale as any).cashier_name = nameMap.get(sale.cashier_id) || 'Unknown'
+            ;(sale as any).cashier_name = nameMap.get(sale.cashier_id) || 'Unknown'
           }
         })
       }
+    }
+
+    if (recentSales && recentSales.length > 0) {
+      recentSales.forEach((sale: any) => {
+        const totals = paymentTotals.get(sale.id)
+        sale.cash_paid = totals?.cash || 0
+        sale.digital_paid = totals?.digital || 0
+      })
     }
 
     // Monthly expenses (excluding inventory purchases)
@@ -206,8 +245,8 @@ export async function GET(request: Request) {
       .eq('store_id', parseInt(storeId))
       .gte('sale_date', startOfMonth.toISOString())
 
-    const monthlySaleIds = new Set(salesDates?.map(s => s.id) || [])
-    const monthlyItems = saleItems?.filter(item => monthlySaleIds.has(item.sale_id)) || []
+    const monthlySaleIdSet = new Set(salesDates?.map(s => s.id) || [])
+    const monthlyItems = saleItems?.filter(item => monthlySaleIdSet.has(item.sale_id)) || []
 
     const productStats: { [key: string]: { revenue: number, quantity: number } } = {}
     monthlyItems.forEach((item: any) => {

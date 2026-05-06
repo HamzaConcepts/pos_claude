@@ -14,6 +14,8 @@ interface InventoryPurchase {
   total_amount?: number
   amount_paid?: number
   amount_remaining?: number
+  cash_paid?: number
+  digital_paid?: number
   category: string
   payment_method?: string
   expense_date: string
@@ -45,6 +47,25 @@ const getCategoryStyle = (category: string): string => {
     return 'bg-gray-100 border-gray-300 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
   }
   return 'bg-gray-100 border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
+}
+
+const getPaymentDisplay = (purchase: InventoryPurchase): string => {
+  const cashPaid = Number(purchase.cash_paid || 0)
+  const digitalPaid = Number(purchase.digital_paid || 0)
+
+  if (cashPaid > 0 && digitalPaid > 0) {
+    return 'Mixed'
+  }
+
+  if (digitalPaid > 0) {
+    return 'Digital'
+  }
+
+  if (cashPaid > 0) {
+    return 'Cash'
+  }
+
+  return purchase.payment_method || 'Unknown'
 }
 
 export default function InventoryPurchasesPage() {
@@ -96,7 +117,7 @@ export default function InventoryPurchasesPage() {
     ].some((value) => typeof value === 'string' && value.toLowerCase().includes(search))
 
     const matchesCategory = !categoryFilter || purchase.category === categoryFilter
-    const paymentValue = purchase.payment_method || 'Unknown'
+    const paymentValue = getPaymentDisplay(purchase)
     const matchesPayment = !paymentFilter || paymentValue === paymentFilter
 
     return matchesSearch && matchesCategory && matchesPayment
@@ -225,6 +246,7 @@ export default function InventoryPurchasesPage() {
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
           <select
+            title="Filter by type"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-[#0f0f0f] dark:border-gray-600 dark:text-white"
@@ -238,6 +260,7 @@ export default function InventoryPurchasesPage() {
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Payment</label>
           <select
+            title="Filter by payment method"
             value={paymentFilter}
             onChange={(e) => setPaymentFilter(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-[#0f0f0f] dark:border-gray-600 dark:text-white"
@@ -245,7 +268,8 @@ export default function InventoryPurchasesPage() {
             <option value="">All Payments</option>
             <option value="Cash">Cash</option>
             <option value="Digital">Digital</option>
-            <option value="Unknown">Unknown</option>
+              <option value="Mixed">Mixed</option>
+              <option value="Unknown">Unknown</option>
           </select>
         </div>
       </div>
@@ -279,11 +303,22 @@ export default function InventoryPurchasesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredPurchases.map((purchase) => (
-                  <tr
-                    key={purchase.id}
-                    className="border-b border-gray-100 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-[#0f0f0f] dark:hover:bg-gray-800"
-                  >
+                {filteredPurchases.map((purchase) => {
+                  const paymentDisplay = getPaymentDisplay(purchase)
+
+                  const paymentStyle = paymentDisplay === 'Cash'
+                    ? 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700'
+                    : paymentDisplay === 'Digital'
+                      ? 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700'
+                      : paymentDisplay === 'Mixed'
+                        ? 'bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700'
+                        : 'bg-gray-100 text-gray-600 border border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
+
+                  return (
+                    <tr
+                      key={purchase.id}
+                      className="border-b border-gray-100 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-[#0f0f0f] dark:hover:bg-gray-800"
+                    >
                     <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">
                       {new Date(purchase.expense_date).toLocaleDateString('en-PK', {
                         timeZone: 'Asia/Karachi',
@@ -323,18 +358,13 @@ export default function InventoryPurchasesPage() {
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-center">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                        purchase.payment_method === 'Cash' 
-                          ? 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700'
-                          : purchase.payment_method === 'Digital' 
-                          ? 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700'
-                          : 'bg-gray-100 text-gray-600 border border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
-                      }`}>
-                        {purchase.payment_method || 'N/A'}
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${paymentStyle}`}>
+                        {paymentDisplay}
                       </span>
                     </td>
-                  </tr>
-                ))}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
