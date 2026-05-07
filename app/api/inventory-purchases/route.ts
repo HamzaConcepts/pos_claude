@@ -63,6 +63,39 @@ export async function GET(request: Request) {
       throw error
     }
 
+    const batchIds = (rows || [])
+      .map((row: any) => Number(row.id))
+      .filter((id: number) => Number.isFinite(id))
+
+    const bankAccountsByBatch = new Map<number, Set<string>>()
+
+    if (batchIds.length > 0) {
+      const { data: paymentRows, error: paymentError } = await supabaseAdmin
+        .from('inventory_purchase_payments')
+        .select('stock_batch_id, payment_method, bank_account_name')
+        .eq('store_id', parseInt(storeId))
+        .in('stock_batch_id', batchIds)
+
+      if (paymentError) {
+        console.error('Error fetching inventory purchase payments:', paymentError)
+      } else {
+        ;(paymentRows || []).forEach((payment: any) => {
+          if (payment.payment_method !== 'Digital') return
+          if (typeof payment.bank_account_name !== 'string') return
+
+          const bankName = payment.bank_account_name.trim()
+          if (!bankName) return
+
+          const batchId = Number(payment.stock_batch_id)
+          if (!Number.isFinite(batchId)) return
+
+          const bankSet = bankAccountsByBatch.get(batchId) || new Set<string>()
+          bankSet.add(bankName)
+          bankAccountsByBatch.set(batchId, bankSet)
+        })
+      }
+    }
+
     const earliestBatchByProduct = new Map<number, { id: number; purchase_date: string | null }>()
     ;(rows || []).forEach((row: any) => {
       const productId = Number(row.product_id)
@@ -105,6 +138,8 @@ export async function GET(request: Request) {
             ? `New Product: ${productName} (Qty: ${row.quantity_purchased || 0})`
             : `Restock: ${productName} - Batch #${batchNumber} (Qty: ${row.quantity_purchased || 0})`
 
+        const bankAccounts = bankAccountsByBatch.get(Number(row.id))
+
         return {
           id: row.id,
           description,
@@ -114,6 +149,7 @@ export async function GET(request: Request) {
           amount_remaining: amountRemaining,
           cash_paid: cashPaid,
           digital_paid: digitalPaid,
+          digital_bank_accounts: bankAccounts ? Array.from(bankAccounts) : [],
           category,
           payment_method: row.payment_method || null,
           expense_date: row.purchase_date,

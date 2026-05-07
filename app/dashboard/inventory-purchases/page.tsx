@@ -16,6 +16,7 @@ interface InventoryPurchase {
   amount_remaining?: number
   cash_paid?: number
   digital_paid?: number
+  digital_bank_accounts?: string[]
   category: string
   payment_method?: string
   expense_date: string
@@ -49,7 +50,7 @@ const getCategoryStyle = (category: string): string => {
   return 'bg-gray-100 border-gray-200 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
 }
 
-const getPaymentDisplay = (purchase: InventoryPurchase): string => {
+const getPaymentType = (purchase: InventoryPurchase): string => {
   const cashPaid = Number(purchase.cash_paid || 0)
   const digitalPaid = Number(purchase.digital_paid || 0)
 
@@ -66,6 +67,20 @@ const getPaymentDisplay = (purchase: InventoryPurchase): string => {
   }
 
   return purchase.payment_method || 'Unknown'
+}
+
+const getPaymentDisplay = (purchase: InventoryPurchase): string => {
+  const paymentType = getPaymentType(purchase)
+
+  if (paymentType === 'Digital') {
+    const bankAccounts = Array.isArray(purchase.digital_bank_accounts)
+      ? purchase.digital_bank_accounts.filter(Boolean)
+      : []
+
+    return bankAccounts.length > 0 ? bankAccounts.join(', ') : 'Digital'
+  }
+
+  return paymentType
 }
 
 export default function InventoryPurchasesPage() {
@@ -117,8 +132,8 @@ export default function InventoryPurchasesPage() {
     ].some((value) => typeof value === 'string' && value.toLowerCase().includes(search))
 
     const matchesCategory = !categoryFilter || purchase.category === categoryFilter
-    const paymentValue = getPaymentDisplay(purchase)
-    const matchesPayment = !paymentFilter || paymentValue === paymentFilter
+    const paymentType = getPaymentType(purchase)
+    const matchesPayment = !paymentFilter || paymentType === paymentFilter
 
     return matchesSearch && matchesCategory && matchesPayment
   })
@@ -288,29 +303,30 @@ export default function InventoryPurchasesPage() {
             No inventory purchases yet. Add stock in the Products page to see entries here.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto w-full max-w-full">
+            <table className="w-full table-fixed">
               <thead className="border-b bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
                 <tr>
-                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Date</th>
-                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Description</th>
-                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Type</th>
-                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Supplier</th>
-                  <th className="px-3 py-2.5 text-left text-sm font-semibold">Recorded By</th>
-                  <th className="px-3 py-2.5 text-right text-sm font-semibold">Total</th>
-                  <th className="px-3 py-2.5 text-right text-sm font-semibold">Ledger</th>
-                  <th className="px-3 py-2.5 text-center text-sm font-semibold">Payment</th>
+                  <th className="px-4 py-2.5 text-left text-sm font-semibold">Date</th>
+                  <th className="px-4 py-2.5 text-left text-sm font-semibold">Description</th>
+                  <th className="px-4 py-2.5 text-left text-sm font-semibold hidden md:table-cell">Type</th>
+                  <th className="px-4 py-2.5 text-left text-sm font-semibold hidden md:table-cell">Supplier</th>
+                  <th className="px-4 py-2.5 text-left text-sm font-semibold hidden md:table-cell">Recorded By</th>
+                  <th className="px-4 py-2.5 text-right text-sm font-semibold">Total</th>
+                  <th className="px-4 py-2.5 text-right text-sm font-semibold hidden md:table-cell">Ledger</th>
+                  <th className="px-4 py-2.5 text-center text-sm font-semibold">Payment</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPurchases.map((purchase) => {
+                  const paymentType = getPaymentType(purchase)
                   const paymentDisplay = getPaymentDisplay(purchase)
 
-                  const paymentStyle = paymentDisplay === 'Cash'
+                  const paymentStyle = paymentType === 'Cash'
                     ? 'bg-green-100 text-green-700 border border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700'
-                    : paymentDisplay === 'Digital'
+                    : paymentType === 'Digital'
                       ? 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700'
-                      : paymentDisplay === 'Mixed'
+                      : paymentType === 'Mixed'
                         ? 'bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700'
                         : 'bg-gray-100 text-gray-600 border border-gray-300 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600'
 
@@ -319,7 +335,7 @@ export default function InventoryPurchasesPage() {
                       key={purchase.id}
                       className="border-b border-gray-100 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-[#0f0f0f] dark:hover:bg-gray-800"
                     >
-                    <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">
+                    <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-gray-300">
                       {new Date(purchase.expense_date).toLocaleDateString('en-PK', {
                         timeZone: 'Asia/Karachi',
                         month: 'short',
@@ -327,26 +343,26 @@ export default function InventoryPurchasesPage() {
                         year: 'numeric'
                       })}
                     </td>
-                    <td className="px-3 py-2.5 text-sm">
-                      <div className="text-gray-900 dark:text-gray-300">
+                    <td className="px-4 py-2.5 text-sm min-w-0">
+                      <div className="text-gray-900 dark:text-gray-300 break-words">
                         {purchase.product_display || purchase.description}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-sm">
+                    <td className="px-4 py-2.5 text-sm hidden md:table-cell">
                       <span className={`inline-block px-2 py-1 border rounded text-xs ${getCategoryStyle(purchase.category)}`}>
                         {formatCategory(purchase.category)}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">
+                    <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-gray-300 break-words hidden md:table-cell">
                       {purchase.supplier_name || '-'}
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">
+                    <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-gray-300 break-words hidden md:table-cell">
                       {purchase.recorded_by_name || 'System'}
                     </td>
-                    <td className="px-3 py-2.5 text-sm text-right font-semibold text-blue-600 dark:text-blue-400">
+                    <td className="px-4 py-2.5 text-sm text-right font-semibold text-blue-600 dark:text-blue-400">
                       {formatCurrency(purchase.total_amount ?? purchase.amount, 0)}
                     </td>
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="px-4 py-2.5 text-right hidden md:table-cell">
                       {Number(purchase.amount_remaining || 0) > 0 ? (
                         <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">
                           ⚠ Due {formatCurrency(Number(purchase.amount_remaining || 0), 0)}
@@ -357,8 +373,8 @@ export default function InventoryPurchasesPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 text-center">
-                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${paymentStyle}`}>
+                    <td className="px-4 py-2.5 text-center">
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium break-words whitespace-normal ${paymentStyle}`}>
                         {paymentDisplay}
                       </span>
                     </td>

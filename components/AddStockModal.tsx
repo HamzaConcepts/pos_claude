@@ -858,9 +858,9 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
               </div>
 
               {formData.cost_price && formData.selling_price && (
-                <div className="p-3 bg-gray-100 rounded border border-gray-300">
-                  <p className="text-sm font-medium">Price Summary:</p>
-                  <p className="text-xs text-text-secondary mt-1">
+                <div className="p-3 bg-gray-100 rounded border border-gray-300 dark:bg-gray-800 dark:border-gray-600">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Price Summary:</p>
+                  <p className="text-xs text-text-secondary mt-1 dark:text-gray-300">
                     Profit Margin: {((parseFloat(formData.selling_price) - parseFloat(formData.cost_price)) / parseFloat(formData.cost_price) * 100).toFixed(1)}%
                   </p>
                 </div>
@@ -964,16 +964,16 @@ export default function AddStockModal({ onClose, isInitialStock = false }: AddSt
                 </div>
                 
                 {showSupplierDropdown && filteredSuppliers.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border-2 border-black rounded max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white border-2 border-black rounded max-h-48 overflow-y-auto dark:bg-gray-800 dark:border-gray-600">
                     {filteredSuppliers.map((supplier) => (
                       <button
                         key={supplier.id}
                         type="button"
                         onClick={() => selectSupplier(supplier)}
-                        className="w-full px-3 py-2 text-left hover:bg-gray-100 border-b border-gray-200 last:border-b-0"
+                        className="w-full px-3 py-2 text-left hover:bg-gray-100 border-b border-gray-200 last:border-b-0 dark:hover:bg-gray-700 dark:border-gray-700"
                       >
-                        <div className="font-medium">{supplier.supplier_name}</div>
-                        <div className="text-sm text-text-secondary">{supplier.phone_number}</div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{supplier.supplier_name}</div>
+                        <div className="text-sm text-text-secondary dark:text-gray-400">{supplier.phone_number}</div>
                       </button>
                     ))}
                   </div>
