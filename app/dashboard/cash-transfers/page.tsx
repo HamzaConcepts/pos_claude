@@ -10,7 +10,7 @@ import {
   CurrencyDollarIcon,
   XIcon,
 } from '@phosphor-icons/react'
-import { getStoreId, supabase } from '@/lib/supabase'
+import { getStoreId, isManager, supabase } from '@/lib/supabase'
 import { useCurrency } from '@/lib/currency-context'
 
 interface CashTransfer {
@@ -37,6 +37,53 @@ export default function CashTransfersPage() {
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [userIsManager, setUserIsManager] = useState(false)
+  const [showBalanceEditor, setShowBalanceEditor] = useState(false)
+
+  const [balances, setBalances] = useState<{
+    cash_balance: {
+      opening_cash: number
+      updated_at: string | null
+      updated_by: string | null
+    }
+    bank_balances: Array<{
+      bank_account_id: number
+      bank_account_name: string
+      opening_balance: number
+      updated_at: string | null
+      updated_by: string | null
+    }>
+    totals: {
+      cash_total: number
+      bank_total: number
+      overall_total: number
+    }
+    computed?: {
+      cash_balance: {
+        opening_cash: number
+        current_cash: number
+      }
+      bank_balances: Array<{
+        bank_account_id: number
+        bank_account_name: string
+        opening_balance: number
+        current_balance: number
+      }>
+      totals: {
+        cash_total: number
+        bank_total: number
+        unassigned_bank_total: number
+        overall_total: number
+      }
+      computed_at: string
+    }
+  } | null>(null)
+  const [balanceForm, setBalanceForm] = useState<{ cash: string; bankBalances: Record<number, string> }>({
+    cash: '',
+    bankBalances: {},
+  })
+  const [balancesSaving, setBalancesSaving] = useState(false)
+  const [balancesError, setBalancesError] = useState('')
 
   // Balance summary
   const [cashSalesTotal, setCashSalesTotal] = useState(0)
@@ -57,13 +104,49 @@ export default function CashTransfersPage() {
   })
 
   useEffect(() => {
+    const checkRole = async () => {
+      setUserIsManager(await isManager())
+    }
+    checkRole()
     fetchAll()
   }, [])
 
   const fetchAll = async () => {
     setLoading(true)
-    await Promise.all([fetchTransfers(), fetchBankAccounts(), fetchSummaryTotals()])
+    await Promise.all([fetchTransfers(), fetchBankAccounts(), fetchSummaryTotals(), fetchBalances()])
     setLoading(false)
+  }
+
+  const fetchBalances = async () => {
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const res = await fetch(`/api/balances?store_id=${storeId}`)
+      const result = await res.json()
+      if (!result.success) {
+        setBalancesError(result.error || 'Failed to fetch balances')
+        return
+      }
+
+      const data = result.data
+      setBalances({
+        ...data,
+        computed: result.computed,
+      })
+
+      const bankBalances: Record<number, string> = {}
+      ;(data.bank_balances || []).forEach((row: any) => {
+        bankBalances[row.bank_account_id] = String(row.opening_balance ?? 0)
+      })
+
+      setBalanceForm({
+        cash: String(data.cash_balance?.opening_cash ?? 0),
+        bankBalances,
+      })
+    } catch (err: any) {
+      setBalancesError(err.message || 'Failed to fetch balances')
+    }
   }
 
   const fetchTransfers = async () => {
@@ -211,6 +294,60 @@ export default function CashTransfersPage() {
     }
   }
 
+  const handleSaveBalances = async () => {
+    if (!userIsManager) return
+    setBalancesError('')
+
+    const storeId = getStoreId()
+    if (!storeId) {
+      setBalancesError('Store ID not found. Please log in again.')
+      return
+    }
+
+    const openingCash = Number(balanceForm.cash)
+    if (!Number.isFinite(openingCash) || openingCash < 0) {
+      setBalancesError('Cash balance must be a non-negative number.')
+      return
+    }
+
+    const bankBalancesPayload = Object.entries(balanceForm.bankBalances).map(([id, value]) => ({
+      bank_account_id: Number(id),
+      opening_balance: Number(value || 0),
+    }))
+
+    const hasInvalidBank = bankBalancesPayload.some((row) => !Number.isFinite(row.opening_balance) || row.opening_balance < 0)
+    if (hasInvalidBank) {
+      setBalancesError('Bank balances must be non-negative numbers.')
+      return
+    }
+
+    setBalancesSaving(true)
+    try {
+      const updatedBy = await resolveRecordedBy()
+      const res = await fetch('/api/balances', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          store_id: storeId,
+          opening_cash: openingCash,
+          bank_balances: bankBalancesPayload,
+          updated_by: updatedBy,
+        }),
+      })
+      const result = await res.json()
+      if (!result.success) {
+        setBalancesError(result.error || 'Failed to save balances')
+        return
+      }
+
+      await fetchBalances()
+    } catch (err: any) {
+      setBalancesError(err.message || 'Failed to save balances')
+    } finally {
+      setBalancesSaving(false)
+    }
+  }
+
   const handleSubmit = async () => {
     setError('')
     const amount = parseFloat(form.transfer_amount)
@@ -300,6 +437,165 @@ export default function CashTransfersPage() {
           Record Transfer
         </button>
       </div>
+
+      {/* Manual Cash/Bank Balances */}
+      {balances && showBalanceEditor && (
+        <div className="mb-6 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Cash & Bank Balances</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Manual entries</p>
+            </div>
+            {userIsManager ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowBalanceEditor(false)}
+                  className="px-3 py-1.5 text-xs rounded border border-gray-300 text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-800"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleSaveBalances}
+                  disabled={balancesSaving}
+                  className="px-3 py-1.5 text-xs rounded border border-cyan-600 text-cyan-700 hover:bg-cyan-50 dark:text-cyan-300 dark:border-cyan-500 dark:hover:bg-cyan-900/20 disabled:opacity-50"
+                >
+                  {balancesSaving ? 'Saving...' : 'Save Balances'}
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs text-gray-400">Manager only</span>
+            )}
+          </div>
+
+          {balancesError && (
+            <div className="px-4 pt-3 text-xs text-red-600 dark:text-red-400">
+              {balancesError}
+            </div>
+          )}
+
+          <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="rounded border border-gray-200 dark:border-gray-700 p-3">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Cash in Hand</p>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={balanceForm.cash}
+                onChange={(e) => setBalanceForm((prev) => ({ ...prev, cash: e.target.value }))}
+                disabled={!userIsManager}
+                className="mt-2 w-full px-3 py-2 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white disabled:opacity-70"
+              />
+            </div>
+
+            <div className="lg:col-span-2 rounded border border-gray-200 dark:border-gray-700 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Bank Balances</p>
+                <span className="text-[11px] text-gray-400">Total: {formatCurrency(balances.totals.bank_total, 0)}</span>
+              </div>
+              {balances.bank_balances.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">No bank accounts added yet.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {balances.bank_balances.map((bank) => (
+                    <div key={bank.bank_account_id} className="border border-gray-200 dark:border-gray-700 rounded p-2">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{bank.bank_account_name}</p>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={balanceForm.bankBalances[bank.bank_account_id] ?? ''}
+                        onChange={(e) =>
+                          setBalanceForm((prev) => ({
+                            ...prev,
+                            bankBalances: {
+                              ...prev.bankBalances,
+                              [bank.bank_account_id]: e.target.value,
+                            },
+                          }))
+                        }
+                        disabled={!userIsManager}
+                        className="w-full px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white disabled:opacity-70"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="px-4 pb-4 text-xs text-gray-500 dark:text-gray-400">
+            Overall total: {formatCurrency(balances.totals.overall_total, 0)}
+          </div>
+        </div>
+      )}
+
+      {balances?.computed && (
+        <div className="mb-6 rounded-lg border border-cyan-200 bg-cyan-50/40 shadow-sm dark:bg-cyan-900/10 dark:border-cyan-700">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-cyan-200 dark:border-cyan-700">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Computed Balances</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Recalculated from historical activity</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {userIsManager && (
+                <button
+                  onClick={() => setShowBalanceEditor(true)}
+                  className="px-3 py-1.5 text-xs rounded border border-cyan-600 text-cyan-700 hover:bg-cyan-50 dark:text-cyan-300 dark:border-cyan-500 dark:hover:bg-cyan-900/20"
+                >
+                  Edit balances
+                </button>
+              )}
+              <span className="text-[11px] text-gray-400">Updated {new Date(balances.computed.computed_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
+            </div>
+          </div>
+
+          <div className="p-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="rounded border border-cyan-200 dark:border-cyan-700 p-3 bg-white/60 dark:bg-cyan-900/20">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Current Cash</p>
+              <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                {formatCurrency(balances.computed.cash_balance.current_cash, 0)}
+              </p>
+            </div>
+
+            <div className="rounded border border-cyan-200 dark:border-cyan-700 p-3 bg-white/60 dark:bg-cyan-900/20">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Current Bank Total</p>
+              <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                {formatCurrency(balances.computed.totals.bank_total, 0)}
+              </p>
+              {balances.computed.totals.unassigned_bank_total !== 0 && (
+                <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+                  Unassigned: {formatCurrency(balances.computed.totals.unassigned_bank_total, 0)}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded border border-cyan-200 dark:border-cyan-700 p-3 bg-white/60 dark:bg-cyan-900/20">
+              <p className="text-xs text-gray-500 dark:text-gray-400">Overall Total</p>
+              <p className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+                {formatCurrency(balances.computed.totals.overall_total, 0)}
+              </p>
+            </div>
+          </div>
+
+          <div className="px-4 pb-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Per-bank balances</p>
+            {balances.computed.bank_balances.length === 0 ? (
+              <p className="text-xs text-gray-500 dark:text-gray-400">No bank accounts available.</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {balances.computed.bank_balances.map((bank) => (
+                  <div key={bank.bank_account_id} className="rounded border border-cyan-200 dark:border-cyan-700 p-3 bg-white/60 dark:bg-cyan-900/20">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">{bank.bank_account_name}</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
+                      {formatCurrency(bank.current_balance, 0)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Balance Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
