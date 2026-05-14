@@ -63,39 +63,107 @@ export async function POST(request: NextRequest) {
       store_id, 
       amount, 
       payment_method, 
+      payments,
+      bank_account_name,
       notes,
       recorded_by_manager_id,
       recorded_by_cashier_id
     } = body
 
-    if (!supplier_id || !store_id || !amount) {
+    if (!supplier_id || !store_id || (!amount && !payments)) {
       return NextResponse.json(
         { success: false, error: 'Supplier ID, Store ID, and amount are required' },
         { status: 400 }
       )
     }
 
-    if (amount <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Amount must be greater than 0' },
-        { status: 400 }
-      )
+    const paymentEntries = Array.isArray(payments) ? payments : null
+    const normalizedPayments: Array<{ payment_method: 'Cash' | 'Digital'; amount: number; bank_account_name?: string | null }> = []
+
+    if (paymentEntries && paymentEntries.length > 0) {
+      for (const entry of paymentEntries) {
+        const method = entry?.payment_method === 'Cash' ? 'Cash' : entry?.payment_method === 'Digital' ? 'Digital' : null
+        const parsedAmount = Number(entry?.amount)
+        const bankName = typeof entry?.bank_account_name === 'string' ? entry.bank_account_name.trim() : ''
+
+        if (!method) {
+          return NextResponse.json(
+            { success: false, error: 'Payment method must be Cash or Digital' },
+            { status: 400 }
+          )
+        }
+
+        if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+          return NextResponse.json(
+            { success: false, error: 'Amount must be greater than 0' },
+            { status: 400 }
+          )
+        }
+
+        if (method === 'Digital' && !bankName) {
+          return NextResponse.json(
+            { success: false, error: 'Bank account is required for Digital payments' },
+            { status: 400 }
+          )
+        }
+
+        normalizedPayments.push({
+          payment_method: method,
+          amount: parsedAmount,
+          bank_account_name: method === 'Digital' ? bankName : null,
+        })
+      }
+    } else {
+      const parsedAmount = Number(amount)
+      const normalizedMethod = payment_method === 'Cash' ? 'Cash' : payment_method === 'Digital' ? 'Digital' : null
+      const bankName = typeof bank_account_name === 'string' ? bank_account_name.trim() : ''
+
+      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        return NextResponse.json(
+          { success: false, error: 'Amount must be greater than 0' },
+          { status: 400 }
+        )
+      }
+
+      if (!normalizedMethod) {
+        return NextResponse.json(
+          { success: false, error: 'Payment method must be Cash or Digital' },
+          { status: 400 }
+        )
+      }
+
+      if (normalizedMethod === 'Digital' && !bankName) {
+        return NextResponse.json(
+          { success: false, error: 'Bank account is required for Digital payments' },
+          { status: 400 }
+        )
+      }
+
+      normalizedPayments.push({
+        payment_method: normalizedMethod,
+        amount: parsedAmount,
+        bank_account_name: normalizedMethod === 'Digital' ? bankName : null,
+      })
     }
 
+    const totalPayment = normalizedPayments.reduce((sum, entry) => sum + entry.amount, 0)
+
     // Record the payment
-    const { data: payment, error: paymentError } = await supabaseAdmin
+    const { data: paymentRows, error: paymentError } = await supabaseAdmin
       .from('supplier_payments')
-      .insert({
-        supplier_id,
-        store_id,
-        amount: parseFloat(amount),
-        payment_method: payment_method || 'Cash',
-        notes: notes?.trim() || null,
-        recorded_by_manager_id,
-        recorded_by_cashier_id
-      })
+      .insert(
+        normalizedPayments.map((entry) => ({
+          supplier_id,
+          store_id,
+          amount: entry.amount,
+          payment_method: entry.payment_method,
+          bank_account_name: entry.bank_account_name || null,
+          notes: notes?.trim() || null,
+          recorded_by_manager_id,
+          recorded_by_cashier_id
+        }))
+      )
       .select()
-      .single()
 
     if (paymentError) throw paymentError
 
@@ -108,8 +176,8 @@ export async function POST(request: NextRequest) {
 
     if (supplierFetchError) throw supplierFetchError
 
-    const newBalance = (supplier.balance_owed || 0) - parseFloat(amount)
-    const newTotalPaid = (supplier.total_paid || 0) + parseFloat(amount)
+    const newBalance = (supplier.balance_owed || 0) - totalPayment
+    const newTotalPaid = (supplier.total_paid || 0) + totalPayment
 
     const { error: updateError } = await supabaseAdmin
       .from('suppliers')
@@ -124,7 +192,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      data: payment,
+      data: paymentRows,
       message: 'Payment recorded successfully' 
     })
   } catch (error: any) {

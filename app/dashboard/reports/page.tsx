@@ -19,10 +19,11 @@ import { SalesReport } from '@/components/reports/SalesReport'
 import { ExpensesReport } from '@/components/reports/ExpensesReport'
 import { InventoryReport } from '@/components/reports/InventoryReport'
 import { ProfitReport } from '@/components/reports/ProfitReport'
+import { BankTransactionsReport } from '@/components/reports/BankTransactionsReport'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface ReportFilters {
-  type: 'summary' | 'sales' | 'expenses' | 'inventory' | 'profit'
+  type: 'summary' | 'sales' | 'expenses' | 'inventory' | 'profit' | 'bank-transactions'
   period: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
   startDate: string
   endDate: string
@@ -54,6 +55,7 @@ export default function ReportsPage() {
 
   const [reportData, setReportData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [reportError, setReportError] = useState('')
   const [cashiers, setCashiers] = useState<any[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [cashierSearch, setCashierSearch] = useState('')
@@ -66,15 +68,26 @@ export default function ReportsPage() {
   // Clear report data when report type changes to avoid stale data display
   useEffect(() => {
     setReportData(null)
+    setReportError('')
   }, [filters.type, filters.startDate, filters.endDate, filters.period, filters.cashierId, filters.paymentMethod, filters.category])
 
+  useEffect(() => {
+    if (filters.type === 'bank-transactions') {
+      void generateReport()
+    }
+  }, [filters.type])
+
   const handleReportTypeChange = (type: ReportFilters['type']) => {
+    const isSummary = type === 'summary'
+    const isSales = type === 'sales'
+    const isExpenses = type === 'expenses'
+
     setFilters(prev => ({
       ...prev,
       type,
-      cashierId: type === 'sales' ? prev.cashierId : '',
-      category: type === 'expenses' ? prev.category : '',
-      paymentMethod: type === 'summary' ? prev.paymentMethod : ''
+      cashierId: isSales ? prev.cashierId : '',
+      category: isExpenses ? prev.category : '',
+      paymentMethod: isSummary ? prev.paymentMethod : ''
     }))
 
     if (type !== 'sales') {
@@ -189,10 +202,12 @@ export default function ReportsPage() {
 
   const generateReport = async (overrideFilters?: Partial<ReportFilters>) => {
     setLoading(true)
+    setReportError('')
     try {
       const storeId = getStoreId()
       if (!storeId) {
         console.error('No store ID found')
+        setReportError('Store ID not found. Please login again.')
         setLoading(false)
         return
       }
@@ -226,9 +241,15 @@ export default function ReportsPage() {
 
       if (data.success) {
         setReportData(data.data)
+        setReportError('')
+      } else {
+        setReportData(null)
+        setReportError(data.error || 'Failed to generate report')
       }
     } catch (error) {
       console.error('Error generating report:', error)
+      setReportData(null)
+      setReportError('Failed to generate report. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -259,6 +280,10 @@ export default function ReportsPage() {
       case 'inventory':
         csvContent = generateInventoryCSV(reportData)
         filename = `inventory-report-${dateLabel}.csv`
+        break
+      case 'bank-transactions':
+        csvContent = generateBankTransactionsCSV(reportData)
+        filename = `bank-transactions-${dateLabel}.csv`
         break
       default:
         csvContent = generateSummaryCSV(reportData)
@@ -317,6 +342,24 @@ export default function ReportsPage() {
       csv += `${netProfit >= 0 ? 'Net Profit' : 'Net Loss'},${netProfit}\n`
       csv += `Profit Margin,${data.profit.profitMargin}%\n`
     }
+    return csv
+  }
+
+  const generateBankTransactionsCSV = (data: any) => {
+    let csv = 'Bank,Opening Balance,Received,Paid,Net,Closing Balance,Transactions\n'
+    data.banks?.forEach((bank: any) => {
+      const opening = bank.opening_balance ?? 0
+      const closing = bank.closing_balance ?? (opening + (bank.net ?? 0))
+      csv += `${bank.bank_account_name},${opening},${bank.received ?? 0},${bank.paid ?? 0},${bank.net ?? 0},${closing},${bank.totalCount ?? 0}\n`
+    })
+
+    csv += '\nTransactions\n'
+    csv += 'Date,Bank,Direction,Amount,Source,Reference\n'
+    data.transactions?.forEach((txn: any) => {
+      const dateLabel = txn.date ? new Date(txn.date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' }) : ''
+      csv += `${dateLabel},${txn.bank_account_name},${txn.direction},${txn.amount},${txn.source},${txn.reference || ''}\n`
+    })
+
     return csv
   }
 
@@ -390,6 +433,16 @@ export default function ReportsPage() {
             }`}
           >
             Profit & Loss
+          </button>
+          <button
+            onClick={() => handleReportTypeChange('bank-transactions')}
+            className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
+              filters.type === 'bank-transactions'
+                ? 'border-black text-black dark:border-cyan-500 dark:text-cyan-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600'
+            }`}
+          >
+            Bank Transactions
           </button>
         </div>
       </div>
@@ -619,6 +672,12 @@ export default function ReportsPage() {
         </div>
       )}
 
+      {reportError && (
+        <div className="mb-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
+          {reportError}
+        </div>
+      )}
+
       <div className="mb-4 flex justify-end">
         <button
           onClick={() => void generateReport()}
@@ -803,6 +862,9 @@ export default function ReportsPage() {
           {filters.type === 'expenses' && <ExpensesReport reportData={reportData} formatCurrency={formatCurrency} />}
           {filters.type === 'inventory' && <InventoryReport reportData={reportData} formatCurrency={formatCurrency} />}
           {filters.type === 'profit' && <ProfitReport reportData={reportData} formatCurrency={formatCurrency} />}
+          {filters.type === 'bank-transactions' && (
+            <BankTransactionsReport reportData={reportData} formatCurrency={formatCurrency} />
+          )}
         </div>
       ) : (
         <div className="text-center py-12 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">

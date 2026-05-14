@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
         .eq('store_id', storeId),
       supabaseAdmin
         .from('expenses')
-        .select('amount, payment_method, category')
+        .select('amount, payment_method, bank_account_name, category')
         .eq('store_id', storeId),
       supabaseAdmin
         .from('inventory_purchase_payments')
@@ -82,15 +82,15 @@ export async function GET(request: NextRequest) {
         .eq('store_id', storeId),
       supabaseAdmin
         .from('customer_payments')
-        .select('payment_amount, payment_method')
+        .select('payment_amount, payment_method, bank_account_name')
         .eq('store_id', storeId),
       supabaseAdmin
         .from('supplier_khaata_payments')
-        .select('payment_amount, payment_method')
+        .select('payment_amount, payment_method, bank_account_name')
         .eq('store_id', storeId),
       supabaseAdmin
         .from('supplier_payments')
-        .select('amount, payment_method')
+        .select('amount, payment_method, bank_account_name')
         .eq('store_id', storeId),
       supabaseAdmin
         .from('owner_withdrawals')
@@ -205,7 +205,7 @@ export async function GET(request: NextRequest) {
       if (method === 'Cash') {
         computedCash -= amount
       } else if (method === 'Digital') {
-        applyBankAmount(null, -amount)
+        applyBankAmount(expense.bank_account_name, -amount)
       }
     })
 
@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
       if (method === 'Cash') {
         computedCash += amount
       } else if (method === 'Digital') {
-        applyBankAmount(null, amount)
+        applyBankAmount(payment.bank_account_name, amount)
       }
     })
 
@@ -235,7 +235,7 @@ export async function GET(request: NextRequest) {
       if (method === 'Cash') {
         computedCash -= amount
       } else if (method === 'Digital') {
-        applyBankAmount(null, -amount)
+        applyBankAmount(payment.bank_account_name, -amount)
       }
     })
 
@@ -245,7 +245,7 @@ export async function GET(request: NextRequest) {
       if (method === 'Cash') {
         computedCash -= amount
       } else if (method === 'Digital') {
-        applyBankAmount(null, -amount)
+        applyBankAmount(payment.bank_account_name, -amount)
       }
     })
 

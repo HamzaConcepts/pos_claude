@@ -14,6 +14,7 @@ interface Expense {
   amount: number
   category: string
   payment_method?: string
+  bank_account_name?: string | null
   expense_date: string
   recorded_by: string
   recorded_by_name?: string
@@ -52,6 +53,11 @@ interface RecurringExpense {
   default_payment_method: 'Cash' | 'Digital'
   days_until_due?: number | null
   due_status?: 'overdue' | 'due_today' | 'due_soon' | 'upcoming' | 'unscheduled'
+}
+
+interface BankAccount {
+  id: number
+  account_name: string
 }
 
 const EXPENSE_CATEGORIES = [
@@ -126,10 +132,15 @@ export default function ExpensesPage() {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0])
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [bankAccountsLoading, setBankAccountsLoading] = useState(false)
+  const [selectedBankAccount, setSelectedBankAccount] = useState('')
   const [expenseDate, setExpenseDate] = useState(getPKTDate())
   const [submitting, setSubmitting] = useState(false)
   const [recurringSubmitting, setRecurringSubmitting] = useState(false)
   const [selectedCashier, setSelectedCashier] = useState<any>(null)
+  const [cashiers, setCashiers] = useState<any[]>([])
+  const [cashiersLoading, setCashiersLoading] = useState(false)
 
   const [recurringForm, setRecurringForm] = useState({
     name: '',
@@ -165,6 +176,8 @@ export default function ExpensesPage() {
     fetchRecurringExpenses()
     fetchDueRecurringExpenses()
     loadSelectedCashier()
+    fetchCashiers()
+    fetchBankAccounts()
   }, [])
 
   const loadSelectedCashier = () => {
@@ -191,6 +204,67 @@ export default function ExpensesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       setUserId(user.id)
+    }
+  }
+
+  const fetchCashiers = async () => {
+    try {
+      setCashiersLoading(true)
+      const storeId = getStoreId()
+      if (!storeId) {
+        setCashiers([])
+        return
+      }
+
+      const response = await fetch(`/api/cashiers?store_id=${storeId}`)
+      const result = await response.json()
+
+      if (result.success) {
+        setCashiers(result.data || [])
+      } else {
+        setCashiers([])
+      }
+    } catch (err) {
+      console.error('Failed to fetch cashiers:', err)
+      setCashiers([])
+    } finally {
+      setCashiersLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedCashier || cashiers.length === 0) return
+    const exists = cashiers.some((cashier) => cashier.id === selectedCashier.id)
+    if (!exists) {
+      setSelectedCashier(null)
+      localStorage.removeItem('selected_cashier')
+    }
+  }, [selectedCashier, cashiers])
+
+  const fetchBankAccounts = async () => {
+    try {
+      setBankAccountsLoading(true)
+      const storeId = getStoreId()
+      if (!storeId) {
+        setBankAccounts([])
+        return
+      }
+
+      const response = await fetch(`/api/bank-accounts?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setBankAccounts(result.data || [])
+      } else {
+        setBankAccounts([])
+      }
+    } catch (err) {
+      console.error('Failed to fetch bank accounts:', err)
+      setBankAccounts([])
+    } finally {
+      setBankAccountsLoading(false)
     }
   }
 
@@ -459,6 +533,18 @@ export default function ExpensesPage() {
       return
     }
 
+    const requiresDigital = paymentMethod === 'Digital'
+
+    if (requiresDigital && bankAccounts.length === 0) {
+      setError('No bank account found. Please add one in Store Settings before recording digital expenses.')
+      return
+    }
+
+    if (requiresDigital && !selectedBankAccount) {
+      setError('Please select a bank account for Digital payments')
+      return
+    }
+
     setSubmitting(true)
     setError('')
 
@@ -478,6 +564,7 @@ export default function ExpensesPage() {
           amount: parseFloat(amount),
           category,
           payment_method: paymentMethod,
+          bank_account_name: requiresDigital ? selectedBankAccount : null,
           expense_date: expenseDate,
           recorded_by: userId,
           recorded_by_cashier_id: selectedCashier?.id || null,
@@ -495,6 +582,7 @@ export default function ExpensesPage() {
         setAmount('')
         setCategory(EXPENSE_CATEGORIES[0])
         setPaymentMethod('Cash')
+        setSelectedBankAccount('')
         setExpenseDate(getPKTDate())
         fetchExpenses()
       } else {
@@ -943,6 +1031,11 @@ export default function ExpensesPage() {
                       }`}>
                         {expense.payment_method || 'N/A'}
                       </span>
+                      {expense.payment_method === 'Digital' && expense.bank_account_name && (
+                        <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                          Bank: {expense.bank_account_name}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-center">
                       <div className="flex items-center justify-center gap-2">
@@ -1016,6 +1109,7 @@ export default function ExpensesPage() {
                 onClick={() => {
                   setShowAddModal(false)
                   setSelectedPredefined(null)
+                  setSelectedBankAccount('')
                   setError('')
                 }}
                 aria-label="Close add expense modal"
@@ -1125,7 +1219,10 @@ export default function ExpensesPage() {
                 </label>
                 <select
                   value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'Digital')}
+                  onChange={(e) => {
+                    setPaymentMethod(e.target.value as 'Cash' | 'Digital')
+                    setSelectedBankAccount('')
+                  }}
                   title="Payment method"
                   aria-label="Payment method"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
@@ -1134,6 +1231,36 @@ export default function ExpensesPage() {
                   <option value="Digital">Digital</option>
                 </select>
               </div>
+
+              {paymentMethod === 'Digital' && (
+                <div>
+                  <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
+                    Bank Account <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    value={selectedBankAccount}
+                    onChange={(e) => setSelectedBankAccount(e.target.value)}
+                    title="Select bank account"
+                    aria-label="Select bank account"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                  >
+                    <option value="">Select bank account</option>
+                    {bankAccounts.map((account) => (
+                      <option key={account.id} value={account.account_name}>
+                        {account.account_name}
+                      </option>
+                    ))}
+                  </select>
+                  {bankAccountsLoading && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Loading bank accounts...</p>
+                  )}
+                  {!bankAccountsLoading && bankAccounts.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                      No bank account found. Add one in Store Settings.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
@@ -1155,6 +1282,7 @@ export default function ExpensesPage() {
                   type="button"
                   onClick={() => {
                     setShowAddModal(false)
+                    setSelectedBankAccount('')
                     setError('')
                   }}
                   className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"

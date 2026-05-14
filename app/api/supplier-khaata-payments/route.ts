@@ -42,6 +42,7 @@ export async function GET(request: Request) {
         payment_amount,
         payment_date,
         payment_method,
+        bank_account_name,
         notes,
         payment_reference,
         transaction_remaining_before,
@@ -112,6 +113,8 @@ export async function POST(request: Request) {
       supplier_id,
       payment_amount,
       payment_method = 'Cash',
+      payments,
+      bank_account_name,
       notes,
       store_id,
       recorded_by,
@@ -126,22 +129,14 @@ export async function POST(request: Request) {
       )
     }
 
-    if (payment_amount <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Payment amount must be greater than 0' },
-        { status: 400 }
-      )
-    }
-
     const parsedStoreId = parseInt(String(store_id), 10)
     const parsedSupplierId = parseInt(String(supplier_id), 10)
-    const parsedPaymentAmount = roundToTwo(parseFloat(String(payment_amount)))
     const parsedCashierId = cashier_id ? parseInt(String(cashier_id), 10) : null
-    const normalizedPaymentMethod = payment_method === 'Cash' ? 'Cash' : payment_method === 'Digital' ? 'Digital' : null
+    const normalizedPayments: Array<{ payment_method: 'Cash' | 'Digital'; amount: number; bank_account_name?: string | null }> = []
     const hasManagerRecorder = typeof recorded_by === 'string' && recorded_by.trim().length > 0
     const hasCashierRecorder = Number.isInteger(parsedCashierId)
 
-    if (Number.isNaN(parsedStoreId) || Number.isNaN(parsedSupplierId) || !Number.isFinite(parsedPaymentAmount)) {
+    if (Number.isNaN(parsedStoreId) || Number.isNaN(parsedSupplierId)) {
       return NextResponse.json(
         { success: false, error: 'Invalid supplier/store/payment values' },
         { status: 400 }
@@ -155,12 +150,75 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!normalizedPaymentMethod) {
-      return NextResponse.json(
-        { success: false, error: 'Payment method must be Cash or Digital' },
-        { status: 400 }
-      )
+    const paymentEntries = Array.isArray(payments) ? payments : null
+
+    if (paymentEntries && paymentEntries.length > 0) {
+      for (const entry of paymentEntries) {
+        const method = entry?.payment_method === 'Cash' ? 'Cash' : entry?.payment_method === 'Digital' ? 'Digital' : null
+        const amount = roundToTwo(parseFloat(String(entry?.amount ?? '')))
+        const bankName = typeof entry?.bank_account_name === 'string' ? entry.bank_account_name.trim() : ''
+
+        if (!method) {
+          return NextResponse.json(
+            { success: false, error: 'Payment method must be Cash or Digital' },
+            { status: 400 }
+          )
+        }
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return NextResponse.json(
+            { success: false, error: 'Payment amount must be greater than 0' },
+            { status: 400 }
+          )
+        }
+
+        if (method === 'Digital' && !bankName) {
+          return NextResponse.json(
+            { success: false, error: 'Bank account is required for Digital payments' },
+            { status: 400 }
+          )
+        }
+
+        normalizedPayments.push({
+          payment_method: method,
+          amount,
+          bank_account_name: method === 'Digital' ? bankName : null,
+        })
+      }
+    } else {
+      const parsedPaymentAmount = roundToTwo(parseFloat(String(payment_amount)))
+      const normalizedPaymentMethod = payment_method === 'Cash' ? 'Cash' : payment_method === 'Digital' ? 'Digital' : null
+      const bankName = typeof bank_account_name === 'string' ? bank_account_name.trim() : ''
+
+      if (!Number.isFinite(parsedPaymentAmount) || parsedPaymentAmount <= 0) {
+        return NextResponse.json(
+          { success: false, error: 'Payment amount must be greater than 0' },
+          { status: 400 }
+        )
+      }
+
+      if (!normalizedPaymentMethod) {
+        return NextResponse.json(
+          { success: false, error: 'Payment method must be Cash or Digital' },
+          { status: 400 }
+        )
+      }
+
+      if (normalizedPaymentMethod === 'Digital' && !bankName) {
+        return NextResponse.json(
+          { success: false, error: 'Bank account is required for Digital payments' },
+          { status: 400 }
+        )
+      }
+
+      normalizedPayments.push({
+        payment_method: normalizedPaymentMethod,
+        amount: parsedPaymentAmount,
+        bank_account_name: normalizedPaymentMethod === 'Digital' ? bankName : null,
+      })
     }
+
+    const totalPayment = roundToTwo(normalizedPayments.reduce((sum, entry) => sum + entry.amount, 0))
 
     // Fetch all transactions for this supplier
     const { data: transactions, error: transactionsError } = await supabaseAdmin
@@ -182,91 +240,101 @@ export async function POST(request: Request) {
     const totalRemaining = roundToTwo(transactions.reduce((sum, t) => sum + Number(t.amount_remaining || 0), 0))
 
     // Check if payment exceeds remaining amount
-    if (parsedPaymentAmount > totalRemaining) {
+    if (totalPayment > totalRemaining) {
       return NextResponse.json(
-        { success: false, error: `Payment amount (${parsedPaymentAmount}) exceeds total remaining balance (${totalRemaining})` },
+        { success: false, error: `Payment amount (${totalPayment}) exceeds total remaining balance (${totalRemaining})` },
         { status: 400 }
       )
     }
 
     // Distribute payment across transactions in FIFO order and track before/after balances.
-    let remainingPayment = parsedPaymentAmount
     let supplierRemainingBefore = totalRemaining
     const paymentReference = `SUP-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
     const updates = []
 
-    for (const transaction of transactions) {
-      if (remainingPayment <= 0) break
+    for (const paymentEntry of normalizedPayments) {
+      let remainingPayment = paymentEntry.amount
 
-      const amountToApply = roundToTwo(Math.min(remainingPayment, Number(transaction.amount_remaining || 0)))
-      const newAmountPaid = roundToTwo(Number(transaction.amount_paid || 0) + amountToApply)
-      const newAmountRemaining = roundToTwo(Math.max(0, Number(transaction.amount_remaining || 0) - amountToApply))
-      const supplierRemainingBeforeForLine = supplierRemainingBefore
-      const supplierRemainingAfter = roundToTwo(Math.max(0, supplierRemainingBeforeForLine - amountToApply))
+      for (const transaction of transactions) {
+        if (remainingPayment <= 0) break
+        if (Number(transaction.amount_remaining || 0) <= 0) continue
 
-      // Update this transaction
-      const { error: updateError } = await supabaseAdmin
-        .from('supplier_khaata')
-        .update({
-          amount_paid: newAmountPaid,
-          amount_remaining: newAmountRemaining,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', transaction.id)
+        const amountRemaining = Number(transaction.amount_remaining || 0)
+        const amountPaid = Number(transaction.amount_paid || 0)
+        const amountToApply = roundToTwo(Math.min(remainingPayment, amountRemaining))
+        const newAmountPaid = roundToTwo(amountPaid + amountToApply)
+        const newAmountRemaining = roundToTwo(Math.max(0, amountRemaining - amountToApply))
+        const supplierRemainingBeforeForLine = supplierRemainingBefore
+        const supplierRemainingAfter = roundToTwo(Math.max(0, supplierRemainingBeforeForLine - amountToApply))
 
-      if (updateError) {
-        console.error('Error updating transaction:', updateError)
-        return NextResponse.json(
-          { success: false, error: 'Failed to update supplier balance' },
-          { status: 500 }
-        )
-      }
+        // Update this transaction
+        const { error: updateError } = await supabaseAdmin
+          .from('supplier_khaata')
+          .update({
+            amount_paid: newAmountPaid,
+            amount_remaining: newAmountRemaining,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', transaction.id)
 
-      // Record payment
-      const { error: paymentInsertError } = await supabaseAdmin
-        .from('supplier_khaata_payments')
-        .insert({
-          supplier_id: parsedSupplierId,
-          supplier_khaata_id: transaction.id,
-          supplier_name: transaction.supplier_name,
-          supplier_phone: transaction.supplier_phone,
-          payment_amount: amountToApply,
-          payment_method: normalizedPaymentMethod,
-          notes,
-          payment_reference: paymentReference,
-          transaction_remaining_before: transaction.amount_remaining,
+        if (updateError) {
+          console.error('Error updating transaction:', updateError)
+          return NextResponse.json(
+            { success: false, error: 'Failed to update supplier balance' },
+            { status: 500 }
+          )
+        }
+
+        // Record payment
+        const { error: paymentInsertError } = await supabaseAdmin
+          .from('supplier_khaata_payments')
+          .insert({
+            supplier_id: parsedSupplierId,
+            supplier_khaata_id: transaction.id,
+            supplier_name: transaction.supplier_name,
+            supplier_phone: transaction.supplier_phone,
+            payment_amount: amountToApply,
+            payment_method: paymentEntry.payment_method,
+            bank_account_name: paymentEntry.bank_account_name || null,
+            notes,
+            payment_reference: paymentReference,
+            transaction_remaining_before: amountRemaining,
+            transaction_remaining_after: newAmountRemaining,
+            supplier_remaining_before: supplierRemainingBeforeForLine,
+            supplier_remaining_after: supplierRemainingAfter,
+            store_id: parsedStoreId,
+            recorded_by: hasManagerRecorder ? recorded_by : null,
+            cashier_id: hasCashierRecorder ? parsedCashierId : null,
+          })
+
+        if (paymentInsertError) {
+          console.error('Error recording supplier payment allocation:', paymentInsertError)
+          return NextResponse.json(
+            { success: false, error: paymentInsertError.message },
+            { status: 500 }
+          )
+        }
+
+        remainingPayment = roundToTwo(remainingPayment - amountToApply)
+        supplierRemainingBefore = supplierRemainingAfter
+        transaction.amount_paid = newAmountPaid
+        transaction.amount_remaining = newAmountRemaining
+        updates.push({
+          transaction_id: transaction.id,
+          amount_applied: amountToApply,
+          transaction_remaining_before: amountRemaining,
           transaction_remaining_after: newAmountRemaining,
           supplier_remaining_before: supplierRemainingBeforeForLine,
           supplier_remaining_after: supplierRemainingAfter,
-          store_id: parsedStoreId,
-          recorded_by: hasManagerRecorder ? recorded_by : null,
-          cashier_id: hasCashierRecorder ? parsedCashierId : null,
+          payment_method: paymentEntry.payment_method,
         })
-
-      if (paymentInsertError) {
-        console.error('Error recording supplier payment allocation:', paymentInsertError)
-        return NextResponse.json(
-          { success: false, error: paymentInsertError.message },
-          { status: 500 }
-        )
       }
-
-      remainingPayment = roundToTwo(remainingPayment - amountToApply)
-      supplierRemainingBefore = supplierRemainingAfter
-      updates.push({
-        transaction_id: transaction.id,
-        amount_applied: amountToApply,
-        transaction_remaining_before: transaction.amount_remaining,
-        transaction_remaining_after: newAmountRemaining,
-        supplier_remaining_before: supplierRemainingBeforeForLine,
-        supplier_remaining_after: supplierRemainingAfter,
-      })
     }
 
     return NextResponse.json({
       success: true,
       data: {
-        total_payment: parsedPaymentAmount,
+        total_payment: totalPayment,
         payment_reference: paymentReference,
         transactions_updated: updates.length,
         supplier_remaining_after: supplierRemainingBefore,

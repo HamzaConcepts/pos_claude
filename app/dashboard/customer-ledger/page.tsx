@@ -48,6 +48,11 @@ interface OrderCustomer {
   last_sale_date: string
 }
 
+interface BankAccount {
+  id: number
+  account_name: string
+}
+
 export default function CustomerLedgerPage() {
   const router = useRouter()
   const { formatCurrency } = useCurrency()
@@ -79,6 +84,12 @@ export default function CustomerLedgerPage() {
     payment_method: 'Cash',
     notes: ''
   })
+  const [isSplitPayment, setIsSplitPayment] = useState(false)
+  const [cashPaid, setCashPaid] = useState('')
+  const [digitalPaid, setDigitalPaid] = useState('')
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [bankAccountsLoading, setBankAccountsLoading] = useState(false)
+  const [selectedBankAccount, setSelectedBankAccount] = useState('')
 
   // Payment history per transaction (keyed by partial_payment_customers.id)
   const [paymentHistoryByTxnId, setPaymentHistoryByTxnId] = useState<Record<number, any[]>>({})
@@ -89,7 +100,29 @@ export default function CustomerLedgerPage() {
     fetchCustomers()
     fetchInitialCustomers()
     fetchOrderCustomers()
+    fetchBankAccounts()
   }, [])
+
+  const parseAmountValue = (value: string) => {
+    const parsed = Number.parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const getPaidTotal = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(cashPaid) + parseAmountValue(digitalPaid)
+    }
+
+    return parseAmountValue(paymentFormData.payment_amount)
+  }
+
+  const hasDigitalPayment = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(digitalPaid) > 0
+    }
+
+    return paymentFormData.payment_method === 'Digital'
+  }
 
   const fetchCustomers = async () => {
     try {
@@ -146,6 +179,27 @@ export default function CustomerLedgerPage() {
       }
     } catch (err) {
       console.error('Failed to fetch order customers:', err)
+    }
+  }
+
+  const fetchBankAccounts = async () => {
+    try {
+      setBankAccountsLoading(true)
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/bank-accounts?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setBankAccounts(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch bank accounts:', err)
+    } finally {
+      setBankAccountsLoading(false)
     }
   }
 
@@ -298,22 +352,60 @@ export default function CustomerLedgerPage() {
   const handlePayDues = async () => {
     if (!selectedForPayment) return
 
-    const paymentAmount = parseFloat(paymentFormData.payment_amount)
-    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+    const totalPayment = getPaidTotal()
+    const cashAmount = parseAmountValue(cashPaid)
+    const digitalAmount = parseAmountValue(digitalPaid)
+    const requiresDigital = hasDigitalPayment()
+
+    if (isSplitPayment && cashAmount === 0 && digitalAmount === 0) {
+      setError('Enter a cash or digital amount for split payment')
+      return
+    }
+
+    if (!isSplitPayment && totalPayment <= 0) {
       setError('Please enter a valid payment amount')
       return
     }
 
-    if (paymentAmount > selectedForPayment.remaining_balance) {
+    if (totalPayment > selectedForPayment.remaining_balance) {
       setError('Payment amount cannot exceed remaining balance')
       return
     }
 
+    if (requiresDigital && bankAccounts.length === 0) {
+      setError('No bank account found. Please add one in Store Settings before taking digital payments.')
+      return
+    }
+
+    if (requiresDigital && !selectedBankAccount) {
+      setError('Please select a bank account for Digital payment')
+      return
+    }
+
     try {
+      const paymentSplits = isSplitPayment
+        ? [
+            cashAmount > 0
+              ? { payment_method: 'Cash', amount: cashAmount }
+              : null,
+            digitalAmount > 0
+              ? { payment_method: 'Digital', amount: digitalAmount, bank_account_name: selectedBankAccount }
+              : null,
+          ].filter(Boolean)
+        : [
+            {
+              payment_method: paymentFormData.payment_method,
+              amount: totalPayment,
+              bank_account_name: requiresDigital ? selectedBankAccount : null,
+            },
+          ]
+
       const payload = {
         customer_phone: selectedForPayment.customer_phone,
-        payment_amount: paymentAmount,
-        payment_method: paymentFormData.payment_method,
+        payment_amount: totalPayment,
+        payment_method: isSplitPayment ? 'Mixed' : paymentFormData.payment_method,
+        payments: paymentSplits,
+        bank_account_name: requiresDigital ? selectedBankAccount : null,
         notes: paymentFormData.notes.trim() || null,
         store_id: getStoreId()
       }
@@ -330,6 +422,10 @@ export default function CustomerLedgerPage() {
         setShowPayDuesModal(false)
         setSelectedForPayment(null)
         setPaymentFormData({ payment_amount: '', payment_method: 'Cash', notes: '' })
+        setIsSplitPayment(false)
+        setCashPaid('')
+        setDigitalPaid('')
+        setSelectedBankAccount('')
         fetchCustomers()
       } else {
         setError(result.error || 'Failed to record payment')
@@ -549,7 +645,14 @@ export default function CustomerLedgerPage() {
                                             {new Date(p.payment_date || p.created_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                                           </td>
                                           <td className="py-1.5 pr-4 text-right font-semibold text-green-600">{formatCurrency(p.payment_amount, 2)}</td>
-                                          <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">{p.payment_method}</td>
+                                          <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">
+                                            <div>{p.payment_method}</div>
+                                            {p.bank_account_name && (
+                                              <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                                                Bank: {p.bank_account_name}
+                                              </div>
+                                            )}
+                                          </td>
                                           <td className="py-1.5 text-gray-500 dark:text-gray-400 italic">{p.notes || '—'}</td>
                                         </tr>
                                       ))}
@@ -709,7 +812,14 @@ export default function CustomerLedgerPage() {
                                                   {new Date(p.payment_date || p.created_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                                                 </td>
                                                 <td className="py-1.5 pr-4 text-right font-semibold text-green-600">{formatCurrency(p.payment_amount, 2)}</td>
-                                                <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">{p.payment_method}</td>
+                                                <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">
+                                                  <div>{p.payment_method}</div>
+                                                  {p.bank_account_name && (
+                                                    <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                                                      Bank: {p.bank_account_name}
+                                                    </div>
+                                                  )}
+                                                </td>
                                                 <td className="py-1.5 text-gray-500 dark:text-gray-400 italic">{p.notes || '—'}</td>
                                               </tr>
                                             ))}
@@ -1009,36 +1119,153 @@ export default function CustomerLedgerPage() {
               </p>
             </div>
 
-            <div className="space-y-4 mb-5">
-              <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Amount*</label>
-                <input
-                  type="number"
-                  value={paymentFormData.payment_amount}
-                  onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
-                  placeholder="Enter payment amount"
-                  step="0.01"
-                  min="0"
-                  max={selectedForPayment.remaining_balance}
-                />
-              </div>
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Split Payment</span>
+              <button
+                onClick={() => {
+                  setIsSplitPayment((prev) => !prev)
+                  setPaymentFormData({ ...paymentFormData, payment_amount: '', payment_method: 'Cash' })
+                  setCashPaid('')
+                  setDigitalPaid('')
+                  setSelectedBankAccount('')
+                }}
+                className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                  isSplitPayment
+                    ? 'bg-cyan-600 text-white border-cyan-600'
+                    : 'bg-white border-gray-300 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300'
+                }`}
+              >
+                {isSplitPayment ? 'On' : 'Off'}
+              </button>
+            </div>
 
-              <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Method*</label>
-                <select
-                  title="Payment method"
-                  value={paymentFormData.payment_method}
-                  onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="Credit Card">Credit Card</option>
-                  <option value="Debit Card">Debit Card</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="Mobile Payment">Mobile Payment</option>
-                </select>
-              </div>
+            <div className="space-y-4 mb-5">
+              {!isSplitPayment ? (
+                <>
+                  <div>
+                    <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Amount*</label>
+                    <input
+                      type="number"
+                      value={paymentFormData.payment_amount}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                      placeholder="Enter payment amount"
+                      step="0.01"
+                      min="0"
+                      max={selectedForPayment.remaining_balance}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Method*</label>
+                    <select
+                      title="Payment method"
+                      value={paymentFormData.payment_method}
+                      onChange={(e) => {
+                        setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })
+                        setSelectedBankAccount('')
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Digital">Digital</option>
+                    </select>
+                  </div>
+
+                  {paymentFormData.payment_method === 'Digital' && (
+                    <div>
+                      <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
+                        Bank Account <span className="text-red-600">*</span>
+                      </label>
+                      <select
+                        value={selectedBankAccount}
+                        onChange={(e) => setSelectedBankAccount(e.target.value)}
+                        title="Select bank account"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                      >
+                        <option value="">Select bank account</option>
+                        {bankAccounts.map((account) => (
+                          <option key={account.id} value={account.account_name}>
+                            {account.account_name}
+                          </option>
+                        ))}
+                      </select>
+                      {bankAccountsLoading && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Loading bank accounts...</p>
+                      )}
+                      {!bankAccountsLoading && bankAccounts.length === 0 && (
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                          No bank account found. Add one in Store Settings.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Split Amounts*</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block mb-1 text-[11px] text-gray-500 dark:text-gray-400">Cash</label>
+                        <input
+                          type="number"
+                          value={cashPaid}
+                          onChange={(e) => setCashPaid(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                          placeholder="0.00"
+                          step="0.01"
+                          min="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-[11px] text-gray-500 dark:text-gray-400">Digital</label>
+                        <input
+                          type="number"
+                          value={digitalPaid}
+                          onChange={(e) => setDigitalPaid(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                          placeholder="0.00"
+                          step="0.01"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      Total Paid: {formatCurrency(getPaidTotal(), 2)}
+                    </p>
+                  </div>
+
+                  {parseAmountValue(digitalPaid) > 0 && (
+                    <div>
+                      <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
+                        Bank Account <span className="text-red-600">*</span>
+                      </label>
+                      <select
+                        value={selectedBankAccount}
+                        onChange={(e) => setSelectedBankAccount(e.target.value)}
+                        title="Select bank account"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                      >
+                        <option value="">Select bank account</option>
+                        {bankAccounts.map((account) => (
+                          <option key={account.id} value={account.account_name}>
+                            {account.account_name}
+                          </option>
+                        ))}
+                      </select>
+                      {bankAccountsLoading && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Loading bank accounts...</p>
+                      )}
+                      {!bankAccountsLoading && bankAccounts.length === 0 && (
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                          No bank account found. Add one in Store Settings.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
 
               <div>
                 <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Notes</label>
@@ -1058,6 +1285,10 @@ export default function CustomerLedgerPage() {
                   setShowPayDuesModal(false)
                   setSelectedForPayment(null)
                   setPaymentFormData({ payment_amount: '', payment_method: 'Cash', notes: '' })
+                  setIsSplitPayment(false)
+                  setCashPaid('')
+                  setDigitalPaid('')
+                  setSelectedBankAccount('')
                   setError('')
                 }}
                 className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"

@@ -35,6 +35,38 @@ function getReceivedAmount(sale: any): number {
   return 0
 }
 
+const normalizeBankName = (value: any): string => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed) return trimmed
+  }
+  return 'Unassigned'
+}
+
+const applyTimestampRange = (query: any, field: string, startDate?: string | null, endDate?: string | null) => {
+  let next = query
+  if (startDate) {
+    next = next.gte(field, startDate)
+  }
+  if (endDate) {
+    const endDateTime = new Date(endDate)
+    endDateTime.setHours(23, 59, 59, 999)
+    next = next.lte(field, endDateTime.toISOString())
+  }
+  return next
+}
+
+const applyDateRange = (query: any, field: string, startDate?: string | null, endDate?: string | null) => {
+  let next = query
+  if (startDate) {
+    next = next.gte(field, startDate)
+  }
+  if (endDate) {
+    next = next.lte(field, endDate)
+  }
+  return next
+}
+
 // GET - Generate comprehensive reports
 export async function GET(request: NextRequest) {
   try {
@@ -72,6 +104,9 @@ export async function GET(request: NextRequest) {
         break
       case 'summary':
         reportData = await generateSummaryReport(storeId, { startDate, endDate, period, cashierId, paymentMethod })
+        break
+      case 'bank-transactions':
+        reportData = await generateBankTransactionsReport(storeId, { startDate, endDate })
         break
       default:
         return NextResponse.json(
@@ -508,6 +543,334 @@ async function generateSummaryReport(storeId: string, filters: any) {
     profit: profit.summary,
     cashPresent, // Add cash present to summary
     cashFlowTrend
+  }
+}
+
+async function generateBankTransactionsReport(storeId: string, filters: any) {
+  const parsedStoreId = parseInt(storeId, 10)
+  const { startDate, endDate } = filters || {}
+
+  const bankAccountsQuery = supabaseAdmin
+    .from('store_bank_accounts')
+    .select('id, account_name')
+    .eq('store_id', parsedStoreId)
+    .order('account_name', { ascending: true })
+
+  const bankBalancesQuery = supabaseAdmin
+    .from('store_bank_balances')
+    .select('bank_account_id, opening_balance')
+    .eq('store_id', parsedStoreId)
+
+  const paymentsQuery = applyTimestampRange(
+    supabaseAdmin
+      .from('payments')
+      .select('sale_id, amount, payment_method, bank_account_name, payment_date')
+      .eq('store_id', parsedStoreId),
+    'payment_date',
+    startDate,
+    endDate
+  )
+
+  const salesQuery = applyTimestampRange(
+    supabaseAdmin
+      .from('sales')
+      .select('id, amount_paid, total_amount, payment_method, bank_account_name, sale_date')
+      .eq('store_id', parsedStoreId),
+    'sale_date',
+    startDate,
+    endDate
+  )
+
+  const customerPaymentsQuery = applyTimestampRange(
+    supabaseAdmin
+      .from('customer_payments')
+      .select('payment_amount, payment_method, bank_account_name, payment_date, customer_name')
+      .eq('store_id', parsedStoreId),
+    'payment_date',
+    startDate,
+    endDate
+  )
+
+  const supplierKhaataPaymentsQuery = applyTimestampRange(
+    supabaseAdmin
+      .from('supplier_khaata_payments')
+      .select('payment_amount, payment_method, bank_account_name, payment_date, supplier_name')
+      .eq('store_id', parsedStoreId),
+    'payment_date',
+    startDate,
+    endDate
+  )
+
+  const supplierPaymentsQuery = applyTimestampRange(
+    supabaseAdmin
+      .from('supplier_payments')
+      .select('amount, payment_method, bank_account_name, payment_date, supplier_id')
+      .eq('store_id', parsedStoreId),
+    'payment_date',
+    startDate,
+    endDate
+  )
+
+  const expensesQuery = applyDateRange(
+    supabaseAdmin
+      .from('expenses')
+      .select('amount, payment_method, bank_account_name, expense_date, description')
+      .eq('store_id', parsedStoreId),
+    'expense_date',
+    startDate,
+    endDate
+  )
+
+  const inventoryPaymentsQuery = applyTimestampRange(
+    supabaseAdmin
+      .from('inventory_purchase_payments')
+      .select('amount, payment_method, bank_account_name, created_at, stock_batch_id')
+      .eq('store_id', parsedStoreId),
+    'created_at',
+    startDate,
+    endDate
+  )
+
+  const cashTransfersQuery = applyDateRange(
+    supabaseAdmin
+      .from('cash_transfers')
+      .select('transfer_amount, bank_name, transfer_date')
+      .eq('store_id', parsedStoreId),
+    'transfer_date',
+    startDate,
+    endDate
+  )
+
+  const [
+    { data: bankAccounts, error: bankAccountsError },
+    { data: payments, error: paymentsError },
+    { data: sales, error: salesError },
+    { data: customerPayments, error: customerPaymentsError },
+    { data: supplierKhaataPayments, error: supplierKhaataPaymentsError },
+    { data: supplierPayments, error: supplierPaymentsError },
+    { data: expenses, error: expensesError },
+    { data: inventoryPayments, error: inventoryPaymentsError },
+    { data: cashTransfers, error: cashTransfersError },
+    { data: bankBalances, error: bankBalancesError },
+  ] = await Promise.all([
+    bankAccountsQuery,
+    paymentsQuery,
+    salesQuery,
+    customerPaymentsQuery,
+    supplierKhaataPaymentsQuery,
+    supplierPaymentsQuery,
+    expensesQuery,
+    inventoryPaymentsQuery,
+    cashTransfersQuery,
+    bankBalancesQuery,
+  ])
+
+  if (bankAccountsError) throw bankAccountsError
+  if (paymentsError) throw paymentsError
+  if (salesError) throw salesError
+  if (customerPaymentsError) throw customerPaymentsError
+  if (supplierKhaataPaymentsError) throw supplierKhaataPaymentsError
+  if (supplierPaymentsError) throw supplierPaymentsError
+  if (expensesError) throw expensesError
+  if (inventoryPaymentsError) throw inventoryPaymentsError
+  if (cashTransfersError) throw cashTransfersError
+  if (bankBalancesError) throw bankBalancesError
+
+  const openingBalanceByAccountId = new Map<number, number>()
+  ;(bankBalances || []).forEach((row: any) => {
+    if (!Number.isFinite(row.bank_account_id)) return
+    openingBalanceByAccountId.set(row.bank_account_id, toSafeNumber(row.opening_balance))
+  })
+
+  const openingBalanceByName = new Map<string, number>()
+  ;(bankAccounts || []).forEach((account: any) => {
+    const name = normalizeBankName(account.account_name)
+    openingBalanceByName.set(name, openingBalanceByAccountId.get(account.id) ?? 0)
+  })
+
+  const bankTotals = new Map<string, { received: number; paid: number; receivedCount: number; paidCount: number; openingBalance: number }>()
+  const transactions: Array<{ bank_account_name: string; direction: 'received' | 'paid'; amount: number; date: string; source: string; reference?: string | null }> = []
+
+  const seedBank = (name: string, openingBalance?: number) => {
+    if (!bankTotals.has(name)) {
+      bankTotals.set(name, { received: 0, paid: 0, receivedCount: 0, paidCount: 0, openingBalance: openingBalance ?? 0 })
+      return
+    }
+
+    if (openingBalance !== undefined) {
+      const existing = bankTotals.get(name)!
+      if (!Number.isFinite(existing.openingBalance) || existing.openingBalance === 0) {
+        existing.openingBalance = openingBalance
+      }
+    }
+  }
+
+  ;(bankAccounts || []).forEach((account: any) => {
+    const normalizedName = normalizeBankName(account.account_name)
+    seedBank(normalizedName, openingBalanceByName.get(normalizedName) ?? 0)
+  })
+
+  const addTransaction = (input: { bankName: any; direction: 'received' | 'paid'; amount: number; date: any; source: string; reference?: string | null }) => {
+    if (!Number.isFinite(input.amount) || input.amount <= 0) return
+    const bankName = normalizeBankName(input.bankName)
+    seedBank(bankName, openingBalanceByName.get(bankName) ?? 0)
+    const summary = bankTotals.get(bankName)!
+
+    if (input.direction === 'received') {
+      summary.received += input.amount
+      summary.receivedCount += 1
+    } else {
+      summary.paid += input.amount
+      summary.paidCount += 1
+    }
+
+    transactions.push({
+      bank_account_name: bankName,
+      direction: input.direction,
+      amount: input.amount,
+      date: input.date ? new Date(input.date).toISOString() : new Date().toISOString(),
+      source: input.source,
+      reference: input.reference || null,
+    })
+  }
+
+  const paymentsBySale = new Set<number>()
+  ;(payments || []).forEach((payment: any) => {
+    const method = payment.payment_method
+    if (method === 'Digital') {
+      addTransaction({
+        bankName: payment.bank_account_name,
+        direction: 'received',
+        amount: toSafeNumber(payment.amount),
+        date: payment.payment_date,
+        source: 'Sale Payment',
+        reference: payment.sale_id ? `Sale #${payment.sale_id}` : null,
+      })
+    }
+
+    const saleId = Number(payment.sale_id)
+    if (Number.isFinite(saleId)) {
+      paymentsBySale.add(saleId)
+    }
+  })
+
+  ;(sales || []).forEach((sale: any) => {
+    const saleId = Number(sale.id)
+    if (Number.isFinite(saleId) && paymentsBySale.has(saleId)) return
+
+    if (sale.payment_method === 'Digital') {
+      addTransaction({
+        bankName: sale.bank_account_name,
+        direction: 'received',
+        amount: getReceivedAmount(sale),
+        date: sale.sale_date,
+        source: 'Sale',
+        reference: sale.id ? `Sale #${sale.id}` : null,
+      })
+    }
+  })
+
+  ;(customerPayments || []).forEach((payment: any) => {
+    if (payment.payment_method !== 'Digital') return
+    addTransaction({
+      bankName: payment.bank_account_name,
+      direction: 'received',
+      amount: toSafeNumber(payment.payment_amount),
+      date: payment.payment_date,
+      source: 'Customer Ledger',
+      reference: payment.customer_name || null,
+    })
+  })
+
+  ;(supplierKhaataPayments || []).forEach((payment: any) => {
+    if (payment.payment_method !== 'Digital') return
+    addTransaction({
+      bankName: payment.bank_account_name,
+      direction: 'paid',
+      amount: toSafeNumber(payment.payment_amount),
+      date: payment.payment_date,
+      source: 'Supplier Ledger',
+      reference: payment.supplier_name || null,
+    })
+  })
+
+  ;(supplierPayments || []).forEach((payment: any) => {
+    if (payment.payment_method !== 'Digital') return
+    addTransaction({
+      bankName: payment.bank_account_name,
+      direction: 'paid',
+      amount: toSafeNumber(payment.amount),
+      date: payment.payment_date,
+      source: 'Supplier Payment',
+      reference: payment.supplier_id ? `Supplier #${payment.supplier_id}` : null,
+    })
+  })
+
+  ;(expenses || []).forEach((expense: any) => {
+    if (expense.payment_method !== 'Digital') return
+    addTransaction({
+      bankName: expense.bank_account_name,
+      direction: 'paid',
+      amount: toSafeNumber(expense.amount),
+      date: expense.expense_date,
+      source: 'Expense',
+      reference: expense.description || null,
+    })
+  })
+
+  ;(inventoryPayments || []).forEach((payment: any) => {
+    if (payment.payment_method !== 'Digital') return
+    addTransaction({
+      bankName: payment.bank_account_name,
+      direction: 'paid',
+      amount: toSafeNumber(payment.amount),
+      date: payment.created_at,
+      source: 'Inventory Purchase',
+      reference: payment.stock_batch_id ? `Batch #${payment.stock_batch_id}` : null,
+    })
+  })
+
+  ;(cashTransfers || []).forEach((transfer: any) => {
+    addTransaction({
+      bankName: transfer.bank_name,
+      direction: 'received',
+      amount: toSafeNumber(transfer.transfer_amount),
+      date: transfer.transfer_date,
+      source: 'Cash Transfer',
+    })
+  })
+
+  const banks = Array.from(bankTotals.entries()).map(([bankName, totals]) => ({
+    bank_account_name: bankName,
+    opening_balance: totals.openingBalance ?? 0,
+    received: totals.received,
+    paid: totals.paid,
+    net: totals.received - totals.paid,
+    closing_balance: (totals.openingBalance ?? 0) + totals.received - totals.paid,
+    receivedCount: totals.receivedCount,
+    paidCount: totals.paidCount,
+    totalCount: totals.receivedCount + totals.paidCount,
+  }))
+
+  banks.sort((a, b) => a.bank_account_name.localeCompare(b.bank_account_name))
+
+  const totalReceived = banks.reduce((sum, row) => sum + row.received, 0)
+  const totalPaid = banks.reduce((sum, row) => sum + row.paid, 0)
+  const totalOpeningBalance = banks.reduce((sum, row) => sum + (row.opening_balance ?? 0), 0)
+  const totalClosingBalance = totalOpeningBalance + totalReceived - totalPaid
+
+  transactions.sort((a, b) => b.date.localeCompare(a.date))
+
+  return {
+    summary: {
+      totalReceived,
+      totalPaid,
+      net: totalReceived - totalPaid,
+      totalOpeningBalance,
+      totalClosingBalance,
+    },
+    banks,
+    transactions,
   }
 }
 

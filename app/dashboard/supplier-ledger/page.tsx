@@ -104,6 +104,7 @@ interface SupplierPaymentHistory {
   payment_amount: number
   payment_date: string
   payment_method: string
+  bank_account_name?: string | null
   notes: string | null
   payment_reference: string | null
   transaction_remaining_before: number | null
@@ -133,6 +134,11 @@ interface SupplierInfo {
   contact_person?: string | null
 }
 
+interface BankAccount {
+  id: number
+  account_name: string
+}
+
 export default function SupplierKhaataPage() {
   const { currency, formatCurrency } = useCurrency()
   const [suppliers, setSuppliers] = useState<SupplierKhaata[]>([])
@@ -159,6 +165,12 @@ export default function SupplierKhaataPage() {
     payment_method: 'Cash',
     notes: ''
   })
+  const [isSplitPayment, setIsSplitPayment] = useState(false)
+  const [cashPaid, setCashPaid] = useState('')
+  const [digitalPaid, setDigitalPaid] = useState('')
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [bankAccountsLoading, setBankAccountsLoading] = useState(false)
+  const [selectedBankAccount, setSelectedBankAccount] = useState('')
   const [paymentHistoryBySupplier, setPaymentHistoryBySupplier] = useState<Record<number, SupplierPaymentHistory[]>>({})
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState<Record<number, boolean>>({})
   const [recorderManagerId, setRecorderManagerId] = useState<string | null>(null)
@@ -170,7 +182,29 @@ export default function SupplierKhaataPage() {
     fetchSupplierBatches()
     fetchSupplierDirectory()
     fetchInitialSuppliers()
+    fetchBankAccounts()
   }, [])
+
+  const parseAmountValue = (value: string) => {
+    const parsed = Number.parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const getPaidTotal = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(cashPaid) + parseAmountValue(digitalPaid)
+    }
+
+    return parseAmountValue(paymentFormData.payment_amount)
+  }
+
+  const hasDigitalPayment = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(digitalPaid) > 0
+    }
+
+    return paymentFormData.payment_method === 'Digital'
+  }
 
   const resolvePaymentRecorder = async () => {
     try {
@@ -225,6 +259,27 @@ export default function SupplierKhaataPage() {
       console.error('Failed to fetch supplier payment history:', err)
     } finally {
       setPaymentHistoryLoading((prev) => ({ ...prev, [supplierId]: false }))
+    }
+  }
+
+  const fetchBankAccounts = async () => {
+    try {
+      setBankAccountsLoading(true)
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/bank-accounts?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setBankAccounts(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch bank accounts:', err)
+    } finally {
+      setBankAccountsLoading(false)
     }
   }
 
@@ -496,22 +551,60 @@ export default function SupplierKhaataPage() {
   const handlePayDues = async () => {
     if (!selectedForPayment) return
 
-    const paymentAmount = parseFloat(paymentFormData.payment_amount)
-    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+    const totalPayment = getPaidTotal()
+    const cashAmount = parseAmountValue(cashPaid)
+    const digitalAmount = parseAmountValue(digitalPaid)
+    const requiresDigital = hasDigitalPayment()
+
+    if (isSplitPayment && cashAmount === 0 && digitalAmount === 0) {
+      setError('Enter a cash or digital amount for split payment')
+      return
+    }
+
+    if (!isSplitPayment && totalPayment <= 0) {
       setError('Please enter a valid payment amount')
       return
     }
 
-    if (paymentAmount > selectedForPayment.amount_remaining) {
+    if (totalPayment > selectedForPayment.amount_remaining) {
       setError('Payment amount cannot exceed remaining balance')
       return
     }
 
+    if (requiresDigital && bankAccounts.length === 0) {
+      setError('No bank account found. Please add one in Store Settings before taking digital payments.')
+      return
+    }
+
+    if (requiresDigital && !selectedBankAccount) {
+      setError('Please select a bank account for Digital payment')
+      return
+    }
+
     try {
+      const paymentSplits = isSplitPayment
+        ? [
+            cashAmount > 0
+              ? { payment_method: 'Cash', amount: cashAmount }
+              : null,
+            digitalAmount > 0
+              ? { payment_method: 'Digital', amount: digitalAmount, bank_account_name: selectedBankAccount }
+              : null,
+          ].filter(Boolean)
+        : [
+            {
+              payment_method: paymentFormData.payment_method,
+              amount: totalPayment,
+              bank_account_name: requiresDigital ? selectedBankAccount : null,
+            },
+          ]
+
       const payload = {
         supplier_id: selectedForPayment.supplier_id,
-        payment_amount: paymentAmount,
-        payment_method: paymentFormData.payment_method,
+        payment_amount: totalPayment,
+        payment_method: isSplitPayment ? 'Mixed' : paymentFormData.payment_method,
+        payments: paymentSplits,
+        bank_account_name: requiresDigital ? selectedBankAccount : null,
         notes: paymentFormData.notes.trim() || null,
         store_id: getStoreId(),
         recorded_by: recorderManagerId,
@@ -530,6 +623,10 @@ export default function SupplierKhaataPage() {
         setShowPayDuesModal(false)
         setSelectedForPayment(null)
         setPaymentFormData({ payment_amount: '', payment_method: 'Cash', notes: '' })
+        setIsSplitPayment(false)
+        setCashPaid('')
+        setDigitalPaid('')
+        setSelectedBankAccount('')
         setPaymentHistoryBySupplier((prev) => {
           const next = { ...prev }
           delete next[selectedForPayment.supplier_id]
@@ -797,6 +894,11 @@ export default function SupplierKhaataPage() {
                                             </td>
                                             <td className="px-3 py-2 text-gray-700 dark:text-gray-300">
                                               <div>{payment.payment_method}</div>
+                                              {payment.bank_account_name && (
+                                                <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                                                  Bank: {payment.bank_account_name}
+                                                </div>
+                                              )}
                                               {payment.notes && <div className="text-[11px] text-gray-500 dark:text-gray-400">{payment.notes}</div>}
                                             </td>
                                           </tr>
@@ -1075,38 +1177,161 @@ export default function SupplierKhaataPage() {
               <p className="text-sm text-red-600 font-semibold"><strong>Remaining Balance:</strong> {formatCurrency(selectedForPayment.amount_remaining, 0)}</p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Amount <span className="text-red-600">*</span></label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max={selectedForPayment.amount_remaining}
-                  value={paymentFormData.payment_amount}
-                  onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
-                  placeholder="Enter payment amount"
-                />
-                {paymentFormData.payment_amount && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    New Remaining: {formatCurrency(selectedForPayment.amount_remaining - parseFloat(paymentFormData.payment_amount || '0'), 0)}
-                  </p>
-                )}
-              </div>
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Split Payment</span>
+              <button
+                onClick={() => {
+                  setIsSplitPayment((prev) => !prev)
+                  setPaymentFormData({ ...paymentFormData, payment_amount: '', payment_method: 'Cash' })
+                  setCashPaid('')
+                  setDigitalPaid('')
+                  setSelectedBankAccount('')
+                }}
+                className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                  isSplitPayment
+                    ? 'bg-cyan-600 text-white border-cyan-600'
+                    : 'bg-white border-gray-300 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300'
+                }`}
+              >
+                {isSplitPayment ? 'On' : 'Off'}
+              </button>
+            </div>
 
-              <div>
-                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Method <span className="text-red-600">*</span></label>
-                <select
-                  value={paymentFormData.payment_method}
-                  onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })}
-                  title="Payment method"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="Digital">Digital</option>
-                </select>
-              </div>
+            <div className="space-y-4">
+              {!isSplitPayment ? (
+                <>
+                  <div>
+                    <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Amount <span className="text-red-600">*</span></label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max={selectedForPayment.amount_remaining}
+                      value={paymentFormData.payment_amount}
+                      onChange={(e) => setPaymentFormData({ ...paymentFormData, payment_amount: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                      placeholder="Enter payment amount"
+                    />
+                    {paymentFormData.payment_amount && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        New Remaining: {formatCurrency(selectedForPayment.amount_remaining - parseFloat(paymentFormData.payment_amount || '0'), 0)}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Payment Method <span className="text-red-600">*</span></label>
+                    <select
+                      value={paymentFormData.payment_method}
+                      onChange={(e) => {
+                        setPaymentFormData({ ...paymentFormData, payment_method: e.target.value })
+                        setSelectedBankAccount('')
+                      }}
+                      title="Payment method"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Digital">Digital</option>
+                    </select>
+                  </div>
+
+                  {paymentFormData.payment_method === 'Digital' && (
+                    <div>
+                      <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
+                        Bank Account <span className="text-red-600">*</span>
+                      </label>
+                      <select
+                        value={selectedBankAccount}
+                        onChange={(e) => setSelectedBankAccount(e.target.value)}
+                        title="Select bank account"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                      >
+                        <option value="">Select bank account</option>
+                        {bankAccounts.map((account) => (
+                          <option key={account.id} value={account.account_name}>
+                            {account.account_name}
+                          </option>
+                        ))}
+                      </select>
+                      {bankAccountsLoading && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Loading bank accounts...</p>
+                      )}
+                      {!bankAccountsLoading && bankAccounts.length === 0 && (
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                          No bank account found. Add one in Store Settings.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Split Amounts <span className="text-red-600">*</span></label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block mb-1 text-[11px] text-gray-500 dark:text-gray-400">Cash</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={cashPaid}
+                          onChange={(e) => setCashPaid(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-[11px] text-gray-500 dark:text-gray-400">Digital</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={digitalPaid}
+                          onChange={(e) => setDigitalPaid(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Total Paid: {formatCurrency(getPaidTotal(), 0)}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      New Remaining: {formatCurrency(selectedForPayment.amount_remaining - getPaidTotal(), 0)}
+                    </p>
+                  </div>
+
+                  {parseAmountValue(digitalPaid) > 0 && (
+                    <div>
+                      <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">
+                        Bank Account <span className="text-red-600">*</span>
+                      </label>
+                      <select
+                        value={selectedBankAccount}
+                        onChange={(e) => setSelectedBankAccount(e.target.value)}
+                        title="Select bank account"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 dark:bg-gray-800 dark:text-white"
+                      >
+                        <option value="">Select bank account</option>
+                        {bankAccounts.map((account) => (
+                          <option key={account.id} value={account.account_name}>
+                            {account.account_name}
+                          </option>
+                        ))}
+                      </select>
+                      {bankAccountsLoading && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Loading bank accounts...</p>
+                      )}
+                      {!bankAccountsLoading && bankAccounts.length === 0 && (
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                          No bank account found. Add one in Store Settings.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
 
               <div>
                 <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Notes</label>
@@ -1125,6 +1350,10 @@ export default function SupplierKhaataPage() {
                 onClick={() => {
                   setShowPayDuesModal(false)
                   setError('')
+                  setIsSplitPayment(false)
+                  setCashPaid('')
+                  setDigitalPaid('')
+                  setSelectedBankAccount('')
                 }}
                 className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors dark:text-gray-300"
               >

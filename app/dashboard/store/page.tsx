@@ -3059,9 +3059,19 @@ function SupplierModal({ supplier, onClose }: { supplier: any, onClose: (refresh
 function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?: boolean) => void }) {
   const [amount, setAmount] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'Digital'>('Cash')
+  const [isSplitPayment, setIsSplitPayment] = useState(false)
+  const [cashPaid, setCashPaid] = useState('')
+  const [digitalPaid, setDigitalPaid] = useState('')
+  const [bankAccounts, setBankAccounts] = useState<any[]>([])
+  const [bankAccountsLoading, setBankAccountsLoading] = useState(false)
+  const [selectedBankAccount, setSelectedBankAccount] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchBankAccounts()
+  }, [])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PK', {
@@ -3071,18 +3081,79 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
     }).format(amount)
   }
 
+  const parseAmountValue = (value: string) => {
+    const parsed = Number.parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const getPaidTotal = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(cashPaid) + parseAmountValue(digitalPaid)
+    }
+
+    return parseAmountValue(amount)
+  }
+
+  const hasDigitalPayment = () => {
+    if (isSplitPayment) {
+      return parseAmountValue(digitalPaid) > 0
+    }
+
+    return paymentMethod === 'Digital'
+  }
+
+  const fetchBankAccounts = async () => {
+    try {
+      setBankAccountsLoading(true)
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      const response = await fetch(`/api/bank-accounts?store_id=${storeId}`, {
+        cache: 'no-store'
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setBankAccounts(result.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch bank accounts:', err)
+    } finally {
+      setBankAccountsLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    const paymentAmount = parseFloat(amount)
-    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+    const totalPayment = getPaidTotal()
+    const cashAmount = parseAmountValue(cashPaid)
+    const digitalAmount = parseAmountValue(digitalPaid)
+    const requiresDigital = hasDigitalPayment()
+
+    if (isSplitPayment && cashAmount === 0 && digitalAmount === 0) {
+      setError('Enter a cash or digital amount for split payment')
+      return
+    }
+
+    if (!isSplitPayment && totalPayment <= 0) {
       setError('Please enter a valid payment amount')
       return
     }
 
-    if (paymentAmount > supplier.balance_owed) {
+    if (totalPayment > supplier.balance_owed) {
       setError('Payment amount cannot exceed balance owed')
+      return
+    }
+
+    if (requiresDigital && bankAccounts.length === 0) {
+      setError('No bank account found. Please add one in Store Settings before taking digital payments.')
+      return
+    }
+
+    if (requiresDigital && !selectedBankAccount) {
+      setError('Please select a bank account for Digital payment')
       return
     }
 
@@ -3092,14 +3163,33 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
       const storeId = getStoreId()
       if (!storeId) throw new Error('Store ID not found')
 
+      const paymentSplits = isSplitPayment
+        ? [
+            cashAmount > 0
+              ? { payment_method: 'Cash', amount: cashAmount }
+              : null,
+            digitalAmount > 0
+              ? { payment_method: 'Digital', amount: digitalAmount, bank_account_name: selectedBankAccount }
+              : null,
+          ].filter(Boolean)
+        : [
+            {
+              payment_method: paymentMethod,
+              amount: totalPayment,
+              bank_account_name: requiresDigital ? selectedBankAccount : null,
+            },
+          ]
+
       const response = await fetch('/api/supplier-payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           supplier_id: supplier.id,
           store_id: storeId,
-          amount: paymentAmount,
-          payment_method: paymentMethod,
+          amount: totalPayment,
+          payment_method: isSplitPayment ? 'Mixed' : paymentMethod,
+          payments: paymentSplits,
+          bank_account_name: requiresDigital ? selectedBankAccount : null,
           notes: notes || null
         })
       })
@@ -3119,62 +3209,186 @@ function PaymentModal({ supplier, onClose }: { supplier: any, onClose: (refresh?
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-[#1a1a1a] rounded-lg w-full max-w-md">
-        <div className="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold dark:text-white">Record Payment</h3>
-          <button onClick={() => onClose()} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center z-10">
+          <h2 className="text-lg font-bold dark:text-white">Record Supplier Payment</h2>
+          <button onClick={() => onClose()} className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
             <XIcon size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded text-sm">
+            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-200 px-4 py-3 rounded text-sm">
               {error}
             </div>
           )}
 
-          <div className="bg-gray-50 dark:bg-[#111] p-4 rounded border border-gray-200 dark:border-gray-700">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Supplier:</span>
-              <span className="font-semibold dark:text-white">{supplier.supplier_name}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Current Balance Owed:</span>
-              <span className="font-bold text-red-600">{formatCurrency(supplier.balance_owed)}</span>
+          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-600 dark:text-gray-400">Supplier</p>
+                <p className="font-medium dark:text-white">{supplier.company_name}</p>
+              </div>
+              <div>
+                <p className="text-gray-600 dark:text-gray-400">Balance Owed</p>
+                <p className="font-medium dark:text-white">{formatCurrency(supplier.balance_owed)}</p>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
-              Payment Amount <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
-              placeholder="0.00"
-              max={supplier.balance_owed}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1 dark:text-gray-200">
-              Payment Method <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as 'Cash' | 'Digital')}
-              className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium dark:text-gray-200">Split Payment</span>
+            <button
+              type="button"
+              onClick={() => {
+                setIsSplitPayment((prev) => !prev)
+                setAmount('')
+                setCashPaid('')
+                setDigitalPaid('')
+                setPaymentMethod('Cash')
+                setSelectedBankAccount('')
+              }}
+              className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                isSplitPayment
+                  ? 'bg-cyan-600 text-white border-cyan-600'
+                  : 'bg-white border-gray-300 text-gray-700 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300'
+              }`}
             >
-              <option value="Cash">Cash</option>
-              <option value="Digital">Digital</option>
-            </select>
+              {isSplitPayment ? 'On' : 'Off'}
+            </button>
           </div>
+
+          {!isSplitPayment ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-200">
+                  Payment Amount <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
+                  placeholder="0.00"
+                  max={supplier.balance_owed}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-200">
+                  Payment Method <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => {
+                    setPaymentMethod(e.target.value as 'Cash' | 'Digital')
+                    setSelectedBankAccount('')
+                  }}
+                  className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Digital">Digital</option>
+                </select>
+              </div>
+
+              {paymentMethod === 'Digital' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1 dark:text-gray-200">
+                    Bank Account <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedBankAccount}
+                    onChange={(e) => setSelectedBankAccount(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
+                  >
+                    <option value="">Select bank account</option>
+                    {bankAccounts.map((account) => (
+                      <option key={account.id} value={account.account_name}>
+                        {account.account_name}
+                      </option>
+                    ))}
+                  </select>
+                  {bankAccountsLoading && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Loading bank accounts...</p>
+                  )}
+                  {!bankAccountsLoading && bankAccounts.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                      No bank account found. Add one in Store Settings.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-200">
+                  Split Amounts <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block mb-1 text-[11px] text-gray-500 dark:text-gray-400">Cash</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={cashPaid}
+                      onChange={(e) => setCashPaid(e.target.value)}
+                      className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-[11px] text-gray-500 dark:text-gray-400">Digital</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={digitalPaid}
+                      onChange={(e) => setDigitalPaid(e.target.value)}
+                      className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Total Paid: {formatCurrency(getPaidTotal())}
+                </p>
+              </div>
+
+              {parseAmountValue(digitalPaid) > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-1 dark:text-gray-200">
+                    Bank Account <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedBankAccount}
+                    onChange={(e) => setSelectedBankAccount(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded focus:border-black dark:focus:border-gray-400 outline-none dark:bg-gray-800 dark:text-white"
+                  >
+                    <option value="">Select bank account</option>
+                    {bankAccounts.map((account) => (
+                      <option key={account.id} value={account.account_name}>
+                        {account.account_name}
+                      </option>
+                    ))}
+                  </select>
+                  {bankAccountsLoading && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Loading bank accounts...</p>
+                  )}
+                  {!bankAccountsLoading && bankAccounts.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                      No bank account found. Add one in Store Settings.
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-gray-200">Notes (Optional)</label>

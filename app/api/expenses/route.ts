@@ -120,7 +120,8 @@ export async function POST(request: Request) {
       recorded_by, 
       recorded_by_cashier_id,
       store_id, 
-      payment_method 
+      payment_method,
+      bank_account_name
     } = body
 
     // Validation
@@ -162,6 +163,38 @@ export async function POST(request: Request) {
     // recorded_by_cashier_id from frontend is actually the cashier (staff) id from cashiers table
     // This is the staff member selected from the CashierSelector dropdown
     const cashierRefId = recorded_by_cashier_id ? parseInt(recorded_by_cashier_id) : null
+    let validatedCashierRefId: number | null = cashierRefId
+
+    if (cashierRefId) {
+      const { data: cashierRef, error: cashierRefError } = await supabaseAdmin
+        .from('cashiers')
+        .select('id')
+        .eq('id', cashierRefId)
+        .eq('store_id', parseInt(store_id))
+        .maybeSingle()
+
+      if (cashierRefError) {
+        throw cashierRefError
+      }
+
+      if (!cashierRef) {
+        validatedCashierRefId = null
+      }
+    }
+
+    const normalizedMethod = payment_method === 'Digital' ? 'Digital' : 'Cash'
+    const bankName = typeof bank_account_name === 'string' ? bank_account_name.trim() : ''
+
+    if (normalizedMethod === 'Digital' && !bankName) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Bank account is required for Digital expenses',
+          code: 'VALIDATION_ERROR',
+        },
+        { status: 400 }
+      )
+    }
 
     const { data, error } = await supabaseAdmin
       .from('expenses')
@@ -170,11 +203,12 @@ export async function POST(request: Request) {
           description,
           amount: parseFloat(amount),
           category,
-          payment_method: payment_method || 'Cash',
+          payment_method: normalizedMethod,
+          bank_account_name: normalizedMethod === 'Digital' ? bankName : null,
           expense_date,
           recorded_by: managerUuid,
           recorded_by_cashier_id: cashierAccountId,
-          cashier_ref_id: cashierRefId,
+          cashier_ref_id: validatedCashierRefId,
           store_id: parseInt(store_id),
         },
       ])
@@ -206,7 +240,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json()
-    const { id, description, amount, category, expense_date, payment_method } = body
+    const { id, description, amount, category, expense_date, payment_method, bank_account_name } = body
 
     // Validation
     if (!id) {
@@ -242,15 +276,37 @@ export async function PUT(request: Request) {
       )
     }
 
+    const updates: Record<string, any> = {
+      description,
+      amount: parseFloat(amount),
+      category,
+      expense_date,
+    }
+
+    const normalizedMethod = payment_method === 'Digital' ? 'Digital' : payment_method === 'Cash' ? 'Cash' : null
+    const bankName = typeof bank_account_name === 'string' ? bank_account_name.trim() : ''
+
+    if (normalizedMethod) {
+      if (normalizedMethod === 'Digital' && !bankName) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Bank account is required for Digital expenses',
+            code: 'VALIDATION_ERROR',
+          },
+          { status: 400 }
+        )
+      }
+
+      updates.payment_method = normalizedMethod
+      updates.bank_account_name = normalizedMethod === 'Digital' ? bankName : null
+    } else if (bank_account_name !== undefined) {
+      updates.bank_account_name = bankName || null
+    }
+
     const { data, error } = await supabaseAdmin
       .from('expenses')
-      .update({
-        description,
-        amount: parseFloat(amount),
-        category,
-        payment_method: payment_method || 'Cash',
-        expense_date,
-      })
+      .update(updates)
       .eq('id', id)
       .select()
       .single()
