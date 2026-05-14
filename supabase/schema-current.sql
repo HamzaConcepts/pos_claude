@@ -1102,6 +1102,7 @@ CREATE TABLE IF NOT EXISTS "public"."partial_payment_customers" (
     "customer_name" character varying(100) NOT NULL,
     "customer_cnic" character varying(20),
     "customer_phone" character varying(20),
+    "notes" text,
     "total_amount" numeric(10,2) NOT NULL,
     "amount_paid" numeric(10,2) NOT NULL,
     "amount_remaining" numeric(10,2) NOT NULL,
