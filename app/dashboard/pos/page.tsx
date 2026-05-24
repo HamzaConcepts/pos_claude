@@ -38,6 +38,7 @@ export default function POSPage() {
   const [cashPaid, setCashPaid] = useState('')
   const [digitalPaid, setDigitalPaid] = useState('')
   const [saleDescription, setSaleDescription] = useState('')
+  const [saleNumberOverride, setSaleNumberOverride] = useState('')
   const [loading, setLoading] = useState(false)
   const [showReceipt, setShowReceipt] = useState(false)
   const [lastSale, setLastSale] = useState<any>(null)
@@ -1088,6 +1089,7 @@ export default function POSPage() {
           unit_price: getEffectiveUnitPrice(item),
           imei_numbers: item.imei_numbers || [], // Include IMEI numbers
         })),
+        sale_number: saleNumberOverride.trim() || null,
         sale_description: finalDescription,
         payment_method: paymentMethodForSale,
         amount_paid: paid,
@@ -1129,6 +1131,7 @@ export default function POSPage() {
         setDigitalPaid('')
         setIsSplitPayment(false)
         setSaleDescription('')
+        setSaleNumberOverride('')
         setShowPartialPaymentConfirm(false)
         setShowPartialPaymentModal(false)
         setPartialPaymentData({ customerName: '', customerPhone: '', invoicePrice: '' })
@@ -1201,6 +1204,7 @@ export default function POSPage() {
   const handleNewSale = () => {
     setShowReceipt(false)
     setLastSale(null)
+    setSaleNumberOverride('')
   }
 
   if (showReceipt && lastSale) {
@@ -2234,6 +2238,23 @@ export default function POSPage() {
                 />
               </div>
             )}
+
+            <div className="mb-4">
+              <label htmlFor="saleNumber" className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+                Invoice Number (Optional)
+              </label>
+              <input
+                id="saleNumber"
+                type="text"
+                value={saleNumberOverride}
+                onChange={(e) => setSaleNumberOverride(e.target.value)}
+                className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-white dark:placeholder-gray-500"
+                placeholder="Auto-generated"
+              />
+              <p className="text-xs mt-1.5 text-gray-500 dark:text-gray-400">
+                Leave blank to use the auto-generated invoice number.
+              </p>
+            </div>
 
             <div className="mb-4">
               <label htmlFor="saleDescription" className="block mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
