@@ -42,7 +42,7 @@ export async function GET(request: Request) {
         const [managerRes, cashierCountRes, salesCountRes] = await Promise.all([
           supabaseAdmin
             .from('managers')
-            .select('id, full_name, email')
+            .select('id, full_name, email, phone_number')
             .eq('store_id', store.id)
             .limit(1)
             .maybeSingle(),

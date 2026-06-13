@@ -11,7 +11,7 @@ interface Store {
   currency: string
   is_active: boolean
   created_at: string
-  owner: { id: string; full_name: string; email: string } | null
+  owner: { id: string; full_name: string; email: string; phone_number: string | null } | null
   cashier_count: number
   sales_count: number
 }
@@ -162,6 +162,7 @@ export default function StoresPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Store</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Code</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Owner</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Phone</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Cashiers</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Sales</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Currency</th>
@@ -174,14 +175,14 @@ export default function StoresPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-gray-100 dark:border-gray-800">
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-20" /></td>
                     ))}
                   </tr>
                 ))
               ) : stores.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No stores found</td>
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No stores found</td>
                 </tr>
               ) : (
                 stores.map((store) => (
@@ -194,6 +195,7 @@ export default function StoresPage() {
                         <p className="text-xs text-gray-500 dark:text-gray-400">{store.owner?.email || ''}</p>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{store.owner?.phone_number || '—'}</td>
                     <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{store.cashier_count}</td>
                     <td className="px-4 py-3 text-center">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400">
