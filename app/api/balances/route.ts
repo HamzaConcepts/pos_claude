@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         .eq('store_id', storeId),
       supabaseAdmin
         .from('cash_transfers')
-        .select('transfer_amount, bank_name')
+        .select('transfer_amount, bank_name, transfer_direction')
         .eq('store_id', storeId),
     ])
 
@@ -260,8 +260,14 @@ export async function GET(request: NextRequest) {
 
     ;(cashTransfers || []).forEach((transfer: any) => {
       const amount = toNumber(transfer.transfer_amount)
-      computedCash -= amount
-      applyBankAmount(transfer.bank_name, amount)
+      const direction = transfer.transfer_direction === 'bank_to_cash' ? 'bank_to_cash' : 'cash_to_bank'
+      if (direction === 'bank_to_cash') {
+        computedCash += amount
+        applyBankAmount(transfer.bank_name, -amount)
+      } else {
+        computedCash -= amount
+        applyBankAmount(transfer.bank_name, amount)
+      }
     })
 
     const computedBankBalances = bankBalanceList.map((account) => ({

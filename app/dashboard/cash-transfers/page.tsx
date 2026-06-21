@@ -18,6 +18,7 @@ interface CashTransfer {
   store_id: number
   transfer_amount: number
   bank_name: string
+  transfer_direction?: 'cash_to_bank' | 'bank_to_cash'
   transfer_date: string
   notes: string | null
   recorded_by: string | null
@@ -99,6 +100,7 @@ export default function CashTransfersPage() {
     transfer_amount: '',
     bank_name: '',
     custom_bank_name: '',
+    transfer_direction: 'cash_to_bank' as 'cash_to_bank' | 'bank_to_cash',
     transfer_date: new Date().toISOString().split('T')[0],
     notes: '',
   })
@@ -282,8 +284,17 @@ export default function CashTransfersPage() {
     }
   }
 
-  const totalTransferred = transfers.reduce((sum, t) => sum + Number(t.transfer_amount), 0)
-  const estimatedCashBalance = cashSalesTotal + cashKhaataInflow - cashOperatingExpenses - cashStockPayments - cashWithdrawalsTotal - cashSupplierOutflow - totalTransferred
+  const cashToBankTotal = transfers
+    .filter((transfer) => (transfer.transfer_direction ?? 'cash_to_bank') === 'cash_to_bank')
+    .reduce((sum, transfer) => sum + Number(transfer.transfer_amount), 0)
+
+  const bankToCashTotal = transfers
+    .filter((transfer) => transfer.transfer_direction === 'bank_to_cash')
+    .reduce((sum, transfer) => sum + Number(transfer.transfer_amount), 0)
+
+  const netTransferred = cashToBankTotal - bankToCashTotal
+
+  const estimatedCashBalance = cashSalesTotal + cashKhaataInflow - cashOperatingExpenses - cashStockPayments - cashWithdrawalsTotal - cashSupplierOutflow - cashToBankTotal + bankToCashTotal
 
   const resolveRecordedBy = async (): Promise<string | null> => {
     try {
@@ -379,6 +390,7 @@ export default function CashTransfersPage() {
           store_id: storeId,
           transfer_amount: amount,
           bank_name: bankName,
+          transfer_direction: form.transfer_direction,
           transfer_date: form.transfer_date,
           notes: form.notes.trim() || null,
           recorded_by: recordedBy,
@@ -394,6 +406,7 @@ export default function CashTransfersPage() {
         transfer_amount: '',
         bank_name: '',
         custom_bank_name: '',
+        transfer_direction: 'cash_to_bank',
         transfer_date: new Date().toISOString().split('T')[0],
         notes: '',
       })
@@ -427,7 +440,7 @@ export default function CashTransfersPage() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Cash Transfers</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Record cash moved from register to bank accounts</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Record cash moved between the register and bank accounts</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -483,6 +496,8 @@ export default function CashTransfersPage() {
                 value={balanceForm.cash}
                 onChange={(e) => setBalanceForm((prev) => ({ ...prev, cash: e.target.value }))}
                 disabled={!userIsManager}
+                title="Cash in hand opening balance"
+                placeholder="0.00"
                 className="mt-2 w-full px-3 py-2 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white disabled:opacity-70"
               />
             </div>
@@ -513,6 +528,8 @@ export default function CashTransfersPage() {
                             },
                           }))
                         }
+                          title={`${bank.bank_account_name} opening balance`}
+                          placeholder="0.00"
                         disabled={!userIsManager}
                         className="w-full px-2 py-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 dark:text-white disabled:opacity-70"
                       />
@@ -615,10 +632,15 @@ export default function CashTransfersPage() {
         </div>
         <div className="p-4 rounded-lg border bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Total Transferred</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Net Transfer Impact</p>
             <ArrowsLeftRightIcon size={16} className="text-orange-500" />
           </div>
-          <p className="text-lg font-bold text-orange-600">{formatCurrency(totalTransferred, 0)}</p>
+          <p className={`text-lg font-bold ${netTransferred >= 0 ? 'text-orange-600' : 'text-cyan-600'}`}>
+            {formatCurrency(netTransferred, 0)}
+          </p>
+          <p className="text-[10px] text-gray-400 mt-0.5">
+            Cash→Bank {formatCurrency(cashToBankTotal, 0)} · Bank→Cash {formatCurrency(bankToCashTotal, 0)}
+          </p>
         </div>
         <button
           onClick={() => setShowBreakdown(true)}
@@ -642,7 +664,7 @@ export default function CashTransfersPage() {
         <div className="text-center py-12 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
           <ArrowsLeftRightIcon size={40} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
           <p className="text-sm text-gray-500 dark:text-gray-400">No cash transfers recorded yet.</p>
-          <p className="text-xs text-gray-400 mt-1">Use the "Record Transfer" button to log a cash-to-bank movement.</p>
+          <p className="text-xs text-gray-400 mt-1">Use the "Record Transfer" button to log cash-to-bank or bank-to-cash movement.</p>
         </div>
       ) : (
         <div className="rounded-lg border overflow-hidden bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700">
@@ -652,6 +674,7 @@ export default function CashTransfersPage() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400">Date</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400">Bank</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400">Direction</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400">Amount</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400">Notes</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-400">Actions</th>
@@ -674,6 +697,15 @@ export default function CashTransfersPage() {
                         {transfer.bank_name}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                        (transfer.transfer_direction ?? 'cash_to_bank') === 'bank_to_cash'
+                          ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
+                          : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                      }`}>
+                        {(transfer.transfer_direction ?? 'cash_to_bank') === 'bank_to_cash' ? 'Bank → Cash' : 'Cash → Bank'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-right font-semibold text-sm text-orange-600">
                       {formatCurrency(transfer.transfer_amount, 0)}
                     </td>
@@ -694,8 +726,8 @@ export default function CashTransfersPage() {
               </tbody>
               <tfoot>
                 <tr className="bg-orange-600 text-white font-semibold">
-                  <td colSpan={2} className="px-4 py-2.5 text-sm">TOTAL TRANSFERRED</td>
-                  <td className="px-4 py-2.5 text-right text-sm">{formatCurrency(totalTransferred, 0)}</td>
+                  <td colSpan={3} className="px-4 py-2.5 text-sm">TOTAL TRANSFERRED</td>
+                  <td className="px-4 py-2.5 text-right text-sm">{formatCurrency(cashToBankTotal + bankToCashTotal, 0)}</td>
                   <td colSpan={2} />
                 </tr>
               </tfoot>
@@ -726,6 +758,36 @@ export default function CashTransfersPage() {
             )}
 
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Transfer Direction <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, transfer_direction: 'cash_to_bank' })}
+                    className={`px-3 py-2 rounded text-sm border transition-colors ${
+                      form.transfer_direction === 'cash_to_bank'
+                        ? 'bg-orange-50 border-orange-400 text-orange-700 dark:bg-orange-900/20 dark:border-orange-600 dark:text-orange-300'
+                        : 'bg-white border-gray-300 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    Cash → Bank
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, transfer_direction: 'bank_to_cash' })}
+                    className={`px-3 py-2 rounded text-sm border transition-colors ${
+                      form.transfer_direction === 'bank_to_cash'
+                        ? 'bg-cyan-50 border-cyan-400 text-cyan-700 dark:bg-cyan-900/20 dark:border-cyan-600 dark:text-cyan-300'
+                        : 'bg-white border-gray-300 text-gray-700 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    Bank → Cash
+                  </button>
+                </div>
+              </div>
+
               {/* Amount */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -746,7 +808,7 @@ export default function CashTransfersPage() {
               {/* Bank Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Bank <span className="text-red-500">*</span>
+                  {form.transfer_direction === 'bank_to_cash' ? 'Source Bank' : 'Destination Bank'} <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={form.bank_name}
@@ -890,7 +952,15 @@ export default function CashTransfersPage() {
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Cash Transferred to Bank</p>
                   <p className="text-xs text-gray-400">Transfers recorded on this page</p>
                 </div>
-                <span className="text-sm font-semibold text-red-500">− {formatCurrency(totalTransferred, 0)}</span>
+                <span className="text-sm font-semibold text-red-500">− {formatCurrency(cashToBankTotal, 0)}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700">
+                <div>
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">Bank Withdrawn to Cash</p>
+                  <p className="text-xs text-gray-400">Reversed transfers recorded on this page</p>
+                </div>
+                <span className="text-sm font-semibold text-green-600">+ {formatCurrency(bankToCashTotal, 0)}</span>
               </div>
 
               {/* Result */}

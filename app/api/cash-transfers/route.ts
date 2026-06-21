@@ -16,6 +16,10 @@ const parsePositiveInt = (v: string | null): number | null => {
   return Number.isInteger(n) && n > 0 ? n : null
 }
 
+const normalizeTransferDirection = (value: any): 'cash_to_bank' | 'bank_to_cash' => {
+  return value === 'bank_to_cash' ? 'bank_to_cash' : 'cash_to_bank'
+}
+
 // GET — list transfers for a store
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +49,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { store_id, transfer_amount, bank_name, transfer_date, notes, recorded_by } = body
+    const { store_id, transfer_amount, bank_name, transfer_date, notes, recorded_by, transfer_direction } = body
 
     const parsedStoreId = parsePositiveInt(String(store_id ?? ''))
     if (!parsedStoreId) {
@@ -62,12 +66,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'bank_name is required' }, { status: 400 })
     }
 
+    const direction = normalizeTransferDirection(transfer_direction)
+
     const { data, error } = await supabaseAdmin
       .from('cash_transfers')
       .insert({
         store_id: parsedStoreId,
         transfer_amount: amount,
         bank_name: bankNameStr,
+        transfer_direction: direction,
         transfer_date: transfer_date || new Date().toISOString().split('T')[0],
         notes: notes?.trim() || null,
         recorded_by: recorded_by || null,

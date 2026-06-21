@@ -634,7 +634,7 @@ async function generateBankTransactionsReport(storeId: string, filters: any) {
   const cashTransfersQuery = applyDateRange(
     supabaseAdmin
       .from('cash_transfers')
-      .select('transfer_amount, bank_name, transfer_date')
+      .select('transfer_amount, bank_name, transfer_date, transfer_direction')
       .eq('store_id', parsedStoreId),
     'transfer_date',
     startDate,
@@ -831,9 +831,10 @@ async function generateBankTransactionsReport(storeId: string, filters: any) {
   })
 
   ;(cashTransfers || []).forEach((transfer: any) => {
+    const direction = transfer.transfer_direction === 'bank_to_cash' ? 'bank_to_cash' : 'cash_to_bank'
     addTransaction({
       bankName: transfer.bank_name,
-      direction: 'received',
+      direction: direction === 'bank_to_cash' ? 'paid' : 'received',
       amount: toSafeNumber(transfer.transfer_amount),
       date: transfer.transfer_date,
       source: 'Cash Transfer',
