@@ -35,6 +35,84 @@ function getReceivedAmount(sale: any): number {
   return 0
 }
 
+async function getReturnFlowImpact(storeId: number, startDate?: string | null, endDate?: string | null) {
+  let returnsQuery = supabaseAdmin
+    .from('returns')
+    .select('id, store_id, sale_id, return_type, total_refund_amount, refund_method, return_date, created_at')
+    .eq('store_id', storeId)
+    .order('return_date', { ascending: false })
+
+  if (startDate) {
+    returnsQuery = returnsQuery.gte('return_date', startDate)
+  }
+  if (endDate) {
+    const endDateTime = new Date(endDate)
+    endDateTime.setHours(23, 59, 59, 999)
+    returnsQuery = returnsQuery.lte('return_date', endDateTime.toISOString())
+  }
+
+  const [
+    { data: returns, error: returnsError },
+    { data: saleBankRows, error: saleBankError },
+  ] = await Promise.all([
+    returnsQuery,
+    supabaseAdmin
+      .from('sales')
+      .select('id, bank_account_name')
+      .eq('store_id', storeId),
+  ])
+
+  if (returnsError) throw returnsError
+  if (saleBankError) throw saleBankError
+
+  const saleBankMap = new Map<number, string>()
+  ;(saleBankRows || []).forEach((sale: any) => {
+    if (Number.isInteger(sale.id)) {
+      saleBankMap.set(sale.id, normalizeBankName(sale.bank_account_name))
+    }
+  })
+
+  const impact = {
+    customerCashOut: 0,
+    customerBankOut: 0,
+    supplierCashIn: 0,
+    supplierBankIn: 0,
+    customerDigitalRefunds: [] as Array<{ amount: number; bank_account_name: string; date: string; return_id: number }>,
+    supplierDigitalRefunds: [] as Array<{ amount: number; bank_account_name: string; date: string; return_id: number }>,
+    customerCashRefunds: [] as Array<{ amount: number; date: string; return_id: number }>,
+    supplierCashRefunds: [] as Array<{ amount: number; date: string; return_id: number }>,
+  }
+
+  ;(returns || []).forEach((returnRow: any) => {
+    const amount = toSafeNumber(returnRow.total_refund_amount)
+    const refundMethod = String(returnRow.refund_method || 'Cash')
+    const date = returnRow.return_date || returnRow.created_at || new Date().toISOString()
+
+    if (returnRow.return_type === 'customer') {
+      if (refundMethod === 'Cash') {
+        impact.customerCashOut += amount
+        impact.customerCashRefunds.push({ amount, date, return_id: returnRow.id })
+      } else if (refundMethod === 'Digital') {
+        const bankAccountName = returnRow.sale_id ? saleBankMap.get(returnRow.sale_id) || 'Unassigned' : 'Unassigned'
+        impact.customerBankOut += amount
+        impact.customerDigitalRefunds.push({ amount, bank_account_name: bankAccountName, date, return_id: returnRow.id })
+      }
+    }
+
+    if (returnRow.return_type === 'supplier') {
+      if (refundMethod === 'Cash') {
+        impact.supplierCashIn += amount
+        impact.supplierCashRefunds.push({ amount, date, return_id: returnRow.id })
+      } else if (refundMethod === 'Digital') {
+        impact.supplierBankIn += amount
+        impact.supplierDigitalRefunds.push({ amount, bank_account_name: 'Unassigned', date, return_id: returnRow.id })
+      }
+    }
+  })
+
+  return impact
+}
+
 const normalizeBankName = (value: any): string => {
   if (typeof value === 'string') {
     const trimmed = value.trim()
@@ -529,12 +607,13 @@ async function generateSummaryReport(storeId: string, filters: any) {
   const expenses = await generateExpensesReport(storeId, filters)
   const inventory = await generateInventoryReport(storeId, {})
   const profit = await generateProfitReport(storeId, filters)
+  const returnFlow = await getReturnFlowImpact(parseInt(storeId, 10), filters.startDate, filters.endDate)
 
   // Calculate cash present (Cash sales - Cash expenses)
-  const cashPresent = sales.summary.totalCash - expenses.summary.totalCash
+  const cashPresent = sales.summary.totalCash - expenses.summary.totalCash - returnFlow.customerCashOut + returnFlow.supplierCashIn
 
   // Generate cash flow trend data - pass the full reports
-  const cashFlowTrend = generateCashFlowTrend(sales, expenses, filters)
+  const cashFlowTrend = generateCashFlowTrend(sales, expenses, filters, returnFlow)
 
   return {
     sales: sales.summary,
@@ -542,6 +621,7 @@ async function generateSummaryReport(storeId: string, filters: any) {
     inventory: inventory.summary,
     profit: profit.summary,
     cashPresent, // Add cash present to summary
+    returns: returnFlow,
     cashFlowTrend
   }
 }
@@ -549,6 +629,7 @@ async function generateSummaryReport(storeId: string, filters: any) {
 async function generateBankTransactionsReport(storeId: string, filters: any) {
   const parsedStoreId = parseInt(storeId, 10)
   const { startDate, endDate } = filters || {}
+  const returnFlow = await getReturnFlowImpact(parsedStoreId, startDate, endDate)
 
   const bankAccountsQuery = supabaseAdmin
     .from('store_bank_accounts')
@@ -841,6 +922,28 @@ async function generateBankTransactionsReport(storeId: string, filters: any) {
     })
   })
 
+  ;(returnFlow.customerDigitalRefunds || []).forEach((refund) => {
+    addTransaction({
+      bankName: refund.bank_account_name,
+      direction: 'paid',
+      amount: refund.amount,
+      date: refund.date,
+      source: 'Customer Return',
+      reference: `Return #${refund.return_id}`,
+    })
+  })
+
+  ;(returnFlow.supplierDigitalRefunds || []).forEach((refund) => {
+    addTransaction({
+      bankName: refund.bank_account_name,
+      direction: 'received',
+      amount: refund.amount,
+      date: refund.date,
+      source: 'Supplier Return',
+      reference: `Return #${refund.return_id}`,
+    })
+  })
+
   const banks = Array.from(bankTotals.entries()).map(([bankName, totals]) => ({
     bank_account_name: bankName,
     opening_balance: totals.openingBalance ?? 0,
@@ -875,13 +978,17 @@ async function generateBankTransactionsReport(storeId: string, filters: any) {
   }
 }
 
-function generateCashFlowTrend(salesReport: any, expensesReport: any, filters: any) {
+function generateCashFlowTrend(salesReport: any, expensesReport: any, filters: any, returnFlow?: any) {
   const salesData = salesReport.sales || []
   const expensesData = expensesReport.expenses || []
+  const customerCashRefunds = returnFlow?.customerCashRefunds || []
+  const supplierCashRefunds = returnFlow?.supplierCashRefunds || []
 
   const transactionDates = [
     ...salesData.map((sale: any) => new Date(sale.sale_date)),
-    ...expensesData.map((expense: any) => new Date(expense.expense_date))
+    ...expensesData.map((expense: any) => new Date(expense.expense_date)),
+    ...customerCashRefunds.map((refund: any) => new Date(refund.date)),
+    ...supplierCashRefunds.map((refund: any) => new Date(refund.date)),
   ].filter((date: Date) => !Number.isNaN(date.getTime()))
 
   let startDate = filters.startDate ? new Date(filters.startDate) : null
@@ -930,6 +1037,20 @@ function generateCashFlowTrend(salesReport: any, expensesReport: any, filters: a
     const date = new Date(expense.expense_date).toISOString().split('T')[0]
     if (trendMap[date]) {
       trendMap[date].cashOut += expense.amount
+    }
+  })
+
+  customerCashRefunds.forEach((refund: any) => {
+    const date = new Date(refund.date).toISOString().split('T')[0]
+    if (trendMap[date]) {
+      trendMap[date].cashOut += refund.amount
+    }
+  })
+
+  supplierCashRefunds.forEach((refund: any) => {
+    const date = new Date(refund.date).toISOString().split('T')[0]
+    if (trendMap[date]) {
+      trendMap[date].cashIn += refund.amount
     }
   })
 

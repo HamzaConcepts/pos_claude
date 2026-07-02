@@ -27,6 +27,80 @@ const normalizeMethod = (value: any): 'Cash' | 'Digital' | null => {
   return null
 }
 
+async function getReturnBalanceImpact(storeId: number, startDate?: string | null, endDate?: string | null) {
+  let returnsQuery = supabaseAdmin
+    .from('returns')
+    .select('id, sale_id, return_type, total_refund_amount, refund_method, return_date, created_at')
+    .eq('store_id', storeId)
+    .order('return_date', { ascending: false })
+
+  if (startDate) {
+    returnsQuery = returnsQuery.gte('return_date', startDate)
+  }
+  if (endDate) {
+    const endDateTime = new Date(endDate)
+    endDateTime.setHours(23, 59, 59, 999)
+    returnsQuery = returnsQuery.lte('return_date', endDateTime.toISOString())
+  }
+
+  const [
+    { data: returns, error: returnsError },
+    { data: sales, error: salesError },
+  ] = await Promise.all([
+    returnsQuery,
+    supabaseAdmin
+      .from('sales')
+      .select('id, bank_account_name')
+      .eq('store_id', storeId),
+  ])
+
+  if (returnsError) throw returnsError
+  if (salesError) throw salesError
+
+  const saleBankMap = new Map<number, string>()
+  ;(sales || []).forEach((sale: any) => {
+    if (Number.isInteger(sale.id)) {
+      saleBankMap.set(sale.id, typeof sale.bank_account_name === 'string' ? sale.bank_account_name.trim() || 'Unassigned' : 'Unassigned')
+    }
+  })
+
+  const impact = {
+    cashIn: 0,
+    cashOut: 0,
+    bankIn: new Map<string, number>(),
+    bankOut: new Map<string, number>(),
+  }
+
+  const addBankMovement = (bankName: string, direction: 'in' | 'out', amount: number) => {
+    const normalized = typeof bankName === 'string' && bankName.trim() ? bankName.trim() : 'Unassigned'
+    const targetMap = direction === 'in' ? impact.bankIn : impact.bankOut
+    targetMap.set(normalized, (targetMap.get(normalized) || 0) + amount)
+  }
+
+  ;(returns || []).forEach((returnRow: any) => {
+    const amount = toNumber(returnRow.total_refund_amount)
+    const refundMethod = String(returnRow.refund_method || 'Cash')
+
+    if (returnRow.return_type === 'customer') {
+      if (refundMethod === 'Cash') {
+        impact.cashOut += amount
+      } else if (refundMethod === 'Digital') {
+        addBankMovement(returnRow.sale_id ? saleBankMap.get(returnRow.sale_id) || 'Unassigned' : 'Unassigned', 'out', amount)
+      }
+    }
+
+    if (returnRow.return_type === 'supplier') {
+      if (refundMethod === 'Cash') {
+        impact.cashIn += amount
+      } else if (refundMethod === 'Digital') {
+        addBankMovement('Unassigned', 'in', amount)
+      }
+    }
+  })
+
+  return impact
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -152,6 +226,7 @@ export async function GET(request: NextRequest) {
 
     let computedCash = cashBalance
     let unassignedBank = 0
+    const returnImpact = await getReturnBalanceImpact(storeId, null, null)
 
     const applyBankAmount = (bankName: any, amount: number) => {
       if (!Number.isFinite(amount) || amount === 0) return
@@ -268,6 +343,16 @@ export async function GET(request: NextRequest) {
         computedCash -= amount
         applyBankAmount(transfer.bank_name, amount)
       }
+    })
+
+    computedCash += returnImpact.cashIn
+    computedCash -= returnImpact.cashOut
+
+    ;(returnImpact.bankIn || new Map()).forEach((amount: number, bankName: string) => {
+      applyBankAmount(bankName, amount)
+    })
+    ;(returnImpact.bankOut || new Map()).forEach((amount: number, bankName: string) => {
+      applyBankAmount(bankName, -amount)
     })
 
     const computedBankBalances = bankBalanceList.map((account) => ({

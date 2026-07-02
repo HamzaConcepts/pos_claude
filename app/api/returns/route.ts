@@ -211,42 +211,51 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Reduce sales total_amount
+      // Reduce sales total_amount and recalculate payment fields
       const { data: saleRecord } = await supabaseAdmin
         .from('sales')
-        .select('total_amount')
+        .select('total_amount, amount_paid')
         .eq('id', sale_id)
         .single()
-      
+
+      const refundAmount = parseFloat(String(total_refund_amount || 0))
+      const currentSaleTotal = saleRecord ? parseFloat(String(saleRecord.total_amount || 0)) : 0
+      const amountPaid = saleRecord ? parseFloat(String(saleRecord.amount_paid || 0)) : 0
+      const updatedSaleTotal = Math.max(0, currentSaleTotal - refundAmount)
+      const updatedAmountDue = Math.max(0, updatedSaleTotal - amountPaid)
+      const updatedPaymentStatus = updatedAmountDue <= 0 ? 'Paid' : 'Partial'
+
       if (saleRecord) {
         await supabaseAdmin
           .from('sales')
-          .update({ total_amount: Math.max(0, saleRecord.total_amount - parseFloat(String(total_refund_amount || 0))) })
+          .update({
+            total_amount: updatedSaleTotal,
+            amount_due: updatedAmountDue,
+            payment_status: updatedPaymentStatus,
+          })
           .eq('id', sale_id)
       }
 
-      // 4. If refund goes to customer ledger, reduce their balance
-      if (refund_method === 'Ledger_Credit' && customer_phone) {
-        const { data: ledgerEntries } = await supabaseAdmin
+      // 4. Recalculate the linked partial-payment balance so history reflects the net sale after the return.
+      const { data: ledgerEntries } = await supabaseAdmin
+        .from('partial_payment_customers')
+        .select('*')
+        .eq('sale_id', sale_id)
+        .eq('store_id', parsedStoreId)
+
+      if (ledgerEntries && ledgerEntries.length > 0) {
+        const entry = ledgerEntries[0]
+        const entryAmountPaid = parseFloat(String(entry.amount_paid || 0))
+        const nextAmountRemaining = Math.max(0, updatedSaleTotal - entryAmountPaid)
+
+        await supabaseAdmin
           .from('partial_payment_customers')
-          .select('*')
-          .eq('sale_id', sale_id)
-          .eq('store_id', parsedStoreId)
-
-        if (ledgerEntries && ledgerEntries.length > 0) {
-          const entry = ledgerEntries[0]
-          const newRemaining = Math.max(0, entry.amount_remaining - parseFloat(String(total_refund_amount || 0)))
-          const newTotalAmount = Math.max(0, entry.total_amount - parseFloat(String(total_refund_amount || 0)))
-
-          await supabaseAdmin
-            .from('partial_payment_customers')
-            .update({
-              amount_remaining: newRemaining,
-              total_amount: newTotalAmount,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', entry.id)
-        }
+          .update({
+            total_amount: updatedSaleTotal,
+            amount_remaining: nextAmountRemaining,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', entry.id)
       }
 
       return NextResponse.json({

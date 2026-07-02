@@ -260,6 +260,19 @@ export async function DELETE(
       )
     }
 
+    const { error: returnsDeleteError } = await supabaseAdmin
+      .from('returns')
+      .delete()
+      .eq('sale_id', saleId)
+
+    if (returnsDeleteError) {
+      console.error('Error deleting return records before sale delete:', returnsDeleteError)
+      return NextResponse.json(
+        { success: false, error: returnsDeleteError.message },
+        { status: 500 }
+      )
+    }
+
     // Delete the sale - the trigger will automatically handle:
     // 1. Stock reversion (restoring quantities to batches)
     // 2. IMEI status updates

@@ -10,6 +10,8 @@ import { getPKTDate } from '@/lib/date-utils'
 import { useCurrency } from '@/lib/currency-context'
 import SalesSkeleton from '@/components/skeletons/SalesSkeleton'
 
+const SALES_PAGE_SIZE = 15
+
 
 export default function SalesPage() {
   const router = useRouter()
@@ -19,6 +21,7 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [expandedSaleId, setExpandedSaleId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
   
   // Filter states
   const [cashiers, setCashiers] = useState<any[]>([])
@@ -88,6 +91,10 @@ export default function SalesPage() {
     applyFilters()
   }, [sales, selectedCashier, selectedProduct, selectedPaymentMethod, selectedBankAccount, selectedPaymentStatus, startDate, endDate])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [sales, selectedCashier, selectedProduct, selectedPaymentMethod, selectedBankAccount, selectedPaymentStatus, startDate, endDate])
+
   const normalizePaymentStatus = (status: string) =>
     status === 'Pending' ? 'Partial' : status
 
@@ -151,6 +158,31 @@ export default function SalesPage() {
     return { cashPaid, digitalPaid }
   }
 
+  const getReturnSummary = (sale: any) => {
+    const summary = sale.return_summary || {}
+    const totalReturnedAmount = Number(summary.total_returned_amount || 0)
+    const currentTotalAmount = Number.isFinite(Number(summary.current_total_amount))
+      ? Number(summary.current_total_amount)
+      : Number(sale.total_amount || 0)
+
+    return {
+      hasReturns: Number(summary.return_count || 0) > 0 || totalReturnedAmount > 0,
+      totalReturnedAmount,
+      totalReturnedQuantity: Number(summary.total_returned_quantity || 0),
+      originalTotalAmount: Number.isFinite(Number(summary.original_total_amount))
+        ? Number(summary.original_total_amount)
+        : currentTotalAmount + totalReturnedAmount,
+      currentTotalAmount,
+      amountDue: Number.isFinite(Number(summary.amount_due))
+        ? Number(summary.amount_due)
+        : Number(sale.amount_due || 0),
+      paymentStatus: summary.payment_status || sale.payment_status || 'Paid',
+      returnCount: Number(summary.return_count || 0),
+      returnItems: Array.isArray(summary.items) ? summary.items : [],
+      returns: Array.isArray(summary.returns) ? summary.returns : [],
+    }
+  }
+
   const getDisplayPaymentMethod = (sale: any) => {
     const { cashPaid, digitalPaid } = getPaymentBreakdown(sale)
 
@@ -168,6 +200,12 @@ export default function SalesPage() {
 
     return sale.payment_method || 'Cash'
   }
+
+  const totalPages = Math.max(1, Math.ceil(filteredSales.length / SALES_PAGE_SIZE))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+  const pageStartIndex = filteredSales.length === 0 ? 0 : (safeCurrentPage - 1) * SALES_PAGE_SIZE + 1
+  const pageEndIndex = Math.min(safeCurrentPage * SALES_PAGE_SIZE, filteredSales.length)
+  const visibleSales = filteredSales.slice((safeCurrentPage - 1) * SALES_PAGE_SIZE, safeCurrentPage * SALES_PAGE_SIZE)
 
   const fetchSales = async () => {
     try {
@@ -684,7 +722,7 @@ export default function SalesPage() {
 
         {/* Results Count */}
         <div className="mt-4 text-xs text-gray-600 dark:text-gray-400">
-          Showing {filteredSales.length} of {sales.length} sales
+          Showing {filteredSales.length === 0 ? 0 : pageStartIndex}-{pageEndIndex} of {filteredSales.length} sales
         </div>
       </div>
 
@@ -696,6 +734,27 @@ export default function SalesPage() {
         </div>
       ) : (
         <div className="rounded-lg overflow-hidden bg-white shadow-sm dark:bg-[#0f0f0f] dark:dark-shadow dark:shadow-none">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111]">
+            <div className="text-xs text-gray-600 dark:text-gray-400">
+              Page {safeCurrentPage} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={safeCurrentPage <= 1}
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={safeCurrentPage >= totalPages}
+                className="px-3 py-1.5 text-xs rounded border border-gray-300 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-[#1a1a1a] dark:border-gray-600 dark:text-gray-300"
+              >
+                Next
+              </button>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-[#0f0f0f]">
@@ -709,13 +768,14 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSales.map((sale) => {
+                {visibleSales.map((sale) => {
                   const isExpanded = expandedSaleId === sale.id
+                  const returnSummary = getReturnSummary(sale)
                   const totalCost = sale.sale_items?.reduce(
                     (sum: number, item: any) => sum + (item.cost_price_snapshot || 0) * item.quantity,
                     0
                   ) || 0
-                  const profit = sale.total_amount - totalCost
+                  const profit = returnSummary.currentTotalAmount - totalCost
                   const partialPaymentCustomer = sale.partial_payment_customers?.[0]
                   const displayPaymentStatus = getDisplayPaymentStatus(sale, partialPaymentCustomer)
                   const ledgerAmounts = getLedgerAmounts(sale, partialPaymentCustomer)
@@ -792,7 +852,12 @@ export default function SalesPage() {
                         <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-gray-300">{sale.cashier_name || 'Unknown'}</td>
                         <td className="px-3 py-2.5 text-right font-semibold text-sm text-gray-900 dark:text-gray-300">
                           <div className="flex flex-col items-end gap-1">
-                            <span>{formatCurrency(sale.total_amount, 2)}</span>
+                            <span>{formatCurrency(returnSummary.currentTotalAmount, 2)}</span>
+                            {returnSummary.hasReturns && (
+                              <span className="inline-flex items-center gap-1 rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                                ↩ Returned {formatCurrency(returnSummary.totalReturnedAmount, 2)}
+                              </span>
+                            )}
                             {outstandingDue > 0 && (
                               <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[11px] font-medium text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">
                                 ⚠ Due {formatCurrency(outstandingDue, 2)}
@@ -1060,6 +1125,99 @@ export default function SalesPage() {
                                 </div>
                               </div>
 
+                              {returnSummary.hasReturns && (
+                                <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+                                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                    <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Return Summary</h3>
+                                    <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                                      {returnSummary.returnCount} return{returnSummary.returnCount === 1 ? '' : 's'} processed
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 text-sm">
+                                    <div className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Original Total</div>
+                                      <div className="font-semibold text-gray-900 dark:text-white">
+                                        {formatCurrency(returnSummary.originalTotalAmount, 2)}
+                                      </div>
+                                    </div>
+                                    <div className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Returned Amount</div>
+                                      <div className="font-semibold text-gray-900 dark:text-white">
+                                        {formatCurrency(returnSummary.totalReturnedAmount, 2)}
+                                      </div>
+                                    </div>
+                                    <div className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Net Total</div>
+                                      <div className="font-semibold text-gray-900 dark:text-white">
+                                        {formatCurrency(returnSummary.currentTotalAmount, 2)}
+                                      </div>
+                                    </div>
+                                    <div className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Remaining Due</div>
+                                      <div className="font-semibold text-gray-900 dark:text-white">
+                                        {formatCurrency(returnSummary.amountDue, 2)}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    {returnSummary.returns.map((returnRecord: any) => (
+                                      <div key={returnRecord.id} className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
+                                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                          <div>
+                                            <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                              Return #{String(returnRecord.id).padStart(4, '0')}
+                                            </div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400">
+                                              {new Date(returnRecord.return_date || returnRecord.created_at).toLocaleString('en-PK', {
+                                                timeZone: 'Asia/Karachi',
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                              })}
+                                            </div>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="text-xs text-gray-600 dark:text-gray-400">Refund Method</div>
+                                            <div className="text-sm font-semibold text-gray-900 dark:text-white">{returnRecord.refund_method || 'Cash'}</div>
+                                          </div>
+                                        </div>
+                                        <div className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                          Refund: {formatCurrency(returnRecord.return_total_amount || returnRecord.total_refund_amount || 0, 2)}
+                                        </div>
+                                        {returnRecord.notes && (
+                                          <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                                            {returnRecord.notes}
+                                          </div>
+                                        )}
+                                        <div className="overflow-x-auto rounded border border-gray-200 dark:border-gray-700">
+                                          <table className="w-full text-xs">
+                                            <thead className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                              <tr>
+                                                <th className="px-3 py-2 text-left font-semibold">Product</th>
+                                                <th className="px-3 py-2 text-center font-semibold">Qty</th>
+                                                <th className="px-3 py-2 text-right font-semibold">Refund</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {returnRecord.return_items.map((item: any) => (
+                                                <tr key={item.id} className="border-t border-gray-100 dark:border-gray-700">
+                                                  <td className="px-3 py-2 text-gray-900 dark:text-white">{item.product_name || 'Unknown Product'}</td>
+                                                  <td className="px-3 py-2 text-center text-gray-900 dark:text-white">{item.quantity}</td>
+                                                  <td className="px-3 py-2 text-right text-gray-900 dark:text-white">{formatCurrency(item.refund_amount, 2)}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Sale Items */}
                               <div className="mb-3">
                                 <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white mb-2">
@@ -1072,7 +1230,7 @@ export default function SalesPage() {
                                       <tr>
                                         <th className="px-3 py-2 text-left font-semibold">SKU</th>
                                         <th className="px-3 py-2 text-left font-semibold">Product</th>
-                                        <th className="px-3 py-2 text-center font-semibold">Qty</th>
+                                        <th className="px-3 py-2 text-center font-semibold">{returnSummary.hasReturns ? 'Remaining Qty' : 'Qty'}</th>
                                         <th className="px-3 py-2 text-right font-semibold">Unit Price</th>
                                         <th className="px-3 py-2 text-right font-semibold">Subtotal</th>
                                       </tr>
@@ -1082,7 +1240,16 @@ export default function SalesPage() {
                                         <tr key={item.id} className="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-gray-800">
                                           <td className="px-3 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">{item.product_sku || 'N/A'}</td>
                                           <td className="px-3 py-2 text-gray-900 dark:text-white">{item.product_name || 'Unknown Product'}</td>
-                                          <td className="px-3 py-2 text-center text-gray-900 dark:text-white">{item.quantity}</td>
+                                          <td className="px-3 py-2 text-center text-gray-900 dark:text-white">
+                                            <div className="flex flex-col items-center gap-1">
+                                              <span>{item.quantity}</span>
+                                              {returnSummary.hasReturns && (
+                                                <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                                                  Orig: {item.original_quantity} · Ret: {item.returned_quantity}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </td>
                                           <td className="px-3 py-2 text-right text-gray-900 dark:text-white">{formatCurrency(item.unit_price, 2)}</td>
                                           <td className="px-3 py-2 text-right font-semibold text-gray-900 dark:text-white">{formatCurrency(item.subtotal, 2)}</td>
                                         </tr>
@@ -1091,7 +1258,7 @@ export default function SalesPage() {
                                     <tfoot className="bg-cyan-600 text-white">
                                       <tr>
                                         <td colSpan={4} className="px-3 py-2 text-right font-semibold">Total:</td>
-                                        <td className="px-3 py-2 text-right font-semibold">{formatCurrency(sale.total_amount, 2)}</td>
+                                        <td className="px-3 py-2 text-right font-semibold">{formatCurrency(returnSummary.currentTotalAmount, 2)}</td>
                                       </tr>
                                     </tfoot>
                                   </table>

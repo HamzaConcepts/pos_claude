@@ -41,6 +41,11 @@ const formatStoreSaleNumber = (prefix: string, sequenceNumber: number): string =
   return `INV-${prefix}-${String(sequenceNumber).padStart(4, '0')}`
 }
 
+function toSafeNumber(value: any): number {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
 const resolveCashierName = async (sale: any): Promise<string> => {
   if (sale.cashier_ref_id) {
     const { data: cashier } = await supabaseAdmin
@@ -94,6 +99,60 @@ const resolveCashierName = async (sale: any): Promise<string> => {
   }
 
   return 'Unknown'
+}
+
+const buildCustomerReturnSummary = (returnRows: any[] = []) => {
+  const aggregatedItems = new Map<number, { product_id: number; product_name: string; quantity: number; refund_amount: number }>()
+
+  let totalReturnedAmount = 0
+  let totalReturnedQuantity = 0
+
+  const returns = returnRows.map((returnRow: any) => {
+    const returnItems = (returnRow.return_items || []).map((item: any) => ({
+      ...item,
+      quantity: toSafeNumber(item.quantity),
+      refund_amount: toSafeNumber(item.refund_amount),
+    }))
+
+    let returnTotalAmount = 0
+    let returnTotalQuantity = 0
+
+    returnItems.forEach((item: any) => {
+      returnTotalAmount += item.refund_amount
+      returnTotalQuantity += item.quantity
+      totalReturnedAmount += item.refund_amount
+      totalReturnedQuantity += item.quantity
+
+      const existing = aggregatedItems.get(item.product_id) || {
+        product_id: item.product_id,
+        product_name: item.product_name || 'Unknown',
+        quantity: 0,
+        refund_amount: 0,
+      }
+
+      existing.quantity += item.quantity
+      existing.refund_amount += item.refund_amount
+      if (!existing.product_name && item.product_name) {
+        existing.product_name = item.product_name
+      }
+      aggregatedItems.set(item.product_id, existing)
+    })
+
+    return {
+      ...returnRow,
+      return_items: returnItems,
+      return_total_amount: roundToTwo(returnTotalAmount),
+      return_total_quantity: returnTotalQuantity,
+    }
+  })
+
+  return {
+    total_returned_amount: roundToTwo(totalReturnedAmount),
+    total_returned_quantity: totalReturnedQuantity,
+    return_count: returns.length,
+    items: [...aggregatedItems.values()].sort((a, b) => a.product_name.localeCompare(b.product_name)),
+    returns,
+  }
 }
 
 export async function GET(request: Request) {
@@ -211,6 +270,94 @@ export async function GET(request: Request) {
         if (!sale.cashier_name) {
           sale.cashier_name = 'Unknown'
         }
+      })
+
+      const saleIds = [...new Set(sales.map((sale: any) => sale.id).filter((id: any) => Number.isInteger(id)))]
+      const returnSummaryMap = new Map<number, any>()
+
+      if (saleIds.length > 0) {
+        const { data: returnRows, error: returnError } = await supabaseAdmin
+          .from('returns')
+          .select(`
+            *,
+            return_items (*)
+          `)
+          .eq('return_type', 'customer')
+          .in('sale_id', saleIds)
+          .order('return_date', { ascending: false })
+
+        if (returnError) {
+          throw returnError
+        }
+
+        const groupedReturns = new Map<number, any[]>()
+        ;(returnRows || []).forEach((returnRow: any) => {
+          if (!Number.isInteger(returnRow.sale_id)) return
+          const current = groupedReturns.get(returnRow.sale_id) || []
+          current.push(returnRow)
+          groupedReturns.set(returnRow.sale_id, current)
+        })
+
+        groupedReturns.forEach((saleReturns, saleId) => {
+          returnSummaryMap.set(saleId, buildCustomerReturnSummary(saleReturns))
+        })
+      }
+
+      sales.forEach((sale: any) => {
+        const returnSummary = returnSummaryMap.get(sale.id)
+        const currentTotalAmount = roundToTwo(toSafeNumber(sale.total_amount))
+        const amountPaid = toSafeNumber(sale.amount_paid)
+        const derivedAmountDue = roundToTwo(Math.max(0, currentTotalAmount - amountPaid))
+        const derivedPaymentStatus = derivedAmountDue <= 0 ? 'Paid' : 'Partial'
+        const returnLookup = new Map<number, { quantity: number; refund_amount: number }>()
+
+        if (returnSummary) {
+          returnSummary.returns.forEach((saleReturn: any) => {
+            saleReturn.return_items.forEach((item: any) => {
+              const existing = returnLookup.get(item.product_id) || { quantity: 0, refund_amount: 0 }
+              existing.quantity += toSafeNumber(item.quantity)
+              existing.refund_amount += toSafeNumber(item.refund_amount)
+              returnLookup.set(item.product_id, existing)
+            })
+          })
+        }
+
+        sale.sale_items = (sale.sale_items || []).map((item: any) => {
+          const returned = returnLookup.get(item.product_id) || { quantity: 0, refund_amount: 0 }
+          const currentQuantity = toSafeNumber(item.quantity)
+          const currentSubtotal = toSafeNumber(item.subtotal)
+
+          return {
+            ...item,
+            quantity: currentQuantity,
+            subtotal: currentSubtotal,
+            current_quantity: currentQuantity,
+            current_subtotal: currentSubtotal,
+            returned_quantity: returned.quantity,
+            returned_refund_amount: roundToTwo(returned.refund_amount),
+            original_quantity: currentQuantity + returned.quantity,
+            original_subtotal: roundToTwo(currentSubtotal + returned.refund_amount),
+          }
+        })
+
+        sale.original_total_amount = returnSummary
+          ? roundToTwo(currentTotalAmount + returnSummary.total_returned_amount)
+          : currentTotalAmount
+        sale.returned_total_amount = returnSummary?.total_returned_amount || 0
+        sale.return_summary = {
+          total_returned_amount: returnSummary?.total_returned_amount || 0,
+          total_returned_quantity: returnSummary?.total_returned_quantity || 0,
+          return_count: returnSummary?.return_count || 0,
+          items: returnSummary?.items || [],
+          returns: returnSummary?.returns || [],
+          current_total_amount: currentTotalAmount,
+          original_total_amount: sale.original_total_amount,
+          amount_paid: amountPaid,
+          amount_due: derivedAmountDue,
+          payment_status: derivedPaymentStatus,
+        }
+        sale.amount_due = derivedAmountDue
+        sale.payment_status = derivedPaymentStatus
       })
       
       // Fetch payment recorder names (can be manager UUID or cashier ID)
