@@ -305,7 +305,7 @@ export default function ReportsPage() {
   const generateSalesCSV = (data: any) => {
     let csv = 'Date,Sale ID,Cashier,Total,Payment Method,Status,Cash Paid,Digital Paid\n'
     data.sales?.forEach((sale: any) => {
-      csv += `${new Date(sale.sale_date).toLocaleDateString('en-PK', { timeZone }),${sale.id},${sale.cashier_name || 'N/A'},${sale.total_amount},${sale.payment_method},${sale.payment_status},${sale.cash_paid ?? ''},${sale.digital_paid ?? ''}\n`
+      csv += `${new Date(sale.sale_date).toLocaleDateString('en-PK', { timeZone })},${sale.id},${sale.cashier_name || 'N/A'},${sale.total_amount},${sale.payment_method},${sale.payment_status},${sale.cash_paid ?? ''},${sale.digital_paid ?? ''}\n`
     })
     return csv
   }
@@ -313,7 +313,7 @@ export default function ReportsPage() {
   const generateExpensesCSV = (data: any) => {
     let csv = 'Date,Category,Description,Amount,Payment Method\n'
     data.expenses?.forEach((exp: any) => {
-      csv += `${new Date(exp.expense_date).toLocaleDateString('en-PK', { timeZone }),${exp.category},${exp.description},${exp.amount},${exp.payment_method || 'N/A'}\n`
+      csv += `${new Date(exp.expense_date).toLocaleDateString('en-PK', { timeZone })},${exp.category},${exp.description},${exp.amount},${exp.payment_method || 'N/A'}\n`
     })
     return csv
   }
