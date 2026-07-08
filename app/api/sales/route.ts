@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getPKTNow } from '@/lib/date-utils'
-
 // Disable caching for this route
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -1057,7 +1055,7 @@ export async function POST(request: Request) {
       .insert([
         {
           sale_number: saleNumber,
-          sale_date: getPKTNow(), // Use PKT timezone
+          sale_date: new Date().toISOString(),
           sale_description: sale_description || null,
           cashier_id: cashierIdForSale, // Only UUID (managers), null for cashier accounts
           cashier_ref_id: cashierRefIdForSale, // Reference to selected cashier
@@ -1136,7 +1134,7 @@ export async function POST(request: Request) {
     if (paymentRows.length > 0) {
       const recordedByRows = paymentRows.map((row) => ({
         ...row,
-        payment_date: getPKTNow(), // Use PKT timezone
+        payment_date: new Date().toISOString(),
         store_id: parsedStoreId,
         manager_id: isManagerUser ? paymentRecorderId : null,
         cashier_id: isManagerUser ? null : paymentRecorderId,
@@ -1214,7 +1212,7 @@ export async function POST(request: Request) {
           .from('product_imeis')
           .update({
             status: 'sold',
-            sold_at: getPKTNow(), // Use PKT timezone
+            sold_at: new Date().toISOString(),
             sale_id: sale.id,
           })
           .in('imei_number', saleItem.imei_numbers)

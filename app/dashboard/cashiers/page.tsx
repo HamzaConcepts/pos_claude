@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { UsersIcon, CurrencyDollarIcon, TrendUpIcon, CalendarIcon } from '@phosphor-icons/react'
 import { getStoreId } from '@/lib/supabase'
-import { getPKTDate } from '@/lib/date-utils'
+import { getBrowserTimeZone, getDateStringInTimeZone } from '@/lib/timezone'
 import { useCurrency } from '@/lib/currency-context'
 import CashiersSkeleton from '@/components/skeletons/CashiersSkeleton'
 
@@ -27,13 +27,21 @@ interface CashierStats {
 
 export default function CashiersManagementPage() {
   const { currency, formatCurrency } = useCurrency()
+  const [timeZone, setTimeZone] = useState('UTC')
   const [cashiers, setCashiers] = useState<Cashier[]>([])
   const [stats, setStats] = useState<CashierStats[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedMonth, setSelectedMonth] = useState(getPKTDate().slice(0, 7)) // YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
+    const resolvedTimeZone = getBrowserTimeZone()
+    setTimeZone(resolvedTimeZone)
+    setSelectedMonth(getDateStringInTimeZone(new Date(), resolvedTimeZone).slice(0, 7))
+  }, [])
+
+  useEffect(() => {
+    if (!selectedMonth) return
     fetchData()
   }, [selectedMonth])
 
@@ -106,9 +114,12 @@ export default function CashiersManagementPage() {
           <label htmlFor="month-selector" className="sr-only">Select Month</label>
           <input
             id="month-selector"
-            type="month"
+            type="text"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
+            placeholder="YYYY-MM"
+            inputMode="numeric"
+            pattern="\\d{4}-\\d{2}"
             className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:border-cyan-600 focus:outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             aria-label="Select month to view cashier statistics"
           />
@@ -167,7 +178,7 @@ export default function CashiersManagementPage() {
       {/* Cashiers Table */}
       <div className="border rounded overflow-hidden bg-white border-gray-200 shadow-sm dark:bg-[#0f0f0f] dark:border-gray-700 dark:dark-shadow">
         <div className="p-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white">Performance for {new Date(selectedMonth).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi', month: 'long', year: 'numeric' })}</h2>
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">Performance for {new Date(selectedMonth).toLocaleDateString('en-PK', { timeZone, month: 'long', year: 'numeric' })}</h2>
         </div>
 
         {cashiers.length === 0 ? (

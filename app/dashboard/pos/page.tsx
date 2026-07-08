@@ -7,6 +7,7 @@ import { supabase, getStoreId } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import IMEISelectionModal from '@/components/IMEISelectionModal'
 import PrintReceiptButton from '@/components/PrintReceiptButton'
+import { getBrowserTimeZone } from '@/lib/timezone'
 import { useCurrency } from '@/lib/currency-context'
 
 interface CartItem {
@@ -26,6 +27,7 @@ interface BankAccount {
 export default function POSPage() {
   const router = useRouter()
   const { currency, formatCurrency } = useCurrency()
+  const [timeZone, setTimeZone] = useState('UTC')
   const [products, setProducts] = useState<ProductWithBackwardCompatibility[]>([])
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -94,6 +96,10 @@ export default function POSPage() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [bankAccountsLoading, setBankAccountsLoading] = useState(false)
   const [selectedBankAccount, setSelectedBankAccount] = useState('')
+
+  useEffect(() => {
+    setTimeZone(getBrowserTimeZone())
+  }, [])
 
   // Barcode scanner detection - scanners type fast and send Enter
   // Auto-select product when barcode is scanned (no confirmation needed)
@@ -1252,9 +1258,9 @@ export default function POSPage() {
                 </tr>
                 <tr>
                   <td className="py-0.5">Date:</td>
-                  <td className="text-right py-0.5">{new Date(lastSale.sale_date).toLocaleString('en-PK', { 
-                    timeZone: 'Asia/Karachi',
-                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true 
+                  <td className="text-right py-0.5">{new Date(lastSale.sale_date).toLocaleString('en-PK', {
+                    timeZone,
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
                   })}</td>
                 </tr>
                 <tr>
@@ -1391,7 +1397,7 @@ export default function POSPage() {
               <p className="text-[9px] mt-1 text-gray-600 whitespace-pre-line">{receiptSettings.return_policy}</p>
             )}
             <p className="text-[10px] mt-1">
-              {new Date().toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}
+              {new Date().toLocaleDateString('en-PK', { timeZone })}
             </p>
           </div>
         </div>
@@ -1444,7 +1450,7 @@ export default function POSPage() {
             </div>
             <div>
               <p className="text-xs text-gray-500">Date</p>
-              <p className="font-medium">{new Date(lastSale.sale_date).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</p>
+              <p className="font-medium">{new Date(lastSale.sale_date).toLocaleString('en-PK', { timeZone, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500">Cashier</p>

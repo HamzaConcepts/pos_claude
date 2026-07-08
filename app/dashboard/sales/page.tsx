@@ -6,7 +6,7 @@ import { generateSalesPDF } from '@/lib/pdf-generator'
 import { supabase, getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import PrintReceiptButton from '@/components/PrintReceiptButton'
-import { getPKTDate } from '@/lib/date-utils'
+import { getBrowserTimeZone, getDateStringInTimeZone } from '@/lib/timezone'
 import { useCurrency } from '@/lib/currency-context'
 import SalesSkeleton from '@/components/skeletons/SalesSkeleton'
 
@@ -37,7 +37,8 @@ export default function SalesPage() {
   const [endDate, setEndDate] = useState('')
   const [showPdfModal, setShowPdfModal] = useState(false)
   const [pdfPeriod, setPdfPeriod] = useState<'day' | 'month' | 'year'>('day')
-  const [pdfDate, setPdfDate] = useState(getPKTDate())
+  const [pdfDate, setPdfDate] = useState('')
+  const [timeZone, setTimeZone] = useState('UTC')
   const [pdfCashierId, setPdfCashierId] = useState('')
   const [pdfCustomerId, setPdfCustomerId] = useState('')
   const [generatingPdf, setGeneratingPdf] = useState(false)
@@ -72,6 +73,10 @@ export default function SalesPage() {
   const [receiptSettings, setReceiptSettings] = useState<any>(null)
 
   useEffect(() => {
+    const resolvedTimeZone = getBrowserTimeZone()
+    setTimeZone(resolvedTimeZone)
+    setPdfDate(getDateStringInTimeZone(new Date(), resolvedTimeZone))
+
     // Check user role
     const checkRole = async () => {
       setUserIsManager(await isManager())
@@ -840,7 +845,7 @@ export default function SalesPage() {
                         </td>
                         <td className="px-3 py-2.5 hidden md:table-cell text-sm text-gray-600 dark:text-gray-400">
                           {new Date(sale.sale_date).toLocaleString('en-PK', {
-                            timeZone: 'Asia/Karachi',
+                            timeZone,
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
@@ -906,7 +911,7 @@ export default function SalesPage() {
                                     <span className="text-gray-600 dark:text-gray-400">Date:</span>
                                     <span className="ml-2 font-medium text-gray-900 dark:text-white">
                                       {new Date(sale.sale_date).toLocaleDateString('en-PK', {
-                                        timeZone: 'Asia/Karachi',
+                                        timeZone,
                                         month: 'short',
                                         day: 'numeric',
                                         year: 'numeric',
@@ -1100,7 +1105,7 @@ export default function SalesPage() {
                                   <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Sale Date</div>
                                   <div className="font-semibold text-sm text-gray-900 dark:text-white">
                                     {new Date(sale.sale_date).toLocaleString('en-PK', {
-                                      timeZone: 'Asia/Karachi',
+                                      timeZone,
                                       month: 'long',
                                       day: 'numeric',
                                       year: 'numeric',
@@ -1170,7 +1175,7 @@ export default function SalesPage() {
                                             </div>
                                             <div className="text-xs text-gray-600 dark:text-gray-400">
                                               {new Date(returnRecord.return_date || returnRecord.created_at).toLocaleString('en-PK', {
-                                                timeZone: 'Asia/Karachi',
+                                                timeZone,
                                                 month: 'short',
                                                 day: 'numeric',
                                                 year: 'numeric',
@@ -1287,7 +1292,7 @@ export default function SalesPage() {
                                           <tr key={payment.id} className="border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] hover:bg-gray-50 dark:hover:bg-gray-800">
                                             <td className="px-3 py-2 text-gray-900 dark:text-white">
                                               {new Date(payment.payment_date).toLocaleString('en-PK', {
-                                                timeZone: 'Asia/Karachi',
+                                                timeZone,
                                                 month: 'short',
                                                 day: 'numeric',
                                                 year: 'numeric',
@@ -1373,7 +1378,7 @@ export default function SalesPage() {
                   <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
                   <span className="text-gray-900 dark:text-white">
                   {new Date(editingSale.sale_date).toLocaleString('en-PK', {
-                    timeZone: 'Asia/Karachi',
+                    timeZone,
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
@@ -1650,7 +1655,7 @@ export default function SalesPage() {
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400">Date</p>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {new Date(receiptSale.sale_date).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', hour12: true })}
+                      {new Date(receiptSale.sale_date).toLocaleString('en-PK', { timeZone, hour12: true })}
                     </p>
                   </div>
                   <div>
@@ -1869,7 +1874,7 @@ export default function SalesPage() {
                 <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
                 <span className="text-gray-900 dark:text-white">
                   {new Date(deletingSale.sale_date).toLocaleString('en-PK', {
-                    timeZone: 'Asia/Karachi',
+                    timeZone,
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
@@ -1935,7 +1940,7 @@ export default function SalesPage() {
                 <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
                 <span className="text-gray-900 dark:text-white">
                   {new Date(reviewingSale.sale_date).toLocaleString('en-PK', {
-                    timeZone: 'Asia/Karachi',
+                    timeZone,
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',

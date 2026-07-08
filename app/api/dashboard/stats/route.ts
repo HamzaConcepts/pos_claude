@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getConfiguredTimeZone, getDateStringInTimeZone, getStartOfMonthInTimeZone, getTimeZoneDayBounds } from '@/lib/timezone'
 
 // Disable caching for this route
 export const dynamic = 'force-dynamic'
@@ -30,16 +31,17 @@ export async function GET(request: Request) {
       )
     }
 
-    const now = new Date()
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const timeZone = getConfiguredTimeZone()
+    const today = getDateStringInTimeZone(new Date(), timeZone)
+    const startOfToday = getTimeZoneDayBounds(today, timeZone).start
+    const startOfMonth = getStartOfMonthInTimeZone(today, timeZone)
 
     // Today's sales
     const { data: todaySales } = await supabaseAdmin
       .from('sales')
       .select('id, total_amount')
       .eq('store_id', parseInt(storeId))
-      .gte('sale_date', startOfToday.toISOString())
+      .gte('sale_date', startOfToday)
 
     const todaySalesCount = todaySales?.length || 0
     const todayRevenue = todaySales?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0
@@ -49,7 +51,7 @@ export async function GET(request: Request) {
       .from('sales')
       .select('id, total_amount, sale_date')
       .eq('store_id', parseInt(storeId))
-      .gte('sale_date', startOfMonth.toISOString())
+      .gte('sale_date', startOfMonth)
 
     const monthlySalesCount = monthlySales?.length || 0
     const monthlyRevenue = monthlySales?.reduce((sum, sale) => sum + Number(sale.total_amount), 0) || 0
@@ -185,7 +187,7 @@ export async function GET(request: Request) {
       .from('expenses')
       .select('amount, category')
       .eq('store_id', parseInt(storeId))
-      .gte('expense_date', startOfMonth.toISOString().split('T')[0])
+      .gte('expense_date', startOfMonth.slice(0, 10))
       .not('category', 'in', '("new_product","inventory_restock")')
 
     const monthlyExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
@@ -195,7 +197,7 @@ export async function GET(request: Request) {
       .from('expenses')
       .select('amount')
       .eq('store_id', parseInt(storeId))
-      .gte('expense_date', startOfToday.toISOString().split('T')[0])
+      .gte('expense_date', today)
       .not('category', 'in', '("new_product","inventory_restock")')
 
     const todayExpenses = todayExpensesData?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0
@@ -216,7 +218,7 @@ export async function GET(request: Request) {
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now)
       date.setDate(date.getDate() - i)
-      const dateStr = date.toISOString().split('T')[0]
+      const dateStr = getDateStringInTimeZone(date, timeZone)
 
       const daySales = monthlySales?.filter((sale) => {
         const saleDate = new Date(sale.sale_date).toISOString().split('T')[0]
@@ -243,7 +245,7 @@ export async function GET(request: Request) {
       .select('id, sale_date, store_id')
       .in('id', saleIds)
       .eq('store_id', parseInt(storeId))
-      .gte('sale_date', startOfMonth.toISOString())
+      .gte('sale_date', startOfMonth)
 
     const monthlySaleIdSet = new Set(salesDates?.map(s => s.id) || [])
     const monthlyItems = saleItems?.filter(item => monthlySaleIdSet.has(item.sale_id)) || []
@@ -272,7 +274,7 @@ export async function GET(request: Request) {
       .from('sale_items')
       .select('cost_price_snapshot, quantity, sales!inner(store_id, sale_date)')
       .eq('sales.store_id', parseInt(storeId))
-      .gte('sales.sale_date', startOfMonth.toISOString())
+      .gte('sales.sale_date', startOfMonth)
 
     const monthlyCOGS = monthlySaleItems?.reduce(
       (sum, item) => sum + (item.cost_price_snapshot || 0) * item.quantity,

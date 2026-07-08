@@ -10,7 +10,7 @@ import {
   TrendUpIcon,
 } from '@phosphor-icons/react'
 import { useDarkMode } from '@/hooks/useDarkMode'
-import { getPKTDate } from '@/lib/date-utils'
+import { getBrowserTimeZone, getDateStringInTimeZone, getStartOfMonthInTimeZone, getStartOfYearInTimeZone } from '@/lib/timezone'
 import { useCurrency } from '@/lib/currency-context'
 import { getStoreId } from '@/lib/supabase'
 import { getPurchasedQuantity, getRemainingQuantity } from '@/lib/stock-quantities'
@@ -37,17 +37,14 @@ type QuickPeriod = 'today' | 'week' | 'month' | 'year' | 'allTime' | 'custom'
 export default function ReportsPage() {
   const isDarkMode = useDarkMode()
   const { currency, formatCurrency: formatCurrencyFromContext } = useCurrency()
+  const [timeZone, setTimeZone] = useState('UTC')
   const [quickPeriod, setQuickPeriod] = useState<QuickPeriod>('month')
   const [showCustomDates, setShowCustomDates] = useState(false)
   const [filters, setFilters] = useState<ReportFilters>({
     type: 'summary',
     period: 'monthly',
-    startDate: (() => {
-      const pktDate = getPKTDate()
-      const [year, month] = pktDate.split('-')
-      return `${year}-${month}-01`
-    })(),
-    endDate: getPKTDate(),
+    startDate: '',
+    endDate: '',
     cashierId: '',
     paymentMethod: '',
     category: ''
@@ -61,6 +58,16 @@ export default function ReportsPage() {
   const [cashierSearch, setCashierSearch] = useState('')
 
   useEffect(() => {
+    const resolvedTimeZone = getBrowserTimeZone()
+    const today = getDateStringInTimeZone(new Date(), resolvedTimeZone)
+
+    setTimeZone(resolvedTimeZone)
+    setFilters(prev => ({
+      ...prev,
+      startDate: getStartOfMonthInTimeZone(today, resolvedTimeZone).slice(0, 10),
+      endDate: today,
+    }))
+
     fetchCashiers()
     fetchCategories()
   }, [])
@@ -97,9 +104,9 @@ export default function ReportsPage() {
 
   const handleQuickPeriodChange = (period: QuickPeriod) => {
     setQuickPeriod(period)
-    const pktDate = getPKTDate()
+    const currentDate = getDateStringInTimeZone(new Date(), timeZone)
     let startDate = ''
-    let endDate = pktDate
+    let endDate = currentDate
     let periodType: ReportFilters['period'] = filters.period
 
     switch (period) {
@@ -108,22 +115,18 @@ export default function ReportsPage() {
         periodType = 'daily'
         break
       case 'week':
-        // Calculate start of week in PKT
-        const [year, month, day] = pktDate.split('-').map(Number)
-        const pktToday = new Date(year, month - 1, day)
-        const weekStart = new Date(pktToday)
-        weekStart.setDate(pktToday.getDate() - pktToday.getDay()) // Start of week (Sunday)
-        startDate = weekStart.toISOString().split('T')[0]
+        const [year, month, day] = currentDate.split('-').map(Number)
+        const weekStart = new Date(year, month - 1, day)
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+        startDate = getDateStringInTimeZone(weekStart, timeZone)
         periodType = 'daily'
         break
       case 'month':
-        const [yr, mo] = pktDate.split('-')
-        startDate = `${yr}-${mo}-01`
+        startDate = getStartOfMonthInTimeZone(currentDate, timeZone).slice(0, 10)
         periodType = 'daily'
         break
       case 'year':
-        const [yearOnly] = pktDate.split('-')
-        startDate = `${yearOnly}-01-01`
+        startDate = getStartOfYearInTimeZone(currentDate, timeZone).slice(0, 10)
         periodType = 'monthly'
         break
       case 'allTime':
@@ -302,7 +305,7 @@ export default function ReportsPage() {
   const generateSalesCSV = (data: any) => {
     let csv = 'Date,Sale ID,Cashier,Total,Payment Method,Status,Cash Paid,Digital Paid\n'
     data.sales?.forEach((sale: any) => {
-      csv += `${new Date(sale.sale_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })},${sale.id},${sale.cashier_name || 'N/A'},${sale.total_amount},${sale.payment_method},${sale.payment_status},${sale.cash_paid ?? ''},${sale.digital_paid ?? ''}\n`
+      csv += `${new Date(sale.sale_date).toLocaleDateString('en-PK', { timeZone }),${sale.id},${sale.cashier_name || 'N/A'},${sale.total_amount},${sale.payment_method},${sale.payment_status},${sale.cash_paid ?? ''},${sale.digital_paid ?? ''}\n`
     })
     return csv
   }
@@ -310,7 +313,7 @@ export default function ReportsPage() {
   const generateExpensesCSV = (data: any) => {
     let csv = 'Date,Category,Description,Amount,Payment Method\n'
     data.expenses?.forEach((exp: any) => {
-      csv += `${new Date(exp.expense_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })},${exp.category},${exp.description},${exp.amount},${exp.payment_method || 'N/A'}\n`
+      csv += `${new Date(exp.expense_date).toLocaleDateString('en-PK', { timeZone }),${exp.category},${exp.description},${exp.amount},${exp.payment_method || 'N/A'}\n`
     })
     return csv
   }
@@ -356,7 +359,7 @@ export default function ReportsPage() {
     csv += '\nTransactions\n'
     csv += 'Date,Bank,Direction,Amount,Source,Reference\n'
     data.transactions?.forEach((txn: any) => {
-      const dateLabel = txn.date ? new Date(txn.date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' }) : ''
+      const dateLabel = txn.date ? new Date(txn.date).toLocaleDateString('en-PK', { timeZone }) : ''
       csv += `${dateLabel},${txn.bank_account_name},${txn.direction},${txn.amount},${txn.source},${txn.reference || ''}\n`
     })
 

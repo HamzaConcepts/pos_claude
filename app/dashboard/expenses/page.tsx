@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CurrencyDollarIcon, TrendUpIcon, CalendarIcon, PlusIcon, XIcon, PencilSimpleIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react'
 import { supabase, getStoreId, isManager, isCashier } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { getPKTDate } from '@/lib/date-utils'
+import { getBrowserTimeZone, getDateStringInTimeZone } from '@/lib/timezone'
 import { useCurrency } from '@/lib/currency-context'
 import ExpensesSkeleton from '@/components/skeletons/ExpensesSkeleton'
 
@@ -96,6 +96,7 @@ const getCategoryStyle = (category: string): string => {
 export default function ExpensesPage() {
   const router = useRouter()
   const { currency, formatCurrency } = useCurrency()
+  const [timeZone, setTimeZone] = useState('UTC')
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [predefinedExpenses, setPredefinedExpenses] = useState<PredefinedExpense[]>([])
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([])
@@ -135,7 +136,7 @@ export default function ExpensesPage() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [bankAccountsLoading, setBankAccountsLoading] = useState(false)
   const [selectedBankAccount, setSelectedBankAccount] = useState('')
-  const [expenseDate, setExpenseDate] = useState(getPKTDate())
+  const [expenseDate, setExpenseDate] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [recurringSubmitting, setRecurringSubmitting] = useState(false)
   const [selectedCashier, setSelectedCashier] = useState<any>(null)
@@ -148,7 +149,7 @@ export default function ExpensesPage() {
     default_amount: '',
     description: '',
     recurrence_frequency: 'monthly' as 'daily' | 'weekly' | 'monthly' | 'yearly',
-    next_due_date: getPKTDate(),
+    next_due_date: '',
     reminder_days_before: '3',
     auto_create: true,
     default_payment_method: 'Cash' as 'Cash' | 'Digital',
@@ -163,6 +164,16 @@ export default function ExpensesPage() {
   const [endDateFilter, setEndDateFilter] = useState('')
 
   useEffect(() => {
+    const resolvedTimeZone = getBrowserTimeZone()
+    const today = getDateStringInTimeZone(new Date(), resolvedTimeZone)
+
+    setTimeZone(resolvedTimeZone)
+    setExpenseDate(today)
+    setRecurringForm(prev => ({
+      ...prev,
+      next_due_date: today,
+    }))
+
     // Check roles
     const checkRole = async () => {
       setUserIsManager(await isManager())
@@ -344,13 +355,15 @@ export default function ExpensesPage() {
   }
 
   const resetRecurringForm = () => {
+    const today = getDateStringInTimeZone(new Date(), timeZone)
+
     setRecurringForm({
       name: '',
       category: EXPENSE_CATEGORIES[0],
       default_amount: '',
       description: '',
       recurrence_frequency: 'monthly',
-      next_due_date: getPKTDate(),
+      next_due_date: today,
       reminder_days_before: '3',
       auto_create: true,
       default_payment_method: 'Cash',
@@ -583,7 +596,7 @@ export default function ExpensesPage() {
         setCategory(EXPENSE_CATEGORIES[0])
         setPaymentMethod('Cash')
         setSelectedBankAccount('')
-        setExpenseDate(getPKTDate())
+        setExpenseDate(getDateStringInTimeZone(new Date(), timeZone))
         fetchExpenses()
       } else {
         setError(result.error || 'Failed to add expense')
@@ -637,7 +650,7 @@ export default function ExpensesPage() {
         setDescription('')
         setAmount('')
         setCategory(EXPENSE_CATEGORIES[0])
-        setExpenseDate(getPKTDate())
+        setExpenseDate(getDateStringInTimeZone(new Date(), timeZone))
         fetchExpenses()
       } else {
         setError(result.error || 'Failed to update expense')
@@ -998,7 +1011,7 @@ export default function ExpensesPage() {
                   >
                     <td className="px-3 py-2.5 text-sm text-gray-900 dark:text-white">
                       {new Date(expense.expense_date).toLocaleDateString('en-PK', {
-                        timeZone: 'Asia/Karachi',
+                        timeZone,
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
@@ -1457,7 +1470,7 @@ export default function ExpensesPage() {
                 <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
                 <span className="text-gray-900 dark:text-white">
                   {new Date(deletingExpense.expense_date).toLocaleDateString('en-PK', {
-                    timeZone: 'Asia/Karachi',
+                    timeZone,
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric'
@@ -1526,7 +1539,7 @@ export default function ExpensesPage() {
                 <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
                 <span className="text-gray-900 dark:text-white">
                   {new Date(reviewingExpense.expense_date).toLocaleDateString('en-PK', {
-                    timeZone: 'Asia/Karachi',
+                    timeZone,
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric'
@@ -1602,7 +1615,7 @@ export default function ExpensesPage() {
                 <span className="font-semibold text-gray-700 dark:text-gray-300">Date:</span>{' '}
                 <span className="text-gray-900 dark:text-white">
                   {new Date(viewingMarkedExpense.expense_date).toLocaleDateString('en-PK', {
-                    timeZone: 'Asia/Karachi',
+                    timeZone,
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric'

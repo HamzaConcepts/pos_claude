@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getPurchasedQuantity, getRemainingQuantity } from '@/lib/stock-quantities'
+import { getConfiguredTimeZone, getDateStringInTimeZone, getTimeZoneDayBounds } from '@/lib/timezone'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -36,6 +37,7 @@ function getReceivedAmount(sale: any): number {
 }
 
 async function getReturnFlowImpact(storeId: number, startDate?: string | null, endDate?: string | null) {
+  const timeZone = getConfiguredTimeZone()
   let returnsQuery = supabaseAdmin
     .from('returns')
     .select('id, store_id, sale_id, return_type, total_refund_amount, refund_method, return_date, created_at')
@@ -43,12 +45,10 @@ async function getReturnFlowImpact(storeId: number, startDate?: string | null, e
     .order('return_date', { ascending: false })
 
   if (startDate) {
-    returnsQuery = returnsQuery.gte('return_date', startDate)
+    returnsQuery = returnsQuery.gte('return_date', getTimeZoneDayBounds(startDate, timeZone).start)
   }
   if (endDate) {
-    const endDateTime = new Date(endDate)
-    endDateTime.setHours(23, 59, 59, 999)
-    returnsQuery = returnsQuery.lte('return_date', endDateTime.toISOString())
+    returnsQuery = returnsQuery.lte('return_date', getTimeZoneDayBounds(endDate, timeZone).end)
   }
 
   const [
@@ -122,14 +122,13 @@ const normalizeBankName = (value: any): string => {
 }
 
 const applyTimestampRange = (query: any, field: string, startDate?: string | null, endDate?: string | null) => {
+  const timeZone = getConfiguredTimeZone()
   let next = query
   if (startDate) {
-    next = next.gte(field, startDate)
+    next = next.gte(field, getTimeZoneDayBounds(startDate, timeZone).start)
   }
   if (endDate) {
-    const endDateTime = new Date(endDate)
-    endDateTime.setHours(23, 59, 59, 999)
-    next = next.lte(field, endDateTime.toISOString())
+    next = next.lte(field, getTimeZoneDayBounds(endDate, timeZone).end)
   }
   return next
 }
@@ -204,6 +203,7 @@ export async function GET(request: NextRequest) {
 }
 
 async function generateSalesReport(storeId: string, filters: any) {
+  const timeZone = getConfiguredTimeZone()
   let query = supabaseAdmin
     .from('sales')
     .select(`
@@ -215,12 +215,10 @@ async function generateSalesReport(storeId: string, filters: any) {
     .order('sale_date', { ascending: false })
 
   if (filters.startDate) {
-    query = query.gte('sale_date', filters.startDate)
+    query = query.gte('sale_date', getTimeZoneDayBounds(filters.startDate, timeZone).start)
   }
   if (filters.endDate) {
-    const endDateTime = new Date(filters.endDate)
-    endDateTime.setHours(23, 59, 59, 999)
-    query = query.lte('sale_date', endDateTime.toISOString())
+    query = query.lte('sale_date', getTimeZoneDayBounds(filters.endDate, timeZone).end)
   }
   if (filters.cashierId) {
     const cashierRefId = Number.parseInt(filters.cashierId, 10)
@@ -405,6 +403,7 @@ async function generateSalesReport(storeId: string, filters: any) {
 }
 
 async function generateExpensesReport(storeId: string, filters: any) {
+  const timeZone = getConfiguredTimeZone()
   let query = supabaseAdmin
     .from('expenses')
     .select('*')
@@ -414,10 +413,10 @@ async function generateExpensesReport(storeId: string, filters: any) {
     .not('category', 'in', '("new_product","inventory_restock")')
 
   if (filters.startDate) {
-    query = query.gte('expense_date', filters.startDate)
+    query = query.gte('expense_date', getDateStringInTimeZone(new Date(`${filters.startDate}T00:00:00`), timeZone))
   }
   if (filters.endDate) {
-    query = query.lte('expense_date', filters.endDate)
+    query = query.lte('expense_date', getDateStringInTimeZone(new Date(`${filters.endDate}T00:00:00`), timeZone))
   }
   if (filters.category) {
     query = query.eq('category', filters.category)
@@ -484,6 +483,7 @@ async function generateExpensesReport(storeId: string, filters: any) {
 }
 
 async function generateInventoryReport(storeId: string, filters: any) {
+  const timeZone = getConfiguredTimeZone()
   let query = supabaseAdmin
     .from('stock_batches')
     .select(`
@@ -499,12 +499,10 @@ async function generateInventoryReport(storeId: string, filters: any) {
     .order('purchase_date', { ascending: false })
 
   if (filters.startDate) {
-    query = query.gte('purchase_date', filters.startDate)
+    query = query.gte('purchase_date', getTimeZoneDayBounds(filters.startDate, timeZone).start)
   }
   if (filters.endDate) {
-    const endDateTime = new Date(filters.endDate)
-    endDateTime.setHours(23, 59, 59, 999)
-    query = query.lte('purchase_date', endDateTime.toISOString())
+    query = query.lte('purchase_date', getTimeZoneDayBounds(filters.endDate, timeZone).end)
   }
 
   const { data: batches, error } = await query
@@ -538,13 +536,11 @@ async function generateProfitReport(storeId: string, filters: any) {
     .eq('sales.store_id', parseInt(storeId))
 
   if (filters.startDate) {
-    cogsQuery = cogsQuery.gte('sales.sale_date', filters.startDate)
+    cogsQuery = cogsQuery.gte('sales.sale_date', getTimeZoneDayBounds(filters.startDate, getConfiguredTimeZone()).start)
   }
 
   if (filters.endDate) {
-    const endDateTime = new Date(filters.endDate)
-    endDateTime.setHours(23, 59, 59, 999)
-    cogsQuery = cogsQuery.lte('sales.sale_date', endDateTime.toISOString())
+    cogsQuery = cogsQuery.lte('sales.sale_date', getTimeZoneDayBounds(filters.endDate, getConfiguredTimeZone()).end)
   }
 
   const { data: salesWithCost, error: salesWithCostError } = await cogsQuery
