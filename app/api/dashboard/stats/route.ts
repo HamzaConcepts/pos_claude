@@ -215,6 +215,7 @@ export async function GET(request: Request) {
 
     // Sales trend (last 7 days)
     const salesTrend = []
+    const now = new Date()
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now)
       date.setDate(date.getDate() - i)
