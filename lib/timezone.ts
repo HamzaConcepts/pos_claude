@@ -79,6 +79,11 @@ export function getDateStringInTimeZone(dateInput: string | number | Date, timeZ
   return `${parts.year}-${parts.month}-${parts.day}`
 }
 
+export function getDateTimeStringInTimeZone(dateInput: string | number | Date, timeZone: string): string {
+  const parts = getDateParts(new Date(dateInput), timeZone)
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
+}
+
 export function getStartOfMonthInTimeZone(dateString: string, timeZone: string): string {
   const [year, month] = dateString.split('-').map(Number)
   return zonedTimeToUtc(year, month, 1, 0, 0, 0, timeZone).toISOString()

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getConfiguredTimeZone, getDateTimeStringInTimeZone } from '@/lib/timezone'
 // Disable caching for this route
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -419,6 +420,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const timeZone = getConfiguredTimeZone()
     const body = await request.json()
     const { 
       items, 
@@ -1055,7 +1057,7 @@ export async function POST(request: Request) {
       .insert([
         {
           sale_number: saleNumber,
-          sale_date: new Date().toISOString(),
+          sale_date: getDateTimeStringInTimeZone(new Date(), timeZone),
           sale_description: sale_description || null,
           cashier_id: cashierIdForSale, // Only UUID (managers), null for cashier accounts
           cashier_ref_id: cashierRefIdForSale, // Reference to selected cashier
@@ -1134,7 +1136,7 @@ export async function POST(request: Request) {
     if (paymentRows.length > 0) {
       const recordedByRows = paymentRows.map((row) => ({
         ...row,
-        payment_date: new Date().toISOString(),
+        payment_date: getDateTimeStringInTimeZone(new Date(), timeZone),
         store_id: parsedStoreId,
         manager_id: isManagerUser ? paymentRecorderId : null,
         cashier_id: isManagerUser ? null : paymentRecorderId,
