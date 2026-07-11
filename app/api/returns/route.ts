@@ -87,6 +87,13 @@ export async function POST(request: NextRequest) {
       cashier_id,
     } = body
 
+    const normalizedRefundMethod = refund_method === 'Ledger_Credit'
+      ? 'Ledger_Credit'
+      : refund_method === 'Digital'
+      ? 'Digital'
+      : 'Cash'
+
+
     // Validation
     if (!store_id || !return_type || !items || items.length === 0) {
       return NextResponse.json(
@@ -123,7 +130,7 @@ export async function POST(request: NextRequest) {
           customer_name: customer_name || null,
           customer_phone: customer_phone || null,
           total_refund_amount: parseFloat(String(total_refund_amount || 0)),
-          refund_method: refund_method || 'Cash',
+          refund_method: normalizedRefundMethod,
           notes: notes || null,
           recorded_by: recorded_by || null,
           cashier_id: cashier_id ? parseInt(String(cashier_id)) : null,
@@ -220,9 +227,16 @@ export async function POST(request: NextRequest) {
 
       const refundAmount = parseFloat(String(total_refund_amount || 0))
       const currentSaleTotal = saleRecord ? parseFloat(String(saleRecord.total_amount || 0)) : 0
-      const amountPaid = saleRecord ? parseFloat(String(saleRecord.amount_paid || 0)) : 0
+      const currentAmountPaid = saleRecord ? parseFloat(String(saleRecord.amount_paid || 0)) : 0
+      const currentAmountDue = Math.max(0, currentSaleTotal - currentAmountPaid)
+      const cashBackForLedgerCredit = normalizedRefundMethod === 'Ledger_Credit'
+        ? Math.max(0, refundAmount - currentAmountDue)
+        : 0
       const updatedSaleTotal = Math.max(0, currentSaleTotal - refundAmount)
-      const updatedAmountDue = Math.max(0, updatedSaleTotal - amountPaid)
+      const updatedAmountPaid = normalizedRefundMethod === 'Ledger_Credit'
+        ? Math.max(0, currentAmountPaid - cashBackForLedgerCredit)
+        : Math.max(0, currentAmountPaid - refundAmount)
+      const updatedAmountDue = Math.max(0, updatedSaleTotal - updatedAmountPaid)
       const updatedPaymentStatus = updatedAmountDue <= 0 ? 'Paid' : 'Partial'
 
       if (saleRecord) {
@@ -230,6 +244,7 @@ export async function POST(request: NextRequest) {
           .from('sales')
           .update({
             total_amount: updatedSaleTotal,
+            amount_paid: updatedAmountPaid,
             amount_due: updatedAmountDue,
             payment_status: updatedPaymentStatus,
           })
@@ -246,16 +261,42 @@ export async function POST(request: NextRequest) {
       if (ledgerEntries && ledgerEntries.length > 0) {
         const entry = ledgerEntries[0]
         const entryAmountPaid = parseFloat(String(entry.amount_paid || 0))
-        const nextAmountRemaining = Math.max(0, updatedSaleTotal - entryAmountPaid)
+        const entryCashBackForLedgerCredit = normalizedRefundMethod === 'Ledger_Credit'
+          ? Math.max(0, refundAmount - Math.max(0, currentSaleTotal - entryAmountPaid))
+          : 0
+        const updatedEntryAmountPaid = normalizedRefundMethod === 'Ledger_Credit'
+          ? Math.max(0, entryAmountPaid - entryCashBackForLedgerCredit)
+          : Math.max(0, entryAmountPaid - refundAmount)
+        const nextAmountRemaining = Math.max(0, updatedSaleTotal - updatedEntryAmountPaid)
 
         await supabaseAdmin
           .from('partial_payment_customers')
           .update({
             total_amount: updatedSaleTotal,
+            amount_paid: updatedEntryAmountPaid,
             amount_remaining: nextAmountRemaining,
             updated_at: new Date().toISOString(),
           })
           .eq('id', entry.id)
+      } else if (normalizedRefundMethod === 'Ledger_Credit' && (customer_phone || customer_name)) {
+        const newAmountPaid = Math.max(0, currentAmountPaid - cashBackForLedgerCredit)
+        const createLedgerRecord = {
+          sale_id,
+          customer_name: customer_name || customer_phone || 'Ledger Credit',
+          customer_phone: customer_phone || null,
+          total_amount: updatedSaleTotal,
+          amount_paid: newAmountPaid,
+          amount_remaining: Math.max(0, updatedSaleTotal - newAmountPaid),
+          store_id: parsedStoreId,
+        }
+
+        const { error: createLedgerError } = await supabaseAdmin
+          .from('partial_payment_customers')
+          .insert(createLedgerRecord)
+
+        if (createLedgerError) {
+          console.error('Error creating customer ledger entry for Ledger_Credit return:', createLedgerError)
+        }
       }
 
       return NextResponse.json({

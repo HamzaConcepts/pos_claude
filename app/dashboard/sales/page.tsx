@@ -109,6 +109,11 @@ export default function SalesPage() {
       return remaining <= 0.01 ? 'Paid' : 'Partial'
     }
 
+    const returnSummary = sale.return_summary || {}
+    if (returnSummary.hasReturns) {
+      return returnSummary.paymentStatus
+    }
+
     const totalAmount = Number(sale.total_amount || 0)
     const amountPaid = Number(sale.amount_paid || 0)
     const amountDue = Number.isFinite(Number(sale.amount_due))
@@ -169,6 +174,17 @@ export default function SalesPage() {
     const currentTotalAmount = Number.isFinite(Number(summary.current_total_amount))
       ? Number(summary.current_total_amount)
       : Number(sale.total_amount || 0)
+    const amountPaid = Number(sale.amount_paid || 0)
+    const totalCashReturned = Array.isArray(summary.returns)
+      ? summary.returns.reduce((total: number, returnRecord: any) => {
+          const refundAmount = Number(returnRecord.return_total_amount || returnRecord.total_refund_amount || 0)
+          return total + ((returnRecord.refund_method === 'Ledger_Credit') ? 0 : refundAmount)
+        }, 0)
+      : 0
+    const adjustedAmountDue = Math.max(0, currentTotalAmount - amountPaid)
+    const overpaidAmount = Math.max(0, amountPaid - currentTotalAmount)
+    const netCashReceived = amountPaid - totalCashReturned
+    const derivedPaymentStatus = adjustedAmountDue <= 0 ? 'Paid' : 'Partial'
 
     return {
       hasReturns: Number(summary.return_count || 0) > 0 || totalReturnedAmount > 0,
@@ -178,10 +194,11 @@ export default function SalesPage() {
         ? Number(summary.original_total_amount)
         : currentTotalAmount + totalReturnedAmount,
       currentTotalAmount,
-      amountDue: Number.isFinite(Number(summary.amount_due))
-        ? Number(summary.amount_due)
-        : Number(sale.amount_due || 0),
-      paymentStatus: summary.payment_status || sale.payment_status || 'Paid',
+      amountPaid,
+      netCashReceived,
+      adjustedAmountDue,
+      overpaidAmount,
+      paymentStatus: derivedPaymentStatus,
       returnCount: Number(summary.return_count || 0),
       returnItems: Array.isArray(summary.items) ? summary.items : [],
       returns: Array.isArray(summary.returns) ? summary.returns : [],
@@ -1119,7 +1136,7 @@ export default function SalesPage() {
                                   <div className="font-semibold text-sm text-gray-900 dark:text-white">{sale.cashier_name || 'Unknown'}</div>
                                 </div>
                                 <div className="p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-[#1a1a1a]">
-                                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Amount Paid</div>
+                                  <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Amount Paid on Sale</div>
                                   <div className="font-semibold text-sm text-gray-900 dark:text-white">{formatCurrency(ledgerAmounts.amountPaid || 0, 2)}</div>
                                 </div>
                                 <div className="p-3 border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-[#1a1a1a]">
@@ -1158,11 +1175,51 @@ export default function SalesPage() {
                                       </div>
                                     </div>
                                     <div className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
-                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Remaining Due</div>
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Amount Paid</div>
                                       <div className="font-semibold text-gray-900 dark:text-white">
-                                        {formatCurrency(returnSummary.amountDue, 2)}
+                                        {formatCurrency(returnSummary.amountPaid, 2)}
                                       </div>
                                     </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 text-sm">
+                                    <div className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Remaining Due</div>
+                                      <div className="font-semibold text-gray-900 dark:text-white">
+                                        {formatCurrency(returnSummary.adjustedAmountDue, 2)}
+                                      </div>
+                                    </div>
+                                    <div className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Customer Credit</div>
+                                      <div className="font-semibold text-gray-900 dark:text-white">
+                                        {formatCurrency(returnSummary.overpaidAmount, 2)}
+                                      </div>
+                                    </div>
+                                    <div className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Net Cash Received</div>
+                                      <div className="font-semibold text-gray-900 dark:text-white">
+                                        {formatCurrency(returnSummary.netCashReceived, 2)}
+                                      </div>
+                                    </div>
+                                    <div className="rounded border border-amber-200 bg-white p-3 dark:border-amber-800 dark:bg-[#1a1a1a]">
+                                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Post-Return Status</div>
+                                      <div className="font-semibold text-gray-900 dark:text-white">
+                                        {returnSummary.paymentStatus}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="rounded border border-amber-200 bg-white p-3 text-sm text-gray-700 dark:text-gray-300">
+                                    {returnSummary.overpaidAmount > 0 ? (
+                                      <>This sale is marked as settled because the paid amount exceeds the net sale total after return. Customer credit of {formatCurrency(returnSummary.overpaidAmount, 2)} is available.</>
+                                    ) : returnSummary.adjustedAmountDue === 0 ? (
+                                      <>The return has been applied and the remaining due is now zero.</>
+                                    ) : (
+                                      <>The return is applied to the sale, leaving a remaining due of {formatCurrency(returnSummary.adjustedAmountDue, 2)} on a net sale total of {formatCurrency(returnSummary.currentTotalAmount, 2)}.</>
+                                    )}
+                                    {returnSummary.hasReturns && (
+                                      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                        Net cash received after refund: {formatCurrency(returnSummary.netCashReceived, 2)}
+                                      </div>
+                                    )}
                                   </div>
 
                                   <div className="space-y-3">

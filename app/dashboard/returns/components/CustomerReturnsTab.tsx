@@ -452,7 +452,6 @@ export default function CustomerReturnsTab() {
                       <option value="Cash">Cash Refund</option>
                       <option value="Ledger_Credit">Credit to Ledger Balance</option>
                       <option value="Digital">Digital Refund</option>
-                      <option value="Exchange">Exchange (No Refund)</option>
                     </select>
                   </div>
                   
