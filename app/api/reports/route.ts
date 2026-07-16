@@ -36,6 +36,42 @@ function getReceivedAmount(sale: any): number {
   return 0
 }
 
+async function getOutstandingCustomerDue(storeId: number) {
+  const { data, error } = await supabaseAdmin
+    .from('partial_payment_customers')
+    .select('amount_remaining')
+    .eq('store_id', storeId)
+    .gt('amount_remaining', 0)
+
+  if (error) throw error
+
+  const rows = data || []
+  const total = rows.reduce((sum: number, row: any) => sum + toSafeNumber(row.amount_remaining), 0)
+
+  return {
+    total,
+    count: rows.length,
+  }
+}
+
+async function getOutstandingSupplierDue(storeId: number) {
+  const { data, error } = await supabaseAdmin
+    .from('supplier_khaata')
+    .select('amount_remaining')
+    .eq('store_id', storeId)
+    .gt('amount_remaining', 0)
+
+  if (error) throw error
+
+  const rows = data || []
+  const total = rows.reduce((sum: number, row: any) => sum + toSafeNumber(row.amount_remaining), 0)
+
+  return {
+    total,
+    count: rows.length,
+  }
+}
+
 async function getReturnFlowImpact(storeId: number, startDate?: string | null, endDate?: string | null) {
   const timeZone = getConfiguredTimeZone()
   let returnsQuery = supabaseAdmin
@@ -365,7 +401,7 @@ async function generateSalesReport(storeId: string, filters: any) {
   // Group by period if specified
   let periodData: any[] = []
   if (filters.period && enrichedSales.length > 0) {
-    periodData = groupByPeriod(enrichedSales, filters.period, 'sale_date', 'total_amount')
+    periodData = groupByPeriod(enrichedSales, filters.period, 'sale_date', 'total_amount', timeZone)
   }
 
   // Top products
@@ -465,7 +501,7 @@ async function generateExpensesReport(storeId: string, filters: any) {
   // Group by period if specified
   let periodData: any[] = []
   if (filters.period && expenses) {
-    periodData = groupByPeriod(expenses, filters.period, 'expense_date', 'amount')
+    periodData = groupByPeriod(expenses, filters.period, 'expense_date', 'amount', timeZone)
   }
 
   return {
@@ -528,6 +564,12 @@ async function generateInventoryReport(storeId: string, filters: any) {
 async function generateProfitReport(storeId: string, filters: any) {
   const salesReport = await generateSalesReport(storeId, filters)
   const expensesReport = await generateExpensesReport(storeId, filters)
+  const period = filters.period || 'monthly'
+  const timeZone = getConfiguredTimeZone()
+  const storeIdNumber = parseInt(storeId, 10)
+  const customerDue = await getOutstandingCustomerDue(storeIdNumber)
+  const supplierDue = await getOutstandingSupplierDue(storeIdNumber)
+  const showDueCards = !filters.startDate && !filters.endDate
 
   // Calculate cost of goods sold
   let cogsQuery = supabaseAdmin
@@ -548,36 +590,68 @@ async function generateProfitReport(storeId: string, filters: any) {
   if (salesWithCostError) throw salesWithCostError
 
   let cogs = 0
+  const cogsByPeriod = new Map<string, number>()
+
   if (salesWithCost) {
     salesWithCost.forEach((item: any) => {
-      cogs += toSafeNumber(item.cost_price_snapshot) * toSafeNumber(item.quantity)
+      const amount = toSafeNumber(item.cost_price_snapshot) * toSafeNumber(item.quantity)
+      cogs += amount
+
+      const saleDate = item.sales?.sale_date
+      if (!saleDate) return
+
+      const key = getPeriodKey(new Date(saleDate), period, timeZone)
+      cogsByPeriod.set(key, (cogsByPeriod.get(key) || 0) + amount)
     })
   }
 
   const salesTrend = salesReport.periodData || []
   const expensesTrend = expensesReport.periodData || []
-  const trendMap = new Map<string, { sales: number; expenses: number }>()
+  const trendMap = new Map<string, { sales: number; expenses: number; cogs: number }>()
 
   salesTrend.forEach((point: any) => {
-    const existing = trendMap.get(point.date) || { sales: 0, expenses: 0 }
+    const existing = trendMap.get(point.date) || { sales: 0, expenses: 0, cogs: 0 }
     existing.sales = toSafeNumber(point.value)
     trendMap.set(point.date, existing)
   })
 
   expensesTrend.forEach((point: any) => {
-    const existing = trendMap.get(point.date) || { sales: 0, expenses: 0 }
+    const existing = trendMap.get(point.date) || { sales: 0, expenses: 0, cogs: 0 }
     existing.expenses = toSafeNumber(point.value)
     trendMap.set(point.date, existing)
   })
 
-  const periodData = Array.from(trendMap.entries())
-    .map(([date, values]) => ({
-      date,
-      value: values.sales - values.expenses,
-      sales: values.sales,
-      expenses: values.expenses,
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date))
+  cogsByPeriod.forEach((value, date) => {
+    const existing = trendMap.get(date) || { sales: 0, expenses: 0, cogs: 0 }
+    existing.cogs = value
+    trendMap.set(date, existing)
+  })
+
+  const periodKeys = new Set<string>()
+  salesTrend.forEach((point: any) => periodKeys.add(point.date))
+  expensesTrend.forEach((point: any) => periodKeys.add(point.date))
+  cogsByPeriod.forEach((_, date) => periodKeys.add(date))
+
+  const periodData = Array.from(periodKeys)
+    .sort((a, b) => a.localeCompare(b))
+    .map((date) => {
+      const values = trendMap.get(date) || { sales: 0, expenses: 0, cogs: 0 }
+      const sales = toSafeNumber(values.sales)
+      const cogs = toSafeNumber(values.cogs)
+      const expenses = toSafeNumber(values.expenses)
+      const grossProfit = sales - cogs
+      const netProfit = grossProfit - expenses
+
+      return {
+        date,
+        value: netProfit,
+        netProfit,
+        grossProfit,
+        sales,
+        expenses,
+        cogs,
+      }
+    })
 
   const grossProfit = salesReport.summary.totalRevenue - cogs
   const netProfit = grossProfit - expensesReport.summary.totalAmount
@@ -590,7 +664,10 @@ async function generateProfitReport(storeId: string, filters: any) {
       grossProfit,
       totalExpenses: expensesReport.summary.totalAmount,
       netProfit,
-      profitMargin
+      profitMargin,
+      customerDue: showDueCards ? customerDue.total : 0,
+      supplierDue: showDueCards ? supplierDue.total : 0,
+      showDueCards,
     },
     periodData,
     salesData: salesReport.periodData,
@@ -604,6 +681,9 @@ async function generateSummaryReport(storeId: string, filters: any) {
   const inventory = await generateInventoryReport(storeId, {})
   const profit = await generateProfitReport(storeId, filters)
   const returnFlow = await getReturnFlowImpact(parseInt(storeId, 10), filters.startDate, filters.endDate)
+  const storeIdNumber = parseInt(storeId, 10)
+  const customerDue = await getOutstandingCustomerDue(storeIdNumber)
+  const supplierDue = await getOutstandingSupplierDue(storeIdNumber)
 
   // Calculate cash present (Cash sales - Cash expenses)
   const cashPresent = sales.summary.totalCash - expenses.summary.totalCash - returnFlow.customerCashOut + returnFlow.supplierCashIn
@@ -1055,31 +1135,34 @@ function generateCashFlowTrend(salesReport: any, expensesReport: any, filters: a
     .sort((a: any, b: any) => a.date.localeCompare(b.date))
 }
 
-function groupByPeriod(data: any[], period: string, dateField: string, valueField: string) {
+function getPeriodKey(date: Date, period: string, timeZone: string) {
+  const localDate = getDateStringInTimeZone(date, timeZone)
+  const [year, month, day] = localDate.split('-').map(Number)
+  const localDateAtMidnight = new Date(Date.UTC(year, month - 1, day))
+
+  switch (period) {
+    case 'daily':
+      return localDate
+    case 'weekly': {
+      const weekStart = new Date(localDateAtMidnight)
+      weekStart.setUTCDate(localDateAtMidnight.getUTCDate() - localDateAtMidnight.getUTCDay())
+      return getDateStringInTimeZone(weekStart, timeZone)
+    }
+    case 'monthly':
+      return `${year}-${String(month).padStart(2, '0')}`
+    case 'yearly':
+      return year.toString()
+    default:
+      return localDate
+  }
+}
+
+function groupByPeriod(data: any[], period: string, dateField: string, valueField: string, timeZone = getConfiguredTimeZone()) {
   const grouped: any = {}
 
   data.forEach(item => {
     const date = new Date(item[dateField])
-    let key: string
-
-    switch (period) {
-      case 'daily':
-        key = date.toISOString().split('T')[0]
-        break
-      case 'weekly':
-        const weekStart = new Date(date)
-        weekStart.setDate(date.getDate() - date.getDay())
-        key = weekStart.toISOString().split('T')[0]
-        break
-      case 'monthly':
-        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        break
-      case 'yearly':
-        key = date.getFullYear().toString()
-        break
-      default:
-        key = date.toISOString().split('T')[0]
-    }
+    const key = getPeriodKey(date, period, timeZone)
 
     if (!grouped[key]) {
       grouped[key] = 0
