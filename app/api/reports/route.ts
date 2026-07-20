@@ -571,71 +571,52 @@ async function generateProfitReport(storeId: string, filters: any) {
   const supplierDue = await getOutstandingSupplierDue(storeIdNumber)
   const showDueCards = !filters.startDate && !filters.endDate
 
-  // Calculate cost of goods sold
-  let cogsQuery = supabaseAdmin
-    .from('sale_items')
-    .select('cost_price_snapshot, quantity, subtotal, sales!inner(store_id, sale_date)')
-    .eq('sales.store_id', parseInt(storeId))
-
-  if (filters.startDate) {
-    cogsQuery = cogsQuery.gte('sales.sale_date', getTimeZoneDayBounds(filters.startDate, getConfiguredTimeZone()).start)
-  }
-
-  if (filters.endDate) {
-    cogsQuery = cogsQuery.lte('sales.sale_date', getTimeZoneDayBounds(filters.endDate, getConfiguredTimeZone()).end)
-  }
-
-  const { data: salesWithCost, error: salesWithCostError } = await cogsQuery
-
-  if (salesWithCostError) throw salesWithCostError
-
+  // Calculate cost of goods sold from the same filtered sales rows used for revenue
   let cogs = 0
   const cogsByPeriod = new Map<string, number>()
 
-  if (salesWithCost) {
-    salesWithCost.forEach((item: any) => {
+  ;(salesReport.sales || []).forEach((sale: any) => {
+    const saleDate = sale.sale_date
+    if (!saleDate) return
+
+    const saleItems = Array.isArray(sale.sale_items) ? sale.sale_items : []
+    saleItems.forEach((item: any) => {
       const amount = toSafeNumber(item.cost_price_snapshot) * toSafeNumber(item.quantity)
       cogs += amount
-
-      const saleDate = item.sales?.sale_date
-      if (!saleDate) return
 
       const key = getPeriodKey(new Date(saleDate), period, timeZone)
       cogsByPeriod.set(key, (cogsByPeriod.get(key) || 0) + amount)
     })
-  }
+  })
 
-  const salesTrend = salesReport.periodData || []
-  const expensesTrend = expensesReport.periodData || []
   const trendMap = new Map<string, { sales: number; expenses: number; cogs: number }>()
 
-  salesTrend.forEach((point: any) => {
-    const existing = trendMap.get(point.date) || { sales: 0, expenses: 0, cogs: 0 }
-    existing.sales = toSafeNumber(point.value)
-    trendMap.set(point.date, existing)
+  const ensureBucket = (date: string) => {
+    if (!trendMap.has(date)) {
+      trendMap.set(date, { sales: 0, expenses: 0, cogs: 0 })
+    }
+    return trendMap.get(date)!
+  }
+
+  ;(salesReport.sales || []).forEach((sale: any) => {
+    const saleDate = sale.sale_date
+    if (!saleDate) return
+
+    const bucket = ensureBucket(getPeriodKey(new Date(saleDate), period, timeZone))
+    bucket.sales += toSafeNumber(sale.total_amount)
   })
 
-  expensesTrend.forEach((point: any) => {
-    const existing = trendMap.get(point.date) || { sales: 0, expenses: 0, cogs: 0 }
-    existing.expenses = toSafeNumber(point.value)
-    trendMap.set(point.date, existing)
+  ;(expensesReport.expenses || []).forEach((expense: any) => {
+    const expenseDate = expense.expense_date
+    if (!expenseDate) return
+
+    const bucket = ensureBucket(getPeriodKey(new Date(expenseDate), period, timeZone))
+    bucket.expenses += toSafeNumber(expense.amount)
   })
 
-  cogsByPeriod.forEach((value, date) => {
-    const existing = trendMap.get(date) || { sales: 0, expenses: 0, cogs: 0 }
-    existing.cogs = value
-    trendMap.set(date, existing)
-  })
-
-  const periodKeys = new Set<string>()
-  salesTrend.forEach((point: any) => periodKeys.add(point.date))
-  expensesTrend.forEach((point: any) => periodKeys.add(point.date))
-  cogsByPeriod.forEach((_, date) => periodKeys.add(date))
-
-  const periodData = Array.from(periodKeys)
-    .sort((a, b) => a.localeCompare(b))
-    .map((date) => {
-      const values = trendMap.get(date) || { sales: 0, expenses: 0, cogs: 0 }
+  const periodData = Array.from(trendMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, values]) => {
       const sales = toSafeNumber(values.sales)
       const cogs = toSafeNumber(values.cogs)
       const expenses = toSafeNumber(values.expenses)
