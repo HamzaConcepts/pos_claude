@@ -573,21 +573,6 @@ async function generateProfitReport(storeId: string, filters: any) {
 
   // Calculate cost of goods sold from the same filtered sales rows used for revenue
   let cogs = 0
-  const cogsByPeriod = new Map<string, number>()
-
-  ;(salesReport.sales || []).forEach((sale: any) => {
-    const saleDate = sale.sale_date
-    if (!saleDate) return
-
-    const saleItems = Array.isArray(sale.sale_items) ? sale.sale_items : []
-    saleItems.forEach((item: any) => {
-      const amount = toSafeNumber(item.cost_price_snapshot) * toSafeNumber(item.quantity)
-      cogs += amount
-
-      const key = getPeriodKey(new Date(saleDate), period, timeZone)
-      cogsByPeriod.set(key, (cogsByPeriod.get(key) || 0) + amount)
-    })
-  })
 
   const trendMap = new Map<string, { sales: number; expenses: number; cogs: number }>()
 
@@ -604,6 +589,13 @@ async function generateProfitReport(storeId: string, filters: any) {
 
     const bucket = ensureBucket(getPeriodKey(new Date(saleDate), period, timeZone))
     bucket.sales += toSafeNumber(sale.total_amount)
+
+    const saleItems = Array.isArray(sale.sale_items) ? sale.sale_items : []
+    saleItems.forEach((item: any) => {
+      const amount = toSafeNumber(item.cost_price_snapshot) * toSafeNumber(item.quantity)
+      cogs += amount
+      bucket.cogs += amount
+    })
   })
 
   ;(expensesReport.expenses || []).forEach((expense: any) => {
