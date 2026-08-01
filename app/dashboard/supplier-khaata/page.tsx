@@ -57,6 +57,7 @@ export default function SupplierKhaataPage() {
   const [expandedSuppliers, setExpandedSuppliers] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
+    total_amount: '',
     amount_paid: '',
     notes: ''
   })
@@ -143,6 +144,7 @@ export default function SupplierKhaataPage() {
   const handleEdit = (record: SupplierKhaata) => {
     setSelectedRecord(record)
     setFormData({
+      total_amount: record.total_amount.toString(),
       amount_paid: record.amount_paid.toString(),
       notes: record.notes || ''
     })
@@ -155,9 +157,20 @@ export default function SupplierKhaataPage() {
 
     try {
       setError('')
+      const totalAmount = parseFloat(formData.total_amount) || 0
       const amountPaid = parseFloat(formData.amount_paid) || 0
 
-      if (amountPaid > selectedRecord.total_amount) {
+      if (totalAmount <= 0) {
+        setError('Total amount must be greater than 0')
+        return
+      }
+
+      if (amountPaid < 0) {
+        setError('Amount paid cannot be negative')
+        return
+      }
+
+      if (amountPaid > totalAmount) {
         setError('Amount paid cannot exceed total amount')
         return
       }
@@ -167,6 +180,7 @@ export default function SupplierKhaataPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: selectedRecord.id,
+          total_amount: totalAmount,
           amount_paid: amountPaid,
           notes: formData.notes.trim() || null
         }),
@@ -390,6 +404,18 @@ export default function SupplierKhaataPage() {
 
             <div className="space-y-4">
               <div>
+                <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Total Amount <span className="text-red-600">*</span></label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.total_amount}
+                  onChange={(e) => setFormData({ ...formData, total_amount: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
                 <label className="block mb-1 font-medium text-xs text-gray-700 dark:text-gray-300">Amount Paid <span className="text-red-600">*</span></label>
                 <input
                   type="number"
@@ -400,9 +426,9 @@ export default function SupplierKhaataPage() {
                   onChange={(e) => setFormData({ ...formData, amount_paid: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded text-sm focus:outline-none focus:border-cyan-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
-                {formData.amount_paid && (
+                {formData.amount_paid && formData.total_amount && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    New Remaining: PKR {(selectedRecord.total_amount - parseFloat(formData.amount_paid || '0')).toLocaleString()}
+                    New Remaining: PKR {Math.max(0, parseFloat(formData.total_amount || '0') - parseFloat(formData.amount_paid || '0')).toLocaleString()}
                   </p>
                 )}
               </div>

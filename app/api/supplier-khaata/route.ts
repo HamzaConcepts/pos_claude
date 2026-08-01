@@ -174,11 +174,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH - Update supplier khaata record (e.g., add payment)
+// PATCH - Update supplier khaata record (e.g., add payment or fix due amount)
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json()
-    const { id, amount_paid, notes } = body
+    const { id, total_amount, amount_paid, notes } = body
 
     if (!id) {
       return NextResponse.json(
@@ -202,20 +202,39 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Calculate new amounts
-    const newAmountPaid = amount_paid !== undefined 
+    const newTotalAmount = total_amount !== undefined
+      ? roundToTwo(parseFloat(total_amount.toString()))
+      : roundToTwo(Number(currentRecord.total_amount || 0))
+
+    const newAmountPaid = amount_paid !== undefined
       ? roundToTwo(parseFloat(amount_paid.toString()))
       : roundToTwo(Number(currentRecord.amount_paid || 0))
-    
-    const newAmountRemaining = roundToTwo(Math.max(0, Number(currentRecord.total_amount || 0) - newAmountPaid))
 
-    if (newAmountRemaining < 0) {
+    if (newTotalAmount <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'Total amount must be greater than 0' },
+        { status: 400 }
+      )
+    }
+
+    if (newAmountPaid < 0) {
+      return NextResponse.json(
+        { success: false, error: 'Amount paid cannot be negative' },
+        { status: 400 }
+      )
+    }
+
+    if (newAmountPaid > newTotalAmount) {
       return NextResponse.json(
         { success: false, error: 'Amount paid cannot exceed total amount' },
         { status: 400 }
       )
     }
 
+    const newAmountRemaining = roundToTwo(Math.max(0, newTotalAmount - newAmountPaid))
+
     const updateData: any = {
+      total_amount: newTotalAmount,
       amount_paid: newAmountPaid,
       amount_remaining: newAmountRemaining
     }
