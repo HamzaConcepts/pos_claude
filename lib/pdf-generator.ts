@@ -17,6 +17,242 @@ interface Sale {
   }>
 }
 
+export interface SupplierPurchasePDFRecord {
+  purchase_date: string
+  product_name: string
+  product_sku?: string | null
+  batch_number?: string | null
+  supplier_name: string
+  supplier_phone?: string | null
+  supplier_contact?: string | null
+  total_amount: number
+  amount_paid: number
+  amount_remaining: number
+  notes?: string | null
+}
+
+export async function generateSupplierPurchasePDF(
+  supplier: {
+    supplier_id: number
+    supplier_name: string
+    supplier_phone?: string
+    supplier_contact?: string | null
+    total_amount: number
+    amount_paid: number
+    amount_remaining: number
+    transactions: SupplierPurchasePDFRecord[]
+  },
+  options: {
+    currency?: string
+    email?: string | null
+    address?: string | null
+  } = {}
+) {
+  const transactions = supplier.transactions || []
+
+  if (!transactions.length) {
+    throw new Error('No purchase records found for this supplier.')
+  }
+
+  const currency = options.currency || 'PKR'
+  const formatMoney = (value: number) => `${currency} ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+  const tableRows = transactions.map((transaction) => `
+    <tr>
+      <td>${new Date(transaction.purchase_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi', year: 'numeric', month: 'short', day: 'numeric' })}</td>
+      <td>${transaction.product_name || 'Unknown Product'}</td>
+      <td>${transaction.product_sku || 'N/A'}</td>
+      <td>${transaction.batch_number || 'N/A'}</td>
+      <td class="text-right">${formatMoney(transaction.total_amount)}</td>
+      <td class="text-right">${formatMoney(transaction.amount_paid)}</td>
+      <td class="text-right">${formatMoney(transaction.amount_remaining)}</td>
+      <td>${transaction.notes || '-'}</td>
+    </tr>
+  `).join('')
+
+  const pdfContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Supplier Purchase Report - ${supplier.supplier_name}</title>
+      <style>
+        @media print {
+          @page { margin: 0.5in; }
+          body { margin: 0; }
+        }
+        body {
+          font-family: Arial, sans-serif;
+          margin: 0;
+          padding: 24px;
+          color: #111827;
+          background: #ffffff;
+          font-size: 10pt;
+        }
+        h1 {
+          margin: 0 0 8px;
+          font-size: 20pt;
+          text-align: center;
+        }
+        .subtitle {
+          text-align: center;
+          font-size: 10pt;
+          color: #4b5563;
+          margin-bottom: 18px;
+        }
+        .header-box {
+          border: 2px solid #111827;
+          padding: 12px 14px;
+          margin-bottom: 18px;
+          background: #f9fafb;
+        }
+        .meta-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px 20px;
+        }
+        .meta-label {
+          font-size: 8pt;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin-bottom: 3px;
+        }
+        .meta-value {
+          font-weight: 700;
+          font-size: 10pt;
+        }
+        .summary {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          margin-bottom: 18px;
+        }
+        .summary-card {
+          border: 2px solid #111827;
+          padding: 10px;
+          background: #f3f4f6;
+        }
+        .summary-title {
+          font-size: 8pt;
+          color: #4b5563;
+          text-transform: uppercase;
+          margin-bottom: 6px;
+        }
+        .summary-value {
+          font-size: 16pt;
+          font-weight: 700;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+          font-size: 8.5pt;
+        }
+        th, td {
+          border: 1px solid #111827;
+          padding: 6px 8px;
+          text-align: left;
+          vertical-align: top;
+        }
+        th {
+          background: #111827;
+          color: white;
+          font-weight: 700;
+        }
+        .text-right {
+          text-align: right;
+        }
+        .footer {
+          margin-top: 20px;
+          border-top: 2px solid #111827;
+          padding-top: 12px;
+          text-align: center;
+          color: #4b5563;
+          font-size: 8pt;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Supplier Purchase Report</h1>
+      <div class="subtitle">Supply purchases and outstanding balances</div>
+
+      <div class="header-box">
+        <div class="meta-grid">
+          <div>
+            <div class="meta-label">Supplier</div>
+            <div class="meta-value">${supplier.supplier_name}</div>
+          </div>
+          <div>
+            <div class="meta-label">Phone</div>
+            <div class="meta-value">${supplier.supplier_phone || 'N/A'}</div>
+          </div>
+          <div>
+            <div class="meta-label">Contact</div>
+            <div class="meta-value">${supplier.supplier_contact || 'N/A'}</div>
+          </div>
+          <div>
+            <div class="meta-label">Email</div>
+            <div class="meta-value">${options.email || 'N/A'}</div>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <div class="meta-label">Address</div>
+            <div class="meta-value">${options.address || 'N/A'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="summary-card">
+          <div class="summary-title">Total Purchases</div>
+          <div class="summary-value">${formatMoney(supplier.total_amount)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-title">Amount Paid</div>
+          <div class="summary-value">${formatMoney(supplier.amount_paid)}</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-title">Balance Due</div>
+          <div class="summary-value">${formatMoney(supplier.amount_remaining)}</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Batch</th>
+            <th class="text-right">Total</th>
+            <th class="text-right">Paid</th>
+            <th class="text-right">Remaining</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+
+      <div class="footer">
+        Generated on ${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}
+      </div>
+    </body>
+    </html>
+  `
+
+  const printWindow = window.open('', '_blank')
+  if (printWindow) {
+    printWindow.document.write(pdfContent)
+    printWindow.document.close()
+    setTimeout(() => {
+      printWindow.print()
+    }, 250)
+  }
+
+  return supplier.supplier_name
+}
+
 export async function generateSalesPDF(
   sales: Sale[],
   period: 'day' | 'month' | 'year',

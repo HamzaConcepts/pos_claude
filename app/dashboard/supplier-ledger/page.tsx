@@ -1,9 +1,10 @@
 'use client'
 
 import { Fragment, useEffect, useState } from 'react'
-import { MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, PackageIcon, CurrencyDollarIcon } from '@phosphor-icons/react'
+import { MagnifyingGlassIcon, PencilSimpleIcon, TrashIcon, CaretDownIcon, CaretRightIcon, PackageIcon, CurrencyDollarIcon, DownloadSimpleIcon } from '@phosphor-icons/react'
 import { getStoreId, supabase } from '@/lib/supabase'
 import { useCurrency } from '@/lib/currency-context'
+import { generateSupplierPurchasePDF } from '@/lib/pdf-generator'
 
 interface SupplierKhaata {
   id: number
@@ -681,6 +682,45 @@ export default function SupplierKhaataPage() {
     }
   }
 
+  const handleExportSupplierPdf = async (supplier: AggregatedSupplier) => {
+    const supplierInfo = supplierDirectory.find(item => item.id === supplier.supplier_id)
+
+    try {
+      await generateSupplierPurchasePDF(
+        {
+          supplier_id: supplier.supplier_id,
+          supplier_name: supplier.supplier_name,
+          supplier_phone: supplier.supplier_phone,
+          supplier_contact: supplierInfo?.contact_person || null,
+          total_amount: supplier.total_amount,
+          amount_paid: supplier.amount_paid,
+          amount_remaining: supplier.amount_remaining,
+          transactions: supplier.transactions.map((transaction) => ({
+            purchase_date: transaction.purchase_date,
+            product_name: transaction.product_name,
+            product_sku: transaction.product_sku,
+            batch_number: transaction.batch_number,
+            supplier_name: transaction.supplier_name,
+            supplier_phone: transaction.supplier_phone,
+            supplier_contact: supplierInfo?.contact_person || null,
+            total_amount: transaction.total_amount,
+            amount_paid: transaction.amount_paid,
+            amount_remaining: transaction.amount_remaining,
+            notes: transaction.khaata_record?.notes || null,
+          }))
+        },
+        {
+          currency: currency,
+          email: supplierInfo?.email || null,
+          address: supplierInfo?.address || null,
+        }
+      )
+    } catch (err) {
+      console.error('Failed to generate supplier purchase PDF:', err)
+      alert(err instanceof Error ? err.message : 'Failed to generate supplier purchase report.')
+    }
+  }
+
   return (
     <>
       {/* Header */}
@@ -785,6 +825,17 @@ export default function SupplierKhaataPage() {
                                 Pay Dues
                               </button>
                             )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void handleExportSupplierPdf(supplier)
+                              }}
+                              className="px-3 py-1 bg-slate-800 text-white rounded text-xs font-medium hover:bg-slate-900 flex items-center gap-1"
+                              title="Export PDF"
+                            >
+                              <DownloadSimpleIcon size={14} />
+                              PDF
+                            </button>
                             {isExpanded ? <CaretDownIcon className="text-gray-400" size={16} /> : <CaretRightIcon className="text-gray-400" size={16} />}
                           </div>
                         </td>
