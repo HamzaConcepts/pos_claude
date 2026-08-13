@@ -31,6 +31,7 @@ interface SupplierKhaata {
     id: number
     batch_number: string
     purchase_date: string
+    quantity_purchased?: number
     products?: {
       id: number
       name: string
@@ -73,6 +74,7 @@ interface SupplierPurchaseRecord {
   batch_number: string | null
   product_name: string
   product_sku: string
+  quantity_purchased: number
   khaata_record?: SupplierKhaata | null
 }
 
@@ -406,6 +408,7 @@ export default function SupplierKhaataPage() {
         batch_number: batch.batch_number || null,
         product_name: batch.products?.name || 'Unknown Product',
         product_sku: batch.products?.sku || 'N/A',
+        quantity_purchased: Number(batch.quantity_purchased || 0),
         khaata_record: khaataRecord,
       }
 
@@ -452,6 +455,7 @@ export default function SupplierKhaataPage() {
         batch_number: record.stock_batches?.batch_number || null,
         product_name: record.stock_batches?.products?.name || 'Unknown Product',
         product_sku: record.stock_batches?.products?.sku || 'N/A',
+        quantity_purchased: Number(record.stock_batches?.quantity_purchased || 0),
         khaata_record: record,
       }
 
@@ -706,6 +710,7 @@ export default function SupplierKhaataPage() {
             total_amount: transaction.total_amount,
             amount_paid: transaction.amount_paid,
             amount_remaining: transaction.amount_remaining,
+            quantity_purchased: transaction.quantity_purchased,
             notes: transaction.khaata_record?.notes || null,
           }))
         },

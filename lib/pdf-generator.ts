@@ -28,6 +28,7 @@ export interface SupplierPurchasePDFRecord {
   total_amount: number
   amount_paid: number
   amount_remaining: number
+  quantity_purchased?: number
   notes?: string | null
 }
 
@@ -61,6 +62,7 @@ export async function generateSupplierPurchasePDF(
     <tr>
       <td>${new Date(transaction.purchase_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi', year: 'numeric', month: 'short', day: 'numeric' })}</td>
       <td>${transaction.product_name || 'Unknown Product'}</td>
+      <td class="text-right">${Number(transaction.quantity_purchased || 0)}</td>
       <td>${transaction.product_sku || 'N/A'}</td>
       <td>${transaction.batch_number || 'N/A'}</td>
       <td class="text-right">${formatMoney(transaction.total_amount)}</td>
@@ -221,6 +223,7 @@ export async function generateSupplierPurchasePDF(
           <tr>
             <th>Date</th>
             <th>Product</th>
+            <th class="text-right">Qty</th>
             <th>SKU</th>
             <th>Batch</th>
             <th class="text-right">Total</th>
