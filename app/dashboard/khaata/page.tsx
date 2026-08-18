@@ -744,7 +744,7 @@ export default function KhaataPage() {
                               {txnExpanded && (
                                 <tr className="border-t border-gray-100 dark:border-gray-700">
                                   <td colSpan={8} className="bg-gray-50 dark:bg-[#111] px-4 py-3">
-                                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Payment History for Sale #{transaction.sale_id}</p>
+                                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Payment History (FIFO allocations)</p>
                                     {txnLoading ? (
                                       <p className="text-xs text-gray-400">Loading...</p>
                                     ) : !txnPayments || txnPayments.length === 0 ? (
@@ -754,9 +754,11 @@ export default function KhaataPage() {
                                         <thead>
                                           <tr className="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
                                             <th className="text-left py-1 pr-4 font-medium">Date</th>
-                                            <th className="text-right py-1 pr-4 font-medium">Amount</th>
+                                            <th className="text-left py-1 pr-4 font-medium">Reference</th>
+                                            <th className="text-right py-1 pr-4 font-medium">Applied</th>
+                                            <th className="text-right py-1 pr-4 font-medium">Txn Remaining</th>
+                                            <th className="text-right py-1 pr-4 font-medium">Customer Remaining</th>
                                             <th className="text-left py-1 pr-4 font-medium">Method</th>
-                                            <th className="text-left py-1 font-medium">Notes</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -765,9 +767,21 @@ export default function KhaataPage() {
                                               <td className="py-1.5 pr-4 text-gray-700 dark:text-gray-300">
                                                 {new Date(p.payment_date || p.created_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                                               </td>
+                                              <td className="py-1.5 pr-4 font-mono text-gray-700 dark:text-gray-300">{p.payment_reference || '-'}</td>
                                               <td className="py-1.5 pr-4 text-right font-semibold text-green-600">{formatCurrency(p.payment_amount, 2)}</td>
-                                              <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">{p.payment_method}</td>
-                                              <td className="py-1.5 text-gray-500 dark:text-gray-400 italic">{p.notes || '—'}</td>
+                                              <td className="py-1.5 pr-4 text-right text-gray-700 dark:text-gray-300">
+                                                {formatCurrency(p.transaction_remaining_before || 0, 2)} {'->'} {formatCurrency(p.transaction_remaining_after || 0, 2)}
+                                              </td>
+                                              <td className="py-1.5 pr-4 text-right text-gray-700 dark:text-gray-300">
+                                                {formatCurrency(p.customer_remaining_before || 0, 2)} {'->'} {formatCurrency(p.customer_remaining_after || 0, 2)}
+                                              </td>
+                                              <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">
+                                                <div>{p.payment_method}</div>
+                                                {p.bank_account_name && (
+                                                  <div className="text-[11px] text-gray-500 dark:text-gray-400">Bank: {p.bank_account_name}</div>
+                                                )}
+                                                {p.notes && <div className="text-[11px] text-gray-500 dark:text-gray-400 italic">{p.notes}</div>}
+                                              </td>
                                             </tr>
                                           ))}
                                         </tbody>

@@ -15,6 +15,8 @@ const supabaseAdmin = createClient(
   }
 )
 
+const roundToTwo = (value: number): number => Math.round(value * 100) / 100
+
 // GET - Fetch payment history for a customer
 export async function GET(request: Request) {
   try {
@@ -75,13 +77,26 @@ export async function POST(request: Request) {
       payments,
       bank_account_name,
       notes,
-      store_id
+      store_id,
+      recorded_by,
+      cashier_id,
     } = body
 
     // Validation
     if (!customer_phone || !payment_amount || !store_id) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields: customer_phone, payment_amount, and store_id are required' },
+        { status: 400 }
+      )
+    }
+
+    const parsedCashierId = cashier_id ? parseInt(String(cashier_id), 10) : null
+    const hasManagerRecorder = typeof recorded_by === 'string' && recorded_by.trim().length > 0
+    const hasCashierRecorder = Number.isInteger(parsedCashierId)
+
+    if (hasManagerRecorder === hasCashierRecorder) {
+      return NextResponse.json(
+        { success: false, error: 'Exactly one recorder is required: recorded_by (manager UUID) or cashier_id' },
         { status: 400 }
       )
     }
@@ -174,7 +189,9 @@ export async function POST(request: Request) {
     }
 
     // Calculate total remaining balance
-    const totalRemaining = transactions.reduce((sum, t) => sum + t.amount_remaining, 0)
+    const totalRemaining = roundToTwo(
+      transactions.reduce((sum, t) => sum + Number(t.amount_remaining || 0), 0)
+    )
 
     // Check if payment exceeds remaining amount
     if (totalPayment > totalRemaining) {
@@ -184,11 +201,13 @@ export async function POST(request: Request) {
       )
     }
 
-    // Distribute payments across transactions proportionally
+    // Distribute payments across transactions in FIFO order and track before/after balances.
+    let customerRemainingBefore = totalRemaining
+    const paymentReference = `CUST-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
     const updates = []
 
     for (const paymentEntry of normalizedPayments) {
-      let remainingPayment = paymentEntry.amount
+      let remainingPayment = roundToTwo(paymentEntry.amount)
 
       for (const transaction of transactions) {
         if (remainingPayment <= 0) break
@@ -196,9 +215,11 @@ export async function POST(request: Request) {
 
         const amountRemaining = Number(transaction.amount_remaining || 0)
         const amountPaid = Number(transaction.amount_paid || 0)
-        const amountToApply = Math.min(remainingPayment, amountRemaining)
-        const newAmountPaid = amountPaid + amountToApply
-        const newAmountRemaining = amountRemaining - amountToApply
+        const amountToApply = roundToTwo(Math.min(remainingPayment, amountRemaining))
+        const newAmountPaid = roundToTwo(amountPaid + amountToApply)
+        const newAmountRemaining = roundToTwo(Math.max(0, amountRemaining - amountToApply))
+        const customerRemainingBeforeForLine = customerRemainingBefore
+        const customerRemainingAfter = roundToTwo(Math.max(0, customerRemainingBeforeForLine - amountToApply))
 
         // Update this transaction
         const { error: updateError } = await supabaseAdmin
@@ -218,8 +239,8 @@ export async function POST(request: Request) {
           )
         }
 
-        // Record payment
-        await supabaseAdmin
+        // Record payment allocation including before/after balance tracking.
+        const { error: paymentInsertError } = await supabaseAdmin
           .from('customer_payments')
           .insert({
             partial_payment_customer_id: transaction.id,
@@ -230,8 +251,23 @@ export async function POST(request: Request) {
             payment_method: paymentEntry.payment_method,
             bank_account_name: paymentEntry.bank_account_name || null,
             notes,
-            store_id: parseInt(store_id)
+            payment_reference: paymentReference,
+            transaction_remaining_before: amountRemaining,
+            transaction_remaining_after: newAmountRemaining,
+            customer_remaining_before: customerRemainingBeforeForLine,
+            customer_remaining_after: customerRemainingAfter,
+            store_id: parseInt(store_id),
+            recorded_by: hasManagerRecorder ? recorded_by : null,
+            cashier_id: hasCashierRecorder ? parsedCashierId : null,
           })
+
+        if (paymentInsertError) {
+          console.error('Error recording customer payment allocation:', paymentInsertError)
+          return NextResponse.json(
+            { success: false, error: paymentInsertError.message },
+            { status: 500 }
+          )
+        }
 
         await supabaseAdmin
           .from('sales')
@@ -243,12 +279,17 @@ export async function POST(request: Request) {
           })
           .eq('id', transaction.sale_id)
 
-        remainingPayment -= amountToApply
+        remainingPayment = roundToTwo(remainingPayment - amountToApply)
+        customerRemainingBefore = customerRemainingAfter
         transaction.amount_paid = newAmountPaid
         transaction.amount_remaining = newAmountRemaining
         updates.push({
           transaction_id: transaction.id,
           amount_applied: amountToApply,
+          transaction_remaining_before: amountRemaining,
+          transaction_remaining_after: newAmountRemaining,
+          customer_remaining_before: customerRemainingBeforeForLine,
+          customer_remaining_after: customerRemainingAfter,
           payment_method: paymentEntry.payment_method,
         })
       }
@@ -258,7 +299,9 @@ export async function POST(request: Request) {
       success: true,
       data: {
         total_payment: totalPayment,
+        payment_reference: paymentReference,
         transactions_updated: updates.length,
+        customer_remaining_after: customerRemainingBefore,
         updates
       },
       message: 'Payment recorded successfully'

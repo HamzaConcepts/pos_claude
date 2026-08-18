@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { MagnifyingGlassIcon, TrashIcon, CaretDownIcon, CaretRightIcon, CurrencyDollarIcon, ReceiptIcon } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
-import { getStoreId } from '@/lib/supabase'
+import { getStoreId, supabase } from '@/lib/supabase'
 import { useCurrency } from '@/lib/currency-context'
 
 interface KhaataCustomer {
@@ -90,6 +90,8 @@ export default function CustomerLedgerPage() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [bankAccountsLoading, setBankAccountsLoading] = useState(false)
   const [selectedBankAccount, setSelectedBankAccount] = useState('')
+  const [recorderManagerId, setRecorderManagerId] = useState<string | null>(null)
+  const [recorderCashierId, setRecorderCashierId] = useState<number | null>(null)
 
   // Payment history per transaction (keyed by partial_payment_customers.id)
   const [paymentHistoryByTxnId, setPaymentHistoryByTxnId] = useState<Record<number, any[]>>({})
@@ -97,11 +99,41 @@ export default function CustomerLedgerPage() {
   const [expandedTxnIds, setExpandedTxnIds] = useState<Set<number>>(new Set())
 
   useEffect(() => {
+    resolvePaymentRecorder()
     fetchCustomers()
     fetchInitialCustomers()
     fetchOrderCustomers()
     fetchBankAccounts()
   }, [])
+
+  const resolvePaymentRecorder = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.id) {
+        setRecorderManagerId(user.id)
+        setRecorderCashierId(null)
+        return
+      }
+
+      const userSession = localStorage.getItem('user_session')
+      if (userSession) {
+        const parsed = JSON.parse(userSession)
+        const parsedCashierId = Number.parseInt(String(parsed?.id), 10)
+        if (!Number.isNaN(parsedCashierId)) {
+          setRecorderManagerId(null)
+          setRecorderCashierId(parsedCashierId)
+          return
+        }
+      }
+
+      setRecorderManagerId(null)
+      setRecorderCashierId(null)
+    } catch (err) {
+      console.error('Failed to resolve payment recorder:', err)
+      setRecorderManagerId(null)
+      setRecorderCashierId(null)
+    }
+  }
 
   const parseAmountValue = (value: string) => {
     const parsed = Number.parseFloat(value)
@@ -407,7 +439,9 @@ export default function CustomerLedgerPage() {
         payments: paymentSplits,
         bank_account_name: requiresDigital ? selectedBankAccount : null,
         notes: paymentFormData.notes.trim() || null,
-        store_id: getStoreId()
+        store_id: getStoreId(),
+        recorded_by: recorderManagerId,
+        cashier_id: recorderCashierId,
       }
 
       const response = await fetch('/api/khaata-payments', {
@@ -623,7 +657,7 @@ export default function CustomerLedgerPage() {
                           {txnExpanded && (
                             <tr className="border-t border-gray-100 dark:border-gray-700">
                               <td colSpan={8} className="bg-gray-50 dark:bg-[#111] px-4 py-3">
-                                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Payment History for this transaction</p>
+                                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Payment History (FIFO allocations)</p>
                                 {txnLoading ? (
                                   <p className="text-xs text-gray-400">Loading...</p>
                                 ) : !txnPayments || txnPayments.length === 0 ? (
@@ -633,9 +667,11 @@ export default function CustomerLedgerPage() {
                                     <thead>
                                       <tr className="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
                                         <th className="text-left py-1 pr-4 font-medium">Date</th>
-                                        <th className="text-right py-1 pr-4 font-medium">Amount</th>
+                                        <th className="text-left py-1 pr-4 font-medium">Reference</th>
+                                        <th className="text-right py-1 pr-4 font-medium">Applied</th>
+                                        <th className="text-right py-1 pr-4 font-medium">Txn Remaining</th>
+                                        <th className="text-right py-1 pr-4 font-medium">Customer Remaining</th>
                                         <th className="text-left py-1 pr-4 font-medium">Method</th>
-                                        <th className="text-left py-1 font-medium">Notes</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -644,7 +680,14 @@ export default function CustomerLedgerPage() {
                                           <td className="py-1.5 pr-4 text-gray-700 dark:text-gray-300">
                                             {new Date(p.payment_date || p.created_at).toLocaleString('en-PK', { timeZone: 'Asia/Karachi', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                                           </td>
+                                          <td className="py-1.5 pr-4 font-mono text-gray-700 dark:text-gray-300">{p.payment_reference || '-'}</td>
                                           <td className="py-1.5 pr-4 text-right font-semibold text-green-600">{formatCurrency(p.payment_amount, 2)}</td>
+                                          <td className="py-1.5 pr-4 text-right text-gray-700 dark:text-gray-300">
+                                            {formatCurrency(p.transaction_remaining_before || 0, 2)} {'->'} {formatCurrency(p.transaction_remaining_after || 0, 2)}
+                                          </td>
+                                          <td className="py-1.5 pr-4 text-right text-gray-700 dark:text-gray-300">
+                                            {formatCurrency(p.customer_remaining_before || 0, 2)} {'->'} {formatCurrency(p.customer_remaining_after || 0, 2)}
+                                          </td>
                                           <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">
                                             <div>{p.payment_method}</div>
                                             {p.bank_account_name && (
@@ -652,8 +695,8 @@ export default function CustomerLedgerPage() {
                                                 Bank: {p.bank_account_name}
                                               </div>
                                             )}
+                                            {p.notes && <div className="text-[11px] text-gray-500 dark:text-gray-400 italic">{p.notes}</div>}
                                           </td>
-                                          <td className="py-1.5 text-gray-500 dark:text-gray-400 italic">{p.notes || '—'}</td>
                                         </tr>
                                       ))}
                                     </tbody>
