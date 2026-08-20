@@ -32,6 +32,16 @@ export interface SupplierPurchasePDFRecord {
   notes?: string | null
 }
 
+export interface CustomerLedgerPDFRecord {
+  sale_id: number
+  sale_description?: string | null
+  transaction_date: string
+  total_amount: number
+  amount_paid: number
+  amount_remaining: number
+  notes?: string | null
+}
+
 export async function generateSupplierPurchasePDF(
   supplier: {
     supplier_id: number
@@ -254,6 +264,92 @@ export async function generateSupplierPurchasePDF(
   }
 
   return supplier.supplier_name
+}
+
+export async function generateCustomerLedgerPDF(
+  customer: {
+    customer_name: string
+    customer_phone?: string | null
+    total_amount: number
+    amount_paid: number
+    amount_remaining: number
+    transactions: CustomerLedgerPDFRecord[]
+  },
+  options: { currency?: string } = {}
+) {
+  const transactions = customer.transactions || []
+
+  if (!transactions.length) {
+    throw new Error('No ledger records found for this customer.')
+  }
+
+  const currency = options.currency || 'PKR'
+  const formatMoney = (value: number) => `${currency} ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const tableRows = transactions.map((transaction) => `
+    <tr>
+      <td>${new Date(transaction.transaction_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi', year: 'numeric', month: 'short', day: 'numeric' })}</td>
+      <td>${transaction.sale_description || `Sale #${transaction.sale_id}`}</td>
+      <td class="text-right">${formatMoney(transaction.total_amount)}</td>
+      <td class="text-right">${formatMoney(transaction.amount_paid)}</td>
+      <td class="text-right">${formatMoney(transaction.amount_remaining)}</td>
+      <td>${transaction.notes || '-'}</td>
+    </tr>
+  `).join('')
+
+  const pdfContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Customer Ledger Report - ${customer.customer_name}</title>
+      <style>
+        @media print { @page { margin: 0.5in; } body { margin: 0; } }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 24px; color: #111827; background: #ffffff; font-size: 10pt; }
+        h1 { margin: 0 0 8px; font-size: 20pt; text-align: center; }
+        .subtitle { text-align: center; font-size: 10pt; color: #4b5563; margin-bottom: 18px; }
+        .header-box, .summary-card { border: 2px solid #111827; padding: 12px 14px; background: #f9fafb; }
+        .header-box { margin-bottom: 18px; }
+        .meta-grid, .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        .meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; }
+        .meta-label, .summary-title { font-size: 8pt; color: #6b7280; text-transform: uppercase; margin-bottom: 3px; }
+        .meta-value { font-weight: 700; font-size: 10pt; }
+        .summary { margin-bottom: 18px; }
+        .summary-card { padding: 10px; background: #f3f4f6; }
+        .summary-value { font-size: 16pt; font-weight: 700; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 8.5pt; }
+        th, td { border: 1px solid #111827; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #111827; color: white; font-weight: 700; }
+        .text-right { text-align: right; }
+        .footer { margin-top: 20px; border-top: 2px solid #111827; padding-top: 12px; text-align: center; color: #4b5563; font-size: 8pt; }
+      </style>
+    </head>
+    <body>
+      <h1>Customer Ledger Report</h1>
+      <div class="subtitle">Customer transactions and account balance</div>
+      <div class="header-box"><div class="meta-grid">
+        <div><div class="meta-label">Customer</div><div class="meta-value">${customer.customer_name}</div></div>
+        <div><div class="meta-label">Phone</div><div class="meta-value">${customer.customer_phone || 'N/A'}</div></div>
+      </div></div>
+      <div class="summary">
+        <div class="summary-card"><div class="summary-title">Total Owed</div><div class="summary-value">${formatMoney(customer.total_amount)}</div></div>
+        <div class="summary-card"><div class="summary-title">Amount Paid</div><div class="summary-value">${formatMoney(customer.amount_paid)}</div></div>
+        <div class="summary-card"><div class="summary-title">Balance Due</div><div class="summary-value">${formatMoney(customer.amount_remaining)}</div></div>
+      </div>
+      <table><thead><tr><th>Date</th><th>Sale</th><th class="text-right">Total</th><th class="text-right">Paid</th><th class="text-right">Remaining</th><th>Notes</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div class="footer">Generated on ${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</div>
+    </body>
+    </html>
+  `
+
+  const printWindow = window.open('', '_blank')
+  if (printWindow) {
+    printWindow.document.write(pdfContent)
+    printWindow.document.close()
+    setTimeout(() => printWindow.print(), 250)
+  }
+
+  return customer.customer_name
 }
 
 export async function generateSalesPDF(

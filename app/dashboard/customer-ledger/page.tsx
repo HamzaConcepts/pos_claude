@@ -1,10 +1,11 @@
 'use client'
 
 import { Fragment, useEffect, useState } from 'react'
-import { MagnifyingGlassIcon, TrashIcon, CaretDownIcon, CaretRightIcon, CurrencyDollarIcon, ReceiptIcon } from '@phosphor-icons/react'
+import { MagnifyingGlassIcon, TrashIcon, CaretDownIcon, CaretRightIcon, CurrencyDollarIcon, ReceiptIcon, DownloadSimpleIcon } from '@phosphor-icons/react'
 import { useRouter } from 'next/navigation'
 import { getStoreId, supabase } from '@/lib/supabase'
 import { useCurrency } from '@/lib/currency-context'
+import { generateCustomerLedgerPDF } from '@/lib/pdf-generator'
 
 interface KhaataCustomer {
   id: number
@@ -73,7 +74,7 @@ interface CustomerPaymentHistory {
 
 export default function CustomerLedgerPage() {
   const router = useRouter()
-  const { formatCurrency } = useCurrency()
+  const { currency, formatCurrency } = useCurrency()
   const [customers, setCustomers] = useState<KhaataCustomer[]>([])
   const [initialCustomers, setInitialCustomers] = useState<InitialCustomer[]>([])
   const [orderCustomers, setOrderCustomers] = useState<OrderCustomer[]>([])
@@ -511,6 +512,33 @@ export default function CustomerLedgerPage() {
     }
   }
 
+  const handleExportCustomerPdf = async (customer: AggregatedCustomer) => {
+    try {
+      await generateCustomerLedgerPDF(
+        {
+          customer_name: customer.customer_name,
+          customer_phone: customer.customer_phone,
+          total_amount: customer.total_amount,
+          amount_paid: customer.amount_paid,
+          amount_remaining: customer.amount_remaining,
+          transactions: customer.transactions.map((transaction) => ({
+            sale_id: transaction.sale_id,
+            sale_description: transaction.sales?.sale_description,
+            transaction_date: transaction.created_at,
+            total_amount: transaction.total_amount,
+            amount_paid: transaction.amount_paid,
+            amount_remaining: transaction.amount_remaining,
+            notes: transaction.notes,
+          })),
+        },
+        { currency }
+      )
+    } catch (err) {
+      console.error('Failed to generate customer ledger PDF:', err)
+      alert(err instanceof Error ? err.message : 'Failed to generate customer ledger report.')
+    }
+  }
+
   const aggregatedCustomers = aggregateCustomers()
   const filteredAggregatedCustomers = aggregatedCustomers.filter(customer =>
     customer.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -628,23 +656,36 @@ export default function CustomerLedgerPage() {
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-center">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedForPayment({
-                              type: 'customer',
-                              customer_name: customer.customer_name,
-                              customer_phone: customer.customer_phone,
-                              remaining_balance: customer.amount_remaining
-                            })
-                            setShowPayDuesModal(true)
-                          }}
-                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1 mx-auto"
-                          disabled={customer.amount_remaining <= 0}
-                        >
-                          <CurrencyDollarIcon size={14} />
-                          Pay Dues
-                        </button>
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedForPayment({
+                                type: 'customer',
+                                customer_name: customer.customer_name,
+                                customer_phone: customer.customer_phone,
+                                remaining_balance: customer.amount_remaining
+                              })
+                              setShowPayDuesModal(true)
+                            }}
+                            className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium flex items-center gap-1"
+                            disabled={customer.amount_remaining <= 0}
+                          >
+                            <CurrencyDollarIcon size={14} />
+                            Pay Dues
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void handleExportCustomerPdf(customer)
+                            }}
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded text-xs font-medium flex items-center gap-1"
+                            title="Export PDF"
+                          >
+                            <DownloadSimpleIcon size={14} />
+                            PDF
+                          </button>
+                        </div>
                       </td>
                     </tr>
 
@@ -887,6 +928,17 @@ export default function CustomerLedgerPage() {
                               <span className="px-2 py-1 bg-green-50 text-green-700 border border-green-200 rounded text-xs font-medium">
                                 Cleared
                               </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  void handleExportCustomerPdf(customer)
+                                }}
+                                className="ml-2 inline-flex items-center gap-1 px-2 py-1 bg-slate-800 text-white rounded text-xs font-medium hover:bg-slate-900"
+                                title="Export PDF"
+                              >
+                                <DownloadSimpleIcon size={13} />
+                                PDF
+                              </button>
                             </td>
                           </tr>
 
