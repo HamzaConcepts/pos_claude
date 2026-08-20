@@ -22,6 +22,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const customerId = searchParams.get('customer_id')
+    const customerPhone = searchParams.get('customer_phone')
     const saleId = searchParams.get('sale_id')
     const storeId = searchParams.get('store_id')
 
@@ -40,6 +41,10 @@ export async function GET(request: Request) {
 
     if (customerId) {
       query = query.eq('partial_payment_customer_id', parseInt(customerId))
+    }
+
+    if (customerPhone) {
+      query = query.eq('customer_phone', customerPhone)
     }
 
     if (saleId) {

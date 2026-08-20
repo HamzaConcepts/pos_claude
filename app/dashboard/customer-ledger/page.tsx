@@ -53,6 +53,24 @@ interface BankAccount {
   account_name: string
 }
 
+interface CustomerPaymentHistory {
+  id: number
+  partial_payment_customer_id: number | null
+  sale_id: number | null
+  customer_name: string
+  customer_phone: string
+  payment_amount: number
+  payment_date: string
+  payment_method: string
+  bank_account_name: string | null
+  notes: string | null
+  payment_reference: string | null
+  transaction_remaining_before: number | null
+  transaction_remaining_after: number | null
+  customer_remaining_before: number | null
+  customer_remaining_after: number | null
+}
+
 export default function CustomerLedgerPage() {
   const router = useRouter()
   const { formatCurrency } = useCurrency()
@@ -97,6 +115,8 @@ export default function CustomerLedgerPage() {
   const [paymentHistoryByTxnId, setPaymentHistoryByTxnId] = useState<Record<number, any[]>>({})
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState<Record<number, boolean>>({})
   const [expandedTxnIds, setExpandedTxnIds] = useState<Set<number>>(new Set())
+  const [customerPaymentHistoryByPhone, setCustomerPaymentHistoryByPhone] = useState<Record<string, CustomerPaymentHistory[]>>({})
+  const [customerPaymentHistoryLoading, setCustomerPaymentHistoryLoading] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     resolvePaymentRecorder()
@@ -269,6 +289,7 @@ export default function CustomerLedgerPage() {
       newExpanded.delete(phone)
     } else {
       newExpanded.add(phone)
+      fetchCustomerPaymentHistory(phone)
     }
     setExpandedCustomers(newExpanded)
   }
@@ -285,6 +306,27 @@ export default function CustomerLedgerPage() {
       setPaymentHistoryByTxnId(prev => ({ ...prev, [txnId]: [] }))
     } finally {
       setPaymentHistoryLoading(prev => ({ ...prev, [txnId]: false }))
+    }
+  }
+
+  const fetchCustomerPaymentHistory = async (customerPhone: string) => {
+    if (!customerPhone || customerPaymentHistoryByPhone[customerPhone] !== undefined) return
+
+    try {
+      const storeId = getStoreId()
+      if (!storeId) return
+
+      setCustomerPaymentHistoryLoading(prev => ({ ...prev, [customerPhone]: true }))
+      const res = await fetch(`/api/khaata-payments?store_id=${storeId}&customer_phone=${encodeURIComponent(customerPhone)}`)
+      const result = await res.json()
+      setCustomerPaymentHistoryByPhone(prev => ({
+        ...prev,
+        [customerPhone]: result.success ? result.data : []
+      }))
+    } catch {
+      setCustomerPaymentHistoryByPhone(prev => ({ ...prev, [customerPhone]: [] }))
+    } finally {
+      setCustomerPaymentHistoryLoading(prev => ({ ...prev, [customerPhone]: false }))
     }
   }
 
@@ -708,6 +750,70 @@ export default function CustomerLedgerPage() {
                         </Fragment>
                       )
                     })}
+
+                    {isExpanded && (
+                      <tr className="border-t border-gray-100 dark:border-gray-700">
+                        <td colSpan={8} className="bg-gray-50 dark:bg-[#111] px-4 py-3">
+                          <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                            Separate Ledger Entries (Payment Allocations)
+                          </p>
+                          {customerPaymentHistoryLoading[customer.customer_phone] ? (
+                            <p className="text-xs text-gray-400">Loading payment entries...</p>
+                          ) : (customerPaymentHistoryByPhone[customer.customer_phone] || []).length === 0 ? (
+                            <p className="text-xs text-gray-400 italic">No payment entries recorded yet.</p>
+                          ) : (
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+                                  <th className="text-left py-1 pr-4 font-medium">Date</th>
+                                  <th className="text-left py-1 pr-4 font-medium">Reference</th>
+                                  <th className="text-right py-1 pr-4 font-medium">Applied</th>
+                                  <th className="text-right py-1 pr-4 font-medium">Txn Remaining</th>
+                                  <th className="text-right py-1 pr-4 font-medium">Customer Remaining</th>
+                                  <th className="text-left py-1 pr-4 font-medium">Method</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {customerPaymentHistoryByPhone[customer.customer_phone].map((payment) => (
+                                  <tr key={`customer-payment-${payment.id}`} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                    <td className="py-1.5 pr-4 text-gray-700 dark:text-gray-300">
+                                      {new Date(payment.payment_date).toLocaleString('en-PK', {
+                                        timeZone: 'Asia/Karachi',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true,
+                                      })}
+                                    </td>
+                                    <td className="py-1.5 pr-4 font-mono text-gray-700 dark:text-gray-300">
+                                      {payment.payment_reference || '-'}
+                                    </td>
+                                    <td className="py-1.5 pr-4 text-right font-semibold text-green-600">
+                                      {formatCurrency(payment.payment_amount, 2)}
+                                    </td>
+                                    <td className="py-1.5 pr-4 text-right text-gray-700 dark:text-gray-300">
+                                      {formatCurrency(payment.transaction_remaining_before || 0, 2)} {'->'} {formatCurrency(payment.transaction_remaining_after || 0, 2)}
+                                    </td>
+                                    <td className="py-1.5 pr-4 text-right text-gray-700 dark:text-gray-300">
+                                      {formatCurrency(payment.customer_remaining_before || 0, 2)} {'->'} {formatCurrency(payment.customer_remaining_after || 0, 2)}
+                                    </td>
+                                    <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">
+                                      <div>{payment.payment_method}</div>
+                                      {payment.bank_account_name && (
+                                        <div className="text-[11px] text-gray-500 dark:text-gray-400">Bank: {payment.bank_account_name}</div>
+                                      )}
+                                      {payment.notes && <div className="text-[11px] text-gray-500 dark:text-gray-400 italic">{payment.notes}</div>}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </td>
+                      </tr>
+                    )}
                   </>
                 )
               })}
@@ -875,6 +981,70 @@ export default function CustomerLedgerPage() {
                               </Fragment>
                             )
                           })}
+
+                          {isExpanded && (
+                            <tr className="border-t border-gray-100 dark:border-gray-700">
+                              <td colSpan={8} className="bg-gray-50 dark:bg-[#111] px-4 py-3">
+                                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                                  Separate Ledger Entries (Payment Allocations)
+                                </p>
+                                {customerPaymentHistoryLoading[customer.customer_phone] ? (
+                                  <p className="text-xs text-gray-400">Loading payment entries...</p>
+                                ) : (customerPaymentHistoryByPhone[customer.customer_phone] || []).length === 0 ? (
+                                  <p className="text-xs text-gray-400 italic">No payment entries recorded yet.</p>
+                                ) : (
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-600">
+                                        <th className="text-left py-1 pr-4 font-medium">Date</th>
+                                        <th className="text-left py-1 pr-4 font-medium">Reference</th>
+                                        <th className="text-right py-1 pr-4 font-medium">Applied</th>
+                                        <th className="text-right py-1 pr-4 font-medium">Txn Remaining</th>
+                                        <th className="text-right py-1 pr-4 font-medium">Customer Remaining</th>
+                                        <th className="text-left py-1 pr-4 font-medium">Method</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {customerPaymentHistoryByPhone[customer.customer_phone].map((payment) => (
+                                        <tr key={`customer-payment-${payment.id}`} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                          <td className="py-1.5 pr-4 text-gray-700 dark:text-gray-300">
+                                            {new Date(payment.payment_date).toLocaleString('en-PK', {
+                                              timeZone: 'Asia/Karachi',
+                                              month: 'short',
+                                              day: 'numeric',
+                                              year: 'numeric',
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                              hour12: true,
+                                            })}
+                                          </td>
+                                          <td className="py-1.5 pr-4 font-mono text-gray-700 dark:text-gray-300">
+                                            {payment.payment_reference || '-'}
+                                          </td>
+                                          <td className="py-1.5 pr-4 text-right font-semibold text-green-600">
+                                            {formatCurrency(payment.payment_amount, 2)}
+                                          </td>
+                                          <td className="py-1.5 pr-4 text-right text-gray-700 dark:text-gray-300">
+                                            {formatCurrency(payment.transaction_remaining_before || 0, 2)} {'->'} {formatCurrency(payment.transaction_remaining_after || 0, 2)}
+                                          </td>
+                                          <td className="py-1.5 pr-4 text-right text-gray-700 dark:text-gray-300">
+                                            {formatCurrency(payment.customer_remaining_before || 0, 2)} {'->'} {formatCurrency(payment.customer_remaining_after || 0, 2)}
+                                          </td>
+                                          <td className="py-1.5 pr-4 text-gray-600 dark:text-gray-400">
+                                            <div>{payment.payment_method}</div>
+                                            {payment.bank_account_name && (
+                                              <div className="text-[11px] text-gray-500 dark:text-gray-400">Bank: {payment.bank_account_name}</div>
+                                            )}
+                                            {payment.notes && <div className="text-[11px] text-gray-500 dark:text-gray-400 italic">{payment.notes}</div>}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </td>
+                            </tr>
+                          )}
                         </>
                       )
                     })}
