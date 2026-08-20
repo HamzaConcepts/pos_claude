@@ -48,6 +48,25 @@ export async function GET(
       )
     }
 
+    const { data: allocations, error: allocationError } = await supabaseAdmin
+      .from('sale_item_batch_allocations')
+      .select('sale_item_id, quantity, returned_quantity')
+      .eq('sale_id', sale.id)
+
+    if (allocationError && allocationError.code !== '42P01') throw allocationError
+
+    const returnedBySaleItem = new Map<number, number>()
+    ;(allocations || []).forEach((allocation: any) => {
+      returnedBySaleItem.set(
+        allocation.sale_item_id,
+        (returnedBySaleItem.get(allocation.sale_item_id) || 0) + Number(allocation.returned_quantity || 0),
+      )
+    })
+    sale.sale_items = sale.sale_items.map((item: any) => ({
+      ...item,
+      returnable_quantity: Math.max(0, item.quantity - (returnedBySaleItem.get(item.id) || 0)),
+    }))
+
     return NextResponse.json({
       success: true,
       data: sale,

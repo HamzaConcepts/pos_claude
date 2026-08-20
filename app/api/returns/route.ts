@@ -148,90 +148,145 @@ export async function POST(request: NextRequest) {
 
       // 2. Insert return items and restore stock
       for (const item of items) {
+        const requestedQuantity = Number(item.quantity)
+        if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
+          throw new Error(`Invalid return quantity for ${item.product_name}`)
+        }
+
+        const { data: saleItem, error: saleItemError } = await supabaseAdmin
+          .from('sale_items')
+          .select('id, quantity, unit_price, subtotal')
+          .eq('id', item.sale_item_id || 0)
+          .eq('sale_id', sale_id)
+          .eq('product_id', item.product_id)
+          .maybeSingle()
+
+        if (saleItemError) throw saleItemError
+        if (!saleItem) throw new Error(`Sale item not found for ${item.product_name}`)
+
+        const { data: allocations, error: allocationReadError } = await supabaseAdmin
+          .from('sale_item_batch_allocations')
+          .select('id, stock_batch_id, quantity, returned_quantity')
+          .eq('sale_item_id', saleItem.id)
+          .order('id', { ascending: true })
+
+        if (allocationReadError) throw allocationReadError
+
+        const availableAllocations = (allocations || []).map((allocation: any) => ({
+          ...allocation,
+          available: Number(allocation.quantity) - Number(allocation.returned_quantity || 0),
+        }))
+        const availableQuantity = availableAllocations.reduce(
+          (total: number, allocation: any) => total + Math.max(0, allocation.available),
+          0,
+        )
+        if (availableAllocations.length > 0 && requestedQuantity > availableQuantity) {
+          throw new Error(`Only ${availableQuantity} unit(s) remain returnable for ${item.product_name}`)
+        }
+
         const { error: itemError } = await supabaseAdmin
           .from('return_items')
           .insert({
             return_id: returnRecord.id,
             product_id: item.product_id,
             product_name: item.product_name,
-            batch_id: item.batch_id || null,
-            quantity: item.quantity,
+            batch_id: availableAllocations.length === 1 ? availableAllocations[0].stock_batch_id : null,
+            quantity: requestedQuantity,
             unit_price: parseFloat(String(item.unit_price || 0)),
             refund_amount: parseFloat(String(item.refund_amount || 0)),
           })
 
-        if (itemError) {
-          console.error('Error inserting return item:', itemError)
+        if (itemError) throw itemError
+
+        // Restore the exact FIFO batches used by this sale.
+        let remainingToRestore = requestedQuantity
+        for (const allocation of availableAllocations) {
+          if (remainingToRestore <= 0) break
+          const restoreQuantity = Math.min(remainingToRestore, allocation.available)
+          if (restoreQuantity <= 0) continue
+
+          const { data: batch, error: batchReadError } = await supabaseAdmin
+            .from('stock_batches')
+            .select('quantity_remaining, quantity_purchased')
+            .eq('id', allocation.stock_batch_id)
+            .eq('product_id', item.product_id)
+            .eq('store_id', parsedStoreId)
+            .single()
+
+          if (batchReadError) throw batchReadError
+          if (Number(batch.quantity_remaining) + restoreQuantity > Number(batch.quantity_purchased)) {
+            throw new Error(`Stock batch ${allocation.stock_batch_id} cannot accept the returned quantity`)
+          }
+
+          const { error: batchUpdateError } = await supabaseAdmin
+            .from('stock_batches')
+            .update({
+              quantity_remaining: Number(batch.quantity_remaining) + restoreQuantity,
+              is_depleted: false,
+              depleted_at: null,
+            })
+            .eq('id', allocation.stock_batch_id)
+
+          if (batchUpdateError) throw batchUpdateError
+
+          const { error: allocationUpdateError } = await supabaseAdmin
+            .from('sale_item_batch_allocations')
+            .update({ returned_quantity: Number(allocation.returned_quantity || 0) + restoreQuantity })
+            .eq('id', allocation.id)
+
+          if (allocationUpdateError) throw allocationUpdateError
+          remainingToRestore -= restoreQuantity
         }
 
-        // 3. Restore stock (to specific batch or latest batch)
-        let targetBatchId = item.batch_id
-        if (!targetBatchId) {
-          const { data: latestBatch } = await supabaseAdmin
+        // Legacy sales have no allocation rows. Restore them conservatively in reverse FIFO order.
+        if (availableAllocations.length === 0) {
+          const { data: batches, error: batchReadError } = await supabaseAdmin
             .from('stock_batches')
-            .select('id')
+            .select('id, quantity_remaining, quantity_purchased')
             .eq('product_id', item.product_id)
             .eq('store_id', parsedStoreId)
             .order('purchase_date', { ascending: false })
-            .limit(1)
-            .single()
-          
-          if (latestBatch) {
-            targetBatchId = latestBatch.id
-          }
-        }
+            .order('id', { ascending: false })
 
-        if (targetBatchId) {
-          const { data: batch } = await supabaseAdmin
-            .from('stock_batches')
-            .select('quantity_remaining, is_depleted')
-            .eq('id', targetBatchId)
-            .single()
-
-          if (batch) {
-            await supabaseAdmin
+          if (batchReadError) throw batchReadError
+          let legacyRemaining = requestedQuantity
+          for (const batch of batches || []) {
+            if (legacyRemaining <= 0) break
+            const capacity = Number(batch.quantity_purchased) - Number(batch.quantity_remaining)
+            const restoreQuantity = Math.min(legacyRemaining, Math.max(0, capacity))
+            if (restoreQuantity <= 0) continue
+            const { error: batchUpdateError } = await supabaseAdmin
               .from('stock_batches')
               .update({
-                quantity_remaining: batch.quantity_remaining + item.quantity,
+                quantity_remaining: Number(batch.quantity_remaining) + restoreQuantity,
                 is_depleted: false,
+                depleted_at: null,
               })
-              .eq('id', targetBatchId)
+              .eq('id', batch.id)
+            if (batchUpdateError) throw batchUpdateError
+            legacyRemaining -= restoreQuantity
           }
-        }
-
-        // Reduce sale_items quantity and subtotal
-        const { data: saleItem } = await supabaseAdmin
-          .from('sale_items')
-          .select('id, quantity, subtotal')
-          .eq('sale_id', sale_id)
-          .eq('product_id', item.product_id)
-          .limit(1)
-          .single()
-
-        if (saleItem) {
-          const newQty = Math.max(0, saleItem.quantity - item.quantity)
-          const newSubtotal = Math.max(0, saleItem.subtotal - item.refund_amount)
-          await supabaseAdmin
-            .from('sale_items')
-            .update({ quantity: newQty, subtotal: newSubtotal })
-            .eq('id', saleItem.id)
+          if (legacyRemaining > 0) throw new Error(`Unable to restore all stock for ${item.product_name}`)
         }
       }
 
-      // Reduce sales total_amount and recalculate payment fields
-      const { data: saleRecord } = await supabaseAdmin
+      const { data: saleRecord, error: saleRecordError } = await supabaseAdmin
         .from('sales')
         .select('total_amount, amount_paid')
         .eq('id', sale_id)
+        .eq('store_id', parsedStoreId)
         .single()
 
+      if (saleRecordError) throw saleRecordError
+
       const refundAmount = parseFloat(String(total_refund_amount || 0))
-      const currentSaleTotal = saleRecord ? parseFloat(String(saleRecord.total_amount || 0)) : 0
-      const currentAmountPaid = saleRecord ? parseFloat(String(saleRecord.amount_paid || 0)) : 0
+      const currentSaleTotal = parseFloat(String(saleRecord.total_amount || 0))
+      const currentAmountPaid = parseFloat(String(saleRecord.amount_paid || 0))
       const currentAmountDue = Math.max(0, currentSaleTotal - currentAmountPaid)
       const cashBackForLedgerCredit = normalizedRefundMethod === 'Ledger_Credit'
         ? Math.max(0, refundAmount - currentAmountDue)
         : 0
+
       const updatedSaleTotal = Math.max(0, currentSaleTotal - refundAmount)
       const updatedAmountPaid = normalizedRefundMethod === 'Ledger_Credit'
         ? Math.max(0, currentAmountPaid - cashBackForLedgerCredit)

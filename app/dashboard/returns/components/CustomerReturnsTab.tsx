@@ -173,6 +173,7 @@ export default function CustomerReturnsTab() {
       const itemsToReturn = selectedSale.sale_items
         .filter((item: any) => returnItems[item.id] > 0)
         .map((item: any) => ({
+          sale_item_id: item.id,
           product_id: item.product_id,
           product_name: item.product_name || item.products?.name,
           batch_id: item.stock_batch_id,
@@ -422,16 +423,16 @@ export default function CustomerReturnsTab() {
                     <div key={item.id} className="flex justify-between items-center p-3 bg-white dark:bg-[#1a1a1a] rounded border border-gray-200 dark:border-gray-700">
                       <div className="flex-1">
                         <p className="font-medium text-gray-900 dark:text-white">{item.product_name || item.products?.name}</p>
-                        <p className="text-sm text-gray-500">Qty Sold: {item.quantity} @ {formatCurrency(item.unit_price, 2)}</p>
+                        <p className="text-sm text-gray-500">Qty Available: {item.returnable_quantity ?? item.quantity} @ {formatCurrency(item.unit_price, 2)}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Return Qty:</span>
                         <input
                           type="number"
                           min="0"
-                          max={item.quantity}
+                          max={item.returnable_quantity ?? item.quantity}
                           value={returnItems[item.id] || 0}
-                          onChange={(e) => handleQtyChange(item.id, parseInt(e.target.value) || 0, item.quantity)}
+                          onChange={(e) => handleQtyChange(item.id, parseInt(e.target.value) || 0, item.returnable_quantity ?? item.quantity)}
                           className="w-20 px-2 py-1 text-center border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
                         />
                       </div>

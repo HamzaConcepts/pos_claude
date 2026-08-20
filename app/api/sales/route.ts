@@ -1177,7 +1177,7 @@ export async function POST(request: Request) {
     // Create sale items and update inventory using FIFO
     for (const saleItem of saleItems) {
       // Insert sale item (with snapshots)
-      const { error: itemError } = await supabaseAdmin
+      const { data: saleItemRecord, error: itemError } = await supabaseAdmin
         .from('sale_items')
         .insert([
           {
@@ -1191,6 +1191,8 @@ export async function POST(request: Request) {
             subtotal: saleItem.subtotal,
           },
         ])
+        .select('id')
+        .single()
 
       if (itemError) throw itemError
 
@@ -1206,6 +1208,31 @@ export async function POST(request: Request) {
       if (fifoError) {
         console.error('FIFO deduction error:', fifoError)
         throw new Error(`Failed to deduct stock for ${saleItem.product_name}: ${fifoError.message}`)
+      }
+
+      const allocations = (fifoResult || []).map((allocation: any) => ({
+        sale_item_id: saleItemRecord?.id,
+        sale_id: sale.id,
+        product_id: saleItem.product_id,
+        stock_batch_id: allocation.batch_id,
+        quantity: allocation.quantity_deducted,
+      }))
+
+      const allocatedQuantity = allocations.reduce(
+        (total: number, allocation: any) => total + Number(allocation.quantity || 0),
+        0,
+      )
+      if (!saleItemRecord?.id || allocatedQuantity !== saleItem.quantity) {
+        throw new Error(`Stock allocation was incomplete for ${saleItem.product_name}`)
+      }
+
+      const { error: allocationError } = await supabaseAdmin
+        .from('sale_item_batch_allocations')
+        .insert(allocations)
+
+      if (allocationError) {
+        console.error('Sale batch allocation error:', allocationError)
+        throw new Error(`Failed to record stock allocation for ${saleItem.product_name}: ${allocationError.message}`)
       }
 
       // Mark IMEIs as sold if it's a phone product
