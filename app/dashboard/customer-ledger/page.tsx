@@ -21,7 +21,17 @@ interface KhaataCustomer {
   updated_at?: string
   sales?: {
     sale_description: string | null
+    sale_number: string | null
+    sale_items?: LedgerSaleItem[]
   }
+}
+
+interface LedgerSaleItem {
+  product_name: string | null
+  product_sku: string | null
+  quantity: number
+  unit_price: number
+  subtotal: number
 }
 
 interface AggregatedCustomer {
@@ -524,6 +534,8 @@ export default function CustomerLedgerPage() {
           transactions: customer.transactions.map((transaction) => ({
             sale_id: transaction.sale_id,
             sale_description: transaction.sales?.sale_description,
+            sale_number: transaction.sales?.sale_number,
+            items: transaction.sales?.sale_items,
             transaction_date: transaction.created_at,
             total_amount: transaction.total_amount,
             amount_paid: transaction.amount_paid,
@@ -709,8 +721,14 @@ export default function CustomerLedgerPage() {
                             <td className="px-3 py-2" colSpan={2}>
                               <div className="flex items-center gap-2 text-sm">
                                 <span className="text-gray-700 dark:text-gray-300 font-medium">
-                                  {transaction.sales?.sale_description || `Sale #${transaction.sale_id}`}
+                                  {transaction.sales?.sale_number || `Sale #${transaction.sale_id}`}
                                 </span>
+                                {transaction.sales?.sale_description && (
+                                  <>
+                                    <span className="text-gray-400">•</span>
+                                    <span className="text-gray-700 dark:text-gray-300">{transaction.sales.sale_description}</span>
+                                  </>
+                                )}
                                 <span className="text-gray-400">•</span>
                                 <span className="text-gray-600 dark:text-gray-400">{new Date(transaction.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
                                 {transaction.notes && (
@@ -733,6 +751,40 @@ export default function CustomerLedgerPage() {
                                   Edit
                                 </button>
                               </div>
+                            </td>
+                          </tr>
+
+                          <tr className="border-t border-cyan-100 dark:border-cyan-900">
+                            <td colSpan={8} className="bg-white dark:bg-[#1a1a1a] px-4 py-3">
+                              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Invoice Items</p>
+                              {transaction.sales?.sale_items?.length ? (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs">
+                                    <thead className="text-gray-600 dark:text-gray-400">
+                                      <tr>
+                                        <th className="px-2 py-1 text-left font-medium">Item</th>
+                                        <th className="px-2 py-1 text-left font-medium">SKU</th>
+                                        <th className="px-2 py-1 text-right font-medium">Qty</th>
+                                        <th className="px-2 py-1 text-right font-medium">Unit Price</th>
+                                        <th className="px-2 py-1 text-right font-medium">Subtotal</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {transaction.sales.sale_items.map((item, index) => (
+                                        <tr key={`${transaction.id}-item-${index}`} className="border-t border-gray-100 dark:border-gray-700">
+                                          <td className="px-2 py-1 text-gray-900 dark:text-white">{item.product_name || 'Unknown Product'}</td>
+                                          <td className="px-2 py-1 text-gray-600 dark:text-gray-400">{item.product_sku || 'N/A'}</td>
+                                          <td className="px-2 py-1 text-right text-gray-900 dark:text-white">{item.quantity}</td>
+                                          <td className="px-2 py-1 text-right text-gray-900 dark:text-white">{formatCurrency(item.unit_price, 2)}</td>
+                                          <td className="px-2 py-1 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(item.subtotal, 2)}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">No item details available.</p>
+                              )}
                             </td>
                           </tr>
 
@@ -961,8 +1013,14 @@ export default function CustomerLedgerPage() {
                                   <td className="px-3 py-2" colSpan={2}>
                                     <div className="flex items-center gap-2 text-sm">
                                       <span className="text-gray-700 dark:text-gray-300 font-medium">
-                                        {transaction.sales?.sale_description || `Sale #${transaction.sale_id}`}
+                                        {transaction.sales?.sale_number || `Sale #${transaction.sale_id}`}
                                       </span>
+                                      {transaction.sales?.sale_description && (
+                                        <>
+                                          <span className="text-gray-400">•</span>
+                                          <span className="text-gray-700 dark:text-gray-300">{transaction.sales.sale_description}</span>
+                                        </>
+                                      )}
                                       <span className="text-gray-400">•</span>
                                       <span className="text-gray-600 dark:text-gray-400">{new Date(transaction.created_at).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi' })}</span>
                                       {transaction.notes && (
@@ -985,6 +1043,40 @@ export default function CustomerLedgerPage() {
                                         Edit
                                       </button>
                                     </div>
+                                  </td>
+                                </tr>
+
+                                <tr className="border-t border-cyan-100 dark:border-cyan-900">
+                                  <td colSpan={8} className="bg-white dark:bg-[#1a1a1a] px-4 py-3">
+                                    <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">Invoice Items</p>
+                                    {transaction.sales?.sale_items?.length ? (
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full text-xs">
+                                          <thead className="text-gray-600 dark:text-gray-400">
+                                            <tr>
+                                              <th className="px-2 py-1 text-left font-medium">Item</th>
+                                              <th className="px-2 py-1 text-left font-medium">SKU</th>
+                                              <th className="px-2 py-1 text-right font-medium">Qty</th>
+                                              <th className="px-2 py-1 text-right font-medium">Unit Price</th>
+                                              <th className="px-2 py-1 text-right font-medium">Subtotal</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {transaction.sales.sale_items.map((item, index) => (
+                                              <tr key={`${transaction.id}-item-${index}`} className="border-t border-gray-100 dark:border-gray-700">
+                                                <td className="px-2 py-1 text-gray-900 dark:text-white">{item.product_name || 'Unknown Product'}</td>
+                                                <td className="px-2 py-1 text-gray-600 dark:text-gray-400">{item.product_sku || 'N/A'}</td>
+                                                <td className="px-2 py-1 text-right text-gray-900 dark:text-white">{item.quantity}</td>
+                                                <td className="px-2 py-1 text-right text-gray-900 dark:text-white">{formatCurrency(item.unit_price, 2)}</td>
+                                                <td className="px-2 py-1 text-right font-medium text-gray-900 dark:text-white">{formatCurrency(item.subtotal, 2)}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">No item details available.</p>
+                                    )}
                                   </td>
                                 </tr>
 

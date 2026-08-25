@@ -33,6 +33,7 @@ export default function SalesPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('')
   const [selectedBankAccount, setSelectedBankAccount] = useState('')
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [showPdfModal, setShowPdfModal] = useState(false)
@@ -94,11 +95,11 @@ export default function SalesPage() {
 
   useEffect(() => {
     applyFilters()
-  }, [sales, selectedCashier, selectedProduct, selectedPaymentMethod, selectedBankAccount, selectedPaymentStatus, startDate, endDate])
+  }, [sales, searchQuery, selectedCashier, selectedProduct, selectedPaymentMethod, selectedBankAccount, selectedPaymentStatus, startDate, endDate])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [sales, selectedCashier, selectedProduct, selectedPaymentMethod, selectedBankAccount, selectedPaymentStatus, startDate, endDate])
+  }, [sales, searchQuery, selectedCashier, selectedProduct, selectedPaymentMethod, selectedBankAccount, selectedPaymentStatus, startDate, endDate])
 
   const normalizePaymentStatus = (status: string) =>
     status === 'Pending' ? 'Partial' : status
@@ -346,6 +347,15 @@ export default function SalesPage() {
   const applyFilters = () => {
     let filtered = [...sales]
 
+    // Search by invoice number or sale description
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase()
+      filtered = filtered.filter(sale =>
+        sale.sale_number?.toLowerCase().includes(query) ||
+        sale.sale_description?.toLowerCase().includes(query)
+      )
+    }
+
     // Filter by cashier
     if (selectedCashier) {
       filtered = filtered.filter(sale => sale.cashier_id === selectedCashier)
@@ -452,6 +462,7 @@ export default function SalesPage() {
   }
 
   const clearFilters = () => {
+    setSearchQuery('')
     setSelectedCashier('')
     setSelectedProduct('')
     setSelectedPaymentMethod('')
@@ -612,7 +623,7 @@ export default function SalesPage() {
         <div className="flex items-center gap-2 mb-4">
           <FunnelIcon size={18} className="text-gray-600 dark:text-gray-400" />
           <h2 className="font-semibold text-sm text-gray-900 dark:text-gray-300">Filters</h2>
-          {(selectedCashier || selectedProduct || selectedPaymentMethod || selectedBankAccount || selectedPaymentStatus || startDate || endDate) && (
+          {(searchQuery || selectedCashier || selectedProduct || selectedPaymentMethod || selectedBankAccount || selectedPaymentStatus || startDate || endDate) && (
             <button
               onClick={clearFilters}
               className="ml-auto text-xs text-red-600 hover:text-red-700"
@@ -623,6 +634,19 @@ export default function SalesPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-3">
+          {/* Search Filter */}
+          <div className="md:col-span-3 lg:col-span-2">
+            <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-300">Search</label>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Description or invoice number"
+              aria-label="Search by description or invoice number"
+              className="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:border-cyan-600 border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+          </div>
+
           {/* Cashier Filter */}
           <div>
             <label className="block text-xs font-medium mb-1 text-gray-700 dark:text-gray-400">Cashier</label>

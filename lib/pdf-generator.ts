@@ -35,6 +35,14 @@ export interface SupplierPurchasePDFRecord {
 export interface CustomerLedgerPDFRecord {
   sale_id: number
   sale_description?: string | null
+  sale_number?: string | null
+  items?: Array<{
+    product_name?: string | null
+    product_sku?: string | null
+    quantity: number
+    unit_price: number
+    subtotal: number
+  }>
   transaction_date: string
   total_amount: number
   amount_paid: number
@@ -288,7 +296,10 @@ export async function generateCustomerLedgerPDF(
   const tableRows = transactions.map((transaction) => `
     <tr>
       <td>${new Date(transaction.transaction_date).toLocaleDateString('en-PK', { timeZone: 'Asia/Karachi', year: 'numeric', month: 'short', day: 'numeric' })}</td>
-      <td>${transaction.sale_description || `Sale #${transaction.sale_id}`}</td>
+      <td>${transaction.sale_number || `Sale #${transaction.sale_id}`}<br>${transaction.sale_description || ''}</td>
+      <td>${transaction.items?.length
+        ? transaction.items.map((item) => `${item.product_name || 'Unknown Product'}${item.product_sku ? ` (${item.product_sku})` : ''} x ${Number(item.quantity || 0)}`).join('<br>')
+        : '-'}</td>
       <td class="text-right">${formatMoney(transaction.total_amount)}</td>
       <td class="text-right">${formatMoney(transaction.amount_paid)}</td>
       <td class="text-right">${formatMoney(transaction.amount_remaining)}</td>
@@ -334,7 +345,7 @@ export async function generateCustomerLedgerPDF(
         <div class="summary-card"><div class="summary-title">Amount Paid</div><div class="summary-value">${formatMoney(customer.amount_paid)}</div></div>
         <div class="summary-card"><div class="summary-title">Balance Due</div><div class="summary-value">${formatMoney(customer.amount_remaining)}</div></div>
       </div>
-      <table><thead><tr><th>Date</th><th>Sale</th><th class="text-right">Total</th><th class="text-right">Paid</th><th class="text-right">Remaining</th><th>Notes</th></tr></thead>
+      <table><thead><tr><th>Date</th><th>Invoice</th><th>Items</th><th class="text-right">Total</th><th class="text-right">Paid</th><th class="text-right">Remaining</th><th>Notes</th></tr></thead>
         <tbody>${tableRows}</tbody>
       </table>
       <div class="footer">Generated on ${new Date().toLocaleString('en-PK', { timeZone: 'Asia/Karachi' })}</div>

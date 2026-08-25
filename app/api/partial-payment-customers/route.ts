@@ -42,7 +42,15 @@ export async function GET(request: Request) {
       .select(`
         *,
         sales!partial_payment_customers_sale_id_fkey (
-          sale_description
+          sale_description,
+          sale_number,
+          sale_items (
+            product_name,
+            product_sku,
+            quantity,
+            unit_price,
+            subtotal
+          )
         )
       `)
       .order('created_at', { ascending: false })
